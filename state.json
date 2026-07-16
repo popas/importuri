@@ -11,6 +11,6 @@
     {"id": "1000292339365017", "brand": "Seiko", "reason": "price too low (99 RON)"}
   ],
   "total_imported": 6,
-  "target": 7,
-  "status": "complete"
+  "target": null,
+  "status": "idle"
 }

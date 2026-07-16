@@ -5,22 +5,23 @@ Branch: `skills-refactor`. Update this file at the moment anything completes.
 
 ## Done
 
+- Skill 1 `watch-session-setup` — drafted (Opus), reviewed (Fable: added P12 cross-ref for FB tab-new notifications), committed.
+- Skill 2 `fb-find-posts` — drafted (Opus), reviewed (Fable: clean; JS byte-identical, max-3 scroll respected), committed.
+- Skill 3 `fb-extract-post` — drafted (Opus), reviewed (Fable: clean; A→B→C order, JS + field table byte-identical), committed.
+- Skill 4 `admin-import-watch` — drafted (Opus), reviewed (Fable: compressed quality-gate triplication; ~136 body lines, overage accepted — see Deferred), committed.
+- Skill 5 `import-verify-state` — drafted (Opus), reviewed (Fable: clean; banner JS + state schema byte-identical, 60 body lines), committed.
+- Skill 6 `watch-troubleshooting` — drafted (Opus), reviewed (Fable: fixed retry-table row that pointed at the tombstoned 3ceasuri-import skill), committed.
+- Phase 2 cutover complete: Saint Honoré:34 added to harness BRAND_IDS; `skills/3ceasuri/` deleted (grep: no functional refs); orchestrator rewritten (≤60 lines, no JS); both old SKILL.md replaced with tombstones; CLAUDE.md rewritten (new architecture/read-order, path-discrepancy + Saint Honoré notes removed); state.json reset (history kept, target=null, status=idle).
 - Phase 0 orientation: read CLAUDE.md, plan, both SKILL.md, brand-ids.md, harness header. Confirmed: harness BRAND_IDS missing Saint Honoré (line 4, ends at Oris:33); `skills/3ceasuri/` symlink dir exists; state.json has stale target=7/status=complete.
 
 ## In progress
 
-- (nothing)
+- Phase 3 verification (greps, line counts, pitfall checklist ticking, paper simulation)
 
 ## Next
 
-1. Skill 1: `watch-session-setup`
-2. Skill 2: `fb-find-posts`
-3. Skill 3: `fb-extract-post`
-4. Skill 4: `admin-import-watch`
-5. Skill 5: `import-verify-state`
-6. Skill 6: `watch-troubleshooting`
-7. Phase 2 cutover (BRAND_IDS fix, delete symlink dir, rewrite orchestrator ≤60 lines, tombstone old SKILL.md, update CLAUDE.md, reset state.json)
-8. Phase 3 verification (greps, line counts, pitfall checklist, paper simulation)
+1. Phase 3 verification, then final commit
+2. Ask user about optional Phase 4 live validation
 
 ## Decisions (locked — copied from SKILLS_REFACTOR_PROMPT.md, do not re-litigate)
 
@@ -68,7 +69,7 @@ Sources: plan "Known Pitfalls" (both lists, 16 unique) + retry table; browser-us
 | P25 | Image fetch failures (CORS/timeout/expired) — import proceeds with partial images, never skip watch solely for images | import-verify-state | ☐ |
 | P26 | Virtualized feed removes off-screen posts (set=pcb links vanish) — collect before scrolling past | fb-find-posts | ☐ |
 | P27 | Never use group search (/search/?q=) — user preference, scroll/extract feed instead | fb-find-posts | ☐ |
-| P28 | Verify images_payload length (>500 real; ~200 with QmFkIFVSTCBoYXNo = all failed) | import-verify-state | ☐ |
+| P28 | Verify images_payload length (>500 real; ~200 with QmFkIFVSTCBoYXNo = all failed) | admin-import-watch | ☐ |
 | P29 | Images/payload lost on form re-render — re-inject | admin-import-watch | ☐ |
 | P30 | Currency values "RON"/"EUR" (value attr), not display text | admin-import-watch | ☐ |
 | P31 | Feed text scope: [role="feed"], not document.body; dialogs: [role="dialog"] | fb-find-posts | ☐ |
@@ -76,8 +77,8 @@ Sources: plan "Known Pitfalls" (both lists, 16 unique) + retry table; browser-us
 | P33 | mbasic.facebook.com redirects — unusable for plain-HTML scraping | troubleshooting | ☐ |
 | P34 | set=gm. carousel gets stuck; set=pcb. carousel works; ArrowRight key doesn't work — click div[aria-label="Next photo"] | fb-extract-post | ☐ |
 | P35 | Retry table (FB page load fail, skeletons, 0 images, injection fail, import fail max 2 retries) | troubleshooting | ☐ |
-| P36 | images_payload entries must be {"data_url": "..."} objects, not plain strings | admin-import-watch | ☐ |
+| P36 | images_payload entries must be {"data_url": "..."} objects, not plain strings | troubleshooting (manual-injection fallback) | ☐ |
 
 ## Deferred
 
-- (nothing yet)
+- `admin-import-watch` body is ~136 lines (target ~120): the mandated byte-identical blocks (importWatch example ~25, field-value table ~18, quality gates, brand JS ~9, harness wrapper ~6) alone exceed the budget. Accepted as-is rather than deleting required facts.
