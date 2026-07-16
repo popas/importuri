@@ -1,0 +1,16 @@
+{
+  "imported": [
+    {"id": "1322088189444239", "brand": "Doxa", "model": "Mecanic", "price": 500, "images": 3, "location": "Oradea, Bihor"},
+    {"id": "1522090922475993", "brand": "Eberhard & Co", "model": "Automatic 39mm", "price": 5500, "images": 5, "location": "București"},
+    {"id": "862090369822820", "brand": "Citizen", "model": "Red Arrows Eco-Drive Titanium", "price": 3000, "images": 5, "location": "Batăr, Bihor"},
+    {"id": "979462588171968", "brand": "Oris", "model": "Mecanic Vintage 1960-1970", "price": 800, "images": 5, "location": "Satu Mare"},
+    {"id": "2094084168157809", "brand": "Citizen", "model": "Eco-Drive", "price": 500, "images": 5, "location": "Arad"},
+    {"id": "1755762585839743", "brand": "Saint Honoré", "model": "Carrousel Moonphase", "price": 1699, "images": 5, "location": "Drobeta-Turnu Severin, Mehedinti", "phone": "0723663086"}
+  ],
+  "skipped": [
+    {"id": "1000292339365017", "brand": "Seiko", "reason": "price too low (99 RON)"}
+  ],
+  "total_imported": 6,
+  "target": 7,
+  "status": "complete"
+}

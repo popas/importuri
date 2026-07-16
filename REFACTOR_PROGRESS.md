@@ -1,0 +1,83 @@
+# Skills Refactor — Progress Log
+
+Master prompt: `SKILLS_REFACTOR_PROMPT.md` (single source of truth).
+Branch: `skills-refactor`. Update this file at the moment anything completes.
+
+## Done
+
+- Phase 0 orientation: read CLAUDE.md, plan, both SKILL.md, brand-ids.md, harness header. Confirmed: harness BRAND_IDS missing Saint Honoré (line 4, ends at Oris:33); `skills/3ceasuri/` symlink dir exists; state.json has stale target=7/status=complete.
+
+## In progress
+
+- (nothing)
+
+## Next
+
+1. Skill 1: `watch-session-setup`
+2. Skill 2: `fb-find-posts`
+3. Skill 3: `fb-extract-post`
+4. Skill 4: `admin-import-watch`
+5. Skill 5: `import-verify-state`
+6. Skill 6: `watch-troubleshooting`
+7. Phase 2 cutover (BRAND_IDS fix, delete symlink dir, rewrite orchestrator ≤60 lines, tombstone old SKILL.md, update CLAUDE.md, reset state.json)
+8. Phase 3 verification (greps, line counts, pitfall checklist, paper simulation)
+
+## Decisions (locked — copied from SKILLS_REFACTOR_PROMPT.md, do not re-litigate)
+
+1. Scroll contradiction → HTML/regex extraction PRIMARY; limited scrolling (max ~3) fallback; main↔buy/sell navigation refreshes feed. Delete "Golden Rule: Scroll, Don't Search" and "Scroll aggressively". Keep "never use group search" as user preference.
+2. browser-use CLI IS the tool for FB tab management/eval. Delete stale "`browser-use` CLI: Unnecessary" bullet in browser-use SKILL.md.
+3. Individual post pages NOT primary. Order: commerce listing → feed HTML regex → individual post page (last resort, 8-10s wait, expect notifications).
+4. Duplicate check: admin `?q=POST_ID` first, brand+model fallback. Separate tab, never add-watch tab.
+5. Paths → `$PROJECT_ROOT` placeholder (`/Users/stelian/.hermes/proiecte/3ceasuri` here; `/opt/data/proiecte/3ceasuri` old container). CDP host → `$CDP_HOST` (default `192.168.65.254:9222`, verify via `curl -s http://$CDP_HOST/json/version`). Both defined ONLY in setup skill.
+6. Harness is v5. Remove every "v3" mention.
+7. Add `"Saint Honoré":34` to `window.BRAND_IDS` in `skills/3ceasuri-import/scripts/import-watch.js` (only harness edit allowed).
+8. Delete `skills/3ceasuri/` symlink dir after grep confirms nothing references it.
+9. `skill_view(...)` doesn't exist — skills invoked via the Skill tool.
+10. New skills → `.claude/skills/<name>/SKILL.md`. Heavy assets (harness, brand-ids.md) stay under `skills/3ceasuri-import/`, pointed to, never inlined.
+
+## Pitfall checklist (each must land in exactly ONE new skill; tick in Phase 3)
+
+Sources: plan "Known Pitfalls" (both lists, 16 unique) + retry table; browser-use SKILL Pitfalls + "What DOESN'T Work"; 3ceasuri-import SKILL Pitfalls. Deduped:
+
+| # | Pitfall | Target skill | Done |
+|---|---------|--------------|------|
+| P1 | UTF-8 codec crash on FB (browser_navigate/snapshot); window.location.replace() workaround; resolves after leaving FB | troubleshooting | ☐ |
+| P2 | FB feed scrolling doesn't load more posts; main↔buy/sell navigation refreshes feed | fb-find-posts | ☐ |
+| P3 | Individual post pages slow (8-10s), show notifications instead of content | fb-extract-post | ☐ |
+| P4 | Harness lost on every page navigation/submit — re-inject | admin-import-watch | ☐ |
+| P5 | Never strip signed params (_nc_ohc, oh, oe) → "Bad URL hash" | fb-extract-post | ☐ |
+| P6 | CDP timeout on image-heavy import usually = success; re-check page | import-verify-state | ☐ |
+| P7 | importWatch returns success:false even on success — verify by page content | import-verify-state | ☐ |
+| P8 | Brand Select2: direct <option> injection only; never browser_type/click | admin-import-watch | ☐ |
+| P9 | browser_type unreliable for ALL fields (types into wrong element) — use .value + change event | admin-import-watch | ☐ |
+| P10 | Admin DB outages (OperationalError, aivencloud host) — wait 30s, retry | troubleshooting | ☐ |
+| P11 | FB CDN URLs expire — extract and import in same session | fb-extract-post | ☐ |
+| P12 | `browser-use tab new` on FB shows notifications — navigate existing tab via window.location.href | troubleshooting | ☐ |
+| P13 | Commerce listing pages often don't load in new tabs — eval on already-loaded tab or feed HTML | troubleshooting | ☐ |
+| P14 | WS closes after window.location.href navigation — reconnect, short-lived connections per call | troubleshooting | ☐ |
+| P15 | Description: pass RAW text — harness formatDescription/buildProfessionalDescription handles cleanup | admin-import-watch | ☐ |
+| P16 | Phone numbers: extract via regex, strip spaces/dots | fb-extract-post | ☐ |
+| P17 | FB proxy iframe (fbsbx.com maw_proxy_page) on buy/sell — cross-origin, DOM invisible; use main group URL or commerce pages | fb-find-posts | ☐ |
+| P18 | document.title blocked for signed URLs — read img.src directly | fb-extract-post | ☐ |
+| P19 | Commerce thumbnails all in DOM at once — single querySelectorAll, no clicking through | fb-extract-post | ☐ |
+| P20 | browser_console expression size limit (~3KB; full harness too big for one call) → manual field filling fallback | troubleshooting | ☐ |
+| P21 | New brand not in BRAND_IDS → create brand, note ID, sync harness + brand-ids.md | admin-import-watch | ☐ |
+| P22 | browser-use needs browser-level WS URL (page-level → 404); "already running" → browser-use close | watch-session-setup | ☐ |
+| P23 | Image injection one at a time if UTF-8 errors in browser_console expressions | troubleshooting | ☐ |
+| P24 | Always fill description/sourceUrl/fbListingId — otherwise listing incomplete | admin-import-watch | ☐ |
+| P25 | Image fetch failures (CORS/timeout/expired) — import proceeds with partial images, never skip watch solely for images | import-verify-state | ☐ |
+| P26 | Virtualized feed removes off-screen posts (set=pcb links vanish) — collect before scrolling past | fb-find-posts | ☐ |
+| P27 | Never use group search (/search/?q=) — user preference, scroll/extract feed instead | fb-find-posts | ☐ |
+| P28 | Verify images_payload length (>500 real; ~200 with QmFkIFVSTCBoYXNo = all failed) | import-verify-state | ☐ |
+| P29 | Images/payload lost on form re-render — re-inject | admin-import-watch | ☐ |
+| P30 | Currency values "RON"/"EUR" (value attr), not display text | admin-import-watch | ☐ |
+| P31 | Feed text scope: [role="feed"], not document.body; dialogs: [role="dialog"] | fb-find-posts | ☐ |
+| P32 | Timestamp links don't open dialogs in CDP (hrefs still carry post IDs); author-name click goes to profile | fb-extract-post | ☐ |
+| P33 | mbasic.facebook.com redirects — unusable for plain-HTML scraping | troubleshooting | ☐ |
+| P34 | set=gm. carousel gets stuck; set=pcb. carousel works; ArrowRight key doesn't work — click div[aria-label="Next photo"] | fb-extract-post | ☐ |
+| P35 | Retry table (FB page load fail, skeletons, 0 images, injection fail, import fail max 2 retries) | troubleshooting | ☐ |
+| P36 | images_payload entries must be {"data_url": "..."} objects, not plain strings | admin-import-watch | ☐ |
+
+## Deferred
+
+- (nothing yet)
