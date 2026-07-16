@@ -125,7 +125,7 @@ Delegate at most 2 Opus drafts in parallel; review them one at a time.
 
 ## Phase 3 — Verification (all must pass before you claim done)
 
-- [ ] `grep -ri "scroll aggressively\|Golden Rule\|skill_view\|Harness v3\|/opt/data" --include="*.md" .` → only hits allowed: this prompt file and REFACTOR_PROGRESS.md.
+- [ ] `grep -ri "scroll aggressively\|Golden Rule\|skill_view\|Harness v3\|/opt/data" --include="*.md" .` → only hits allowed: this prompt file, REFACTOR_PROGRESS.md, and the single `/opt/data` old-container mention in `watch-session-setup` that Locked Decision 5 itself mandates.
 - [ ] `grep -rn "Saint Honoré" skills/3ceasuri-import/scripts/import-watch.js` → 1 hit.
 - [ ] Every new SKILL.md ≤ ~120 lines; orchestrator ≤ 60 lines; each has valid frontmatter.
 - [ ] No JS snippet appears in more than one file (spot-check: carousel collect(), brand injection, feed regex).
