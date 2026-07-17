@@ -15,8 +15,9 @@ Define these first — every other skill references them.
 - `$PROJECT_ROOT` = `/Users/stelian/.hermes/proiecte/3ceasuri`
   (the old container environment used `/opt/data/proiecte/3ceasuri`; if the repo is
   mounted elsewhere, use that path instead).
-- `$CDP_HOST` = default `192.168.65.254:9222`. Verify at setup — the host may differ
-  per environment:
+- `$CDP_HOST` = **`127.0.0.1:9222` on the user's local Mac** (verified 2026-07-17c; Chrome
+  launched with `--remote-debugging-port=9222`). `192.168.65.254:9222` was the old
+  container-era host. Verify at setup — the host may differ per environment:
 
 ```bash
 curl -s http://$CDP_HOST/json/version
@@ -47,10 +48,16 @@ browser-use <<'PY'
 print(list_tabs())          # [{'targetId': ..., 'title': ..., 'url': ...}, ...]
 PY
 # Helpers: list_tabs(), switch_tab(target_id), new_tab(url), close_tab(target_id),
-#   goto_url(url), wait_for_load(), js(code), scroll(x, y), capture_screenshot(),
+#   goto_url(url), wait_for_load(), js(code), capture_screenshot(),
 #   page_info(). js() is synchronous — drive multi-step flows (e.g. carousels)
 #   with a Python loop + time.sleep between js() calls.
 ```
+
+Keep the `targetId`s from `list_tabs()` — every later step needs `switch_tab(...)`, and each
+bash call is a fresh browser-use process with no memory of which tab was active.
+
+**Avoid the `scroll(x, y)` helper — it scrolled the FB feed the WRONG WAY** (2026-07-17c).
+Use `js('window.scrollBy(0, 1400)')` instead; see `fb-find-posts` → Fallback.
 
 **Old CLI (< 3.0, container era):** `browser-use --cdp-url "ws://$CDP_HOST/devtools/browser/<id>" tab list`
 with subcommands `tab switch/new`, `eval`, `scroll`, `screenshot`; needed the

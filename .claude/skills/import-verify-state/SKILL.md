@@ -30,6 +30,25 @@ the check accepts either.)
 
 The `importWatch` function fetches all images via `async/await` in the browser. When fetching many images (5-10), the CDP `Runtime.evaluate` call may time out with "Inspected target navigated or closed" even though the import succeeded. **Always re-check the page for green banners after a timeout error before assuming failure** — the import likely succeeded.
 
+**Expect this error on EVERY import — it is the normal path, not an edge case.** On
+2026-07-17c `{'code': -32000, 'message': 'Inspected target navigated or closed'}` fired 5/5
+times, and all 5 imports had both green banners (3–10 images each). The form submit
+navigates the tab out from under the evaluate; that IS success in progress.
+
+Under browser-use the raised exception will abort your heredoc **before** you verify, which
+looks like a failed import. Always wrap the call and press on:
+
+```python
+try:
+    js(open('/tmp/.../call.js').read())
+except Exception as e:
+    print('EXC (expected):', str(e)[:100])   # do NOT retry the import here
+time.sleep(20)                                # 25–30s for 8+ images
+js(BANNER_CHECK)                              # the page is the only source of truth
+```
+
+Retrying on this exception would double-import the watch. Verify first, always.
+
 ## 3. Partial images — still imported
 
 If only partial images saved, the watch is still imported — note the image count discrepancy. Fetch failures come from CORS restrictions (3ceasuri.ro → fbcdn.net), network timeouts, and expired FB CDN signed URLs. Diagnose via `[HARNESS] FETCH FAIL:` messages in the browser console. The watch can be saved without images. **NEVER skip a watch solely due to image issues** — save it, then retry image fetching separately.

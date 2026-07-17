@@ -44,6 +44,18 @@ Frozen/sparse feed, notification screens instead of content, or the same few pos
 refresh are usually FB throttling agent-driven traffic — not a bug or an empty group. Two
 facts shape the correct response.
 
+**First, rule out your own tooling — "throttled" is over-diagnosed.** The 2026-07-17b session
+declared the group exhausted when the real cause was browser-use's `scroll(x, y)` helper
+paging the feed *upward*; the next session imported 5 watches from that same feed with
+`js('window.scrollBy(0, 1400)')`. Before invoking the ladder, confirm all three:
+
+1. `document.body.scrollHeight` is **not growing** across scrolls (if it grows, you are fine);
+2. `window.scrollY` **is** increasing (if not, your scroll call is broken — fix that, not FB);
+3. the page finished hydrating (height ~2300 + `innerText` ~1KB right after `goto_url` means
+   still loading — wait 12–20s and re-read; scrolling an un-hydrated document does nothing).
+
+Only when height is static, scrollY climbs, and the page is hydrated is it genuine friction.
+
 **What FB can actually observe about THIS automation.** We do not simulate a mouse or type
 into FB: our synthetic `.click()` and `window.location`/`goto_url` navigations produce
 `isTrusted:false` events with no pointer trail at all. So the "human scroll cadence /
@@ -68,6 +80,12 @@ like the datacenter bot the detection is built to catch.
 2. Still stuck → one paced main↔buy/sell round-trip with a human dwell, then re-read.
 3. Nothing new after two paced attempts → stop and report "group exhausted / throttled for
    now." More retries deepen the throttle.
+
+**Before you stop, spend your cached post IDs.** A throttled *feed* does not block individual
+post pages: on 2026-07-17c the feed went sparse at 4/5 watches, and the 5th came from an ID
+cached earlier in the session, opened directly via `posts/<ID>/`. Exhaust cached IDs
+(dedup-check → `fb-extract-post` Method C) before reporting exhaustion — and say which one
+you hit, "feed throttled" and "no qualifying posts left" are different outcomes for the user.
 
 **Do NOT forge detection signals.** FB's server-side checks include User-Agent validation,
 TLS/JA3 fingerprinting, and IP reputation. The correct — and more robust — answer is to be a

@@ -67,10 +67,26 @@ for (var step = 0; step < 15; step++) {
       btns[i].click(); clicked = true; break;
     }
   }
-  if (!clicked) break; // No more Next buttons = all images collected
+  if (!clicked) break; // Next button gone — rare; the carousel usually WRAPS instead
   await new Promise(r => setTimeout(r, 2500 + Math.random() * 2500)); // human-ish 2.5–5s between clicks
 }
 ```
+
+**The carousel wraps — it does not run out of Next buttons.** `!clicked` almost never fires
+(observed 0/4 times on 2026-07-17c). Termination comes from **filename dedupe + a step cap**:
+run ~step-cap = expected images + 4, and the wrap re-serves images you already have, so the
+unique count simply stops growing. Trust the deduped count, not the loop exit.
+
+**Verify you never left the set.** A wrap is harmless; drifting into another post's photos is
+not. Assert after the loop — if this fails, discard the URLs and re-open the post's own link:
+
+```python
+js('(() => location.href.indexOf("pcb.<POST_ID>") > -1 ? "same-set" : location.href)()')
+# expect "same-set"
+```
+
+**The feed's `+N` badge undercounts the set** — a Certina previewing `+4` held 8 real images.
+Never cap collection at the badge number; let dedupe decide.
 
 - **Pace the Next clicks like a human.** This carousel is the *only* place the runbook
   synthesises clicks — keep them few and unhurried rather than simulating a mouse (the goal
@@ -83,11 +99,36 @@ for (var step = 0; step < 15; step++) {
 - On some pages the Next control appears as `[aria-label="View next image"]` or a button whose aria-label includes "Next".
 - Dedupe collected URLs by filename (part before `?`).
 
-## Method C: Individual post page (LAST RESORT)
+## Method C: Individual post page
 
-Navigate to `https://www.facebook.com/groups/vanzareceasuri/posts/POST_ID/`, wait 8-10
-seconds. Pages are slow and may show notifications instead of content — if the dialog shows
-notifications, go back and use Method B. If content loads, click an image to open the photo viewer and collect via the carousel above.
+Navigate to `https://www.facebook.com/groups/vanzareceasuri/posts/POST_ID/` and wait
+**~15 seconds** (8–10s was not enough on 2026-07-17c).
+
+Promoted from "last resort": this is the **only** way to reach a post the virtualized feed
+has dropped, and it worked reliably 6/6 times once given enough time. It's the standard
+partner to ID-caching in `fb-find-posts`.
+
+**The trap — it renders the HOME FEED first, and looks convincing.** At ~10s
+`document.title` already showed the correct post title while `document.body` was still the
+home feed (stories, unrelated authors). Photo links scraped at that moment belonged to a
+**completely different post** (`pcb.36937378642577166`) and would have imported someone
+else's photos under this watch.
+
+**Never trust the title as a readiness signal.** Gate on the post's own set appearing:
+
+```python
+js('''(() => {
+  let hit = null;
+  document.querySelectorAll('a[href*="/photo/"]').forEach(l => {
+    if ((l.href||'').indexOf('pcb.<POST_ID>') > -1) hit = l.href.split('&__cft__')[0];
+  });
+  return JSON.stringify({hit, ready: !!hit});
+})()''')
+```
+
+Only proceed once `hit` is non-null — that link is also the carousel entry point. If it's
+still null after ~15s, wait once more, then fall back to Method B. Expand the body with a
+`See more` / `Vezi mai mult` click inside `div[role="dialog"]` before reading text.
 
 ## NEVER modify image URLs
 
@@ -121,7 +162,12 @@ Stripping, truncating, or regex-"upgrading" them returns "Bad URL hash". Use the
 
 ## Pitfalls
 
-- Individual post pages are slow (8-10s) and often show notifications instead of content.
+- Individual post pages are slow (~15s) and render the home feed (or notifications) first —
+  a correct `document.title` does NOT mean the post is loaded. Gate on `pcb.<POST_ID>`
+  appearing in a photo link (Method C), never on the title.
+- **Always verify the photo set ID belongs to the post you think you're extracting** — both
+  the post page (before load) and a drifting carousel can hand you another post's images.
+  Cross-post image contamination is silent and survives into the import.
 - `document.title` is blocked for values containing signed query params — read image URLs directly from `img.src` in the DOM, never via `document.title`.
 - Timestamp links ("about an hour ago") do NOT open dialogs in the CDP browser (their hrefs still carry post IDs); clicking an author name navigates to the profile, not the post.
 - `set=gm.` carousels get stuck; `set=pcb.` carousels work.

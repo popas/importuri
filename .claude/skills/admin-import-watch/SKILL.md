@@ -11,13 +11,25 @@ The admin side of importing ONE watch. `$PROJECT_ROOT` / `$CDP_HOST` from `watch
 
 Query the admin by exact `facebook_listing_id` in a SEPARATE tab — never navigate the add-watch tab away for this.
 
-```bash
-browser-use --cdp-url <url> tab new "https://3ceasuri.ro/admin/watches/watch/?q=POST_ID"
+On browser-use ≥3.0 (old `--cdp-url ... tab new` syntax is dead — see `watch-session-setup`):
+
+```python
+t = new_tab("https://3ceasuri.ro/admin/watches/watch/?q=POST_ID")
+time.sleep(3)
+js('(() => document.querySelector(".paginator").innerText)()')   # "0 watchs" = new
+# ... more checks via goto_url() in this SAME tab ...
+close_tab(t)
 ```
 
 - If results found → **skip this post**, close tab, move to next
 - If "0 watchs" → proceed to extraction
 - If 0 results feels suspicious → fall back to searching brand+model (still in the separate tab)
+
+**Batch the dedup checks against your cached post IDs.** One `new_tab`, then `goto_url` per
+ID (~2.5s apart) — the admin is our own site, so it has no FB-style rate concern, and
+clearing all candidates up front means a throttled feed can't strand you mid-loop. Iron rule
+#1 still holds: only ONE watch gets extracted+imported at a time; you're batching cheap
+durable lookups, not images.
 
 ## Step 2: Re-inject the harness (repeat before EVERY watch)
 
@@ -31,6 +43,20 @@ wrapper = "(() => { const s = document.createElement('script'); s.textContent = 
 ```
 
 Pass `wrapper` to `browser_console(expression=wrapper)`. Expect `"OK"`. If injection fails twice (size limit), see `watch-troubleshooting` for the manual field-filling fallback.
+
+**Under browser-use, write `wrapper` to a temp file and read it back inside the heredoc** —
+don't inline a ~14KB string (or Romanian text / signed URLs) into the heredoc, where quoting
+and encoding bite:
+
+```python
+# generation step (plain python3): open('/tmp/.../wrapper.js','w').write(wrapper)
+# browser-use step:
+js(open('/tmp/.../wrapper.js').read())          # -> 'OK'
+js('(() => String(window.BRAND_IDS["Sandoz"]))()')   # sanity-check a new brand landed
+```
+
+Build the `importWatch(...)` call the same way — `json.dumps(data, ensure_ascii=False)` into
+a `call.js` file. This survived 5/5 imports incl. diacritics and 10-image payloads.
 
 ## Step 3: Call importWatch
 

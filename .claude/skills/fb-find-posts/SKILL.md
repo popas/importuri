@@ -7,7 +7,9 @@ description: Invoke at the start of each watch loop to discover the next qualify
 
 Discover the next qualifying watch-sale post in the FB group feed and pick its post ID.
 
-**Tool:** The FB tab must be active. Use `browser_scroll` + `browser_console` (synchronous JS only) or `browser-use eval`.
+**Tool:** The FB tab must be active. Use `browser_console` (synchronous JS only) or `browser-use` `js()`.
+**Do NOT scroll with `browser_scroll` or browser-use's `scroll(x, y)` helper** — see
+"Fallback: Limited Scrolling" for why and what to use instead.
 
 ## Harvest one feed read as a batch (anti-detection)
 
@@ -29,7 +31,16 @@ treating one feed read as a batch, not a single post:
 
 ## Primary Method: Extract from Loaded Feed HTML
 
-FB scrolling often fails to load new posts. **Extract from the page HTML first** before scrolling:
+**Extract from the page HTML first** before scrolling — it needs zero interaction.
+
+Two limits to know before you trust an empty result (both hit on 2026-07-17c):
+
+- This regex reads `"message":{"text":"` out of the **embedded initial JSON**, so it only
+  sees posts present at first render. Posts loaded later *by scrolling* exist only in the
+  DOM and will NOT appear here — a feed full of fresh posts can still return 2 stale texts.
+  Once you have scrolled, read text per-post from the DOM instead (see DOM Reading JS).
+- An empty/stale result means "nothing in the initial payload", **not** "group exhausted".
+  Scroll (correctly — see Fallback) before concluding anything.
 
 ```javascript
 (() => {
@@ -84,17 +95,36 @@ Collect post data, then filter. Proceed only with posts that PASS all filters:
 ## Fallback: Limited Scrolling
 
 Only scroll if the loaded HTML has no qualifying posts. **Pace it like a human** — vary the
-wait (don't use one fixed interval), scroll one viewport at a time, and never burst-scroll:
+wait (don't use one fixed interval), scroll one viewport at a time, and never burst-scroll.
 
+**Scroll with `js('window.scrollBy(0, 1400)')`, never `scroll(x, y)` / `browser_scroll`.**
+On browser-use 3.0, `scroll(0, 900)` moved the page *upward* (scrollY 12018 → 11718 → 11418)
+and never advanced the feed. That silent failure is what produced the false "group exhausted"
+verdict on 2026-07-17b; the very next session pulled 5 importable watches out of the same
+feed using `window.scrollBy` (height 18939 → 28341). **The infinite feed does work.**
+
+`js()` is synchronous, so drive the loop from Python:
+
+```python
+for i in range(10):                       # 3 is too few — real posts appeared at i=4..7
+    js('window.scrollBy(0, 1400); "ok"')
+    time.sleep(random.uniform(3, 6))      # jitter; fixed intervals read as a bot
+    r = json.loads(js(PROBE))             # DOM Reading JS below
+    # cache every new post ID + text as you go (virtualization eats them — see Pitfalls)
+    if new_qualifying_found: break
 ```
-REPEAT up to 3 times:
-  1. browser_scroll(direction="down")   # one viewport, not a jump to the bottom
-  2. Wait a variable 3–6 seconds        # jitter the delay; fixed intervals read as a bot
-  3. Run DOM reading JS (below)
-  4. If new qualifying posts found → stop scrolling, process them
-  5. After 3 fruitless scrolls → ONE main-group → buy/sell round-trip, then re-extract
-END REPEAT
-```
+
+**Diagnose a stall before blaming FB.** Log `document.body.scrollHeight` and `window.scrollY`
+each pass:
+
+| Symptom | Meaning |
+|---|---|
+| height grows (18939 → 28341) | scrolling works — keep going |
+| height static, scrollY **not increasing** | YOUR scroll is broken, not FB. Fix the call |
+| height static, scrollY increasing, no new posts | genuine end-of-feed or throttle → backoff ladder |
+| height tiny (~2300) + `innerText` ~1KB right after `goto_url` | page still hydrating — wait 12–20s and re-read; do NOT scroll an empty document |
+
+After ~10 fruitless scrolls → ONE main-group → buy/sell round-trip, then re-extract.
 
 **Do not machine-gun the refresh.** Rapid identical navigation is itself a bot signal and
 tends to make FB serve *less*, not more (observed: 4 back-to-back cycles kept returning the
@@ -103,6 +133,12 @@ the graduated backoff ladder in `watch-troubleshooting` (pause → one gentle re
 and report "exhausted for now"). Never escalate to more/faster navigation.
 
 ### DOM Reading JS (synchronous, keep under 3KB)
+
+**Iterate `document.querySelector('[role="feed"]').children` — NOT `[role="article"]`.**
+On the buy/sell feed `[role="article"]` matched only 2 nodes while the feed had 38 children
+with 12+ real posts. Per-child gives you `{id, text, images}` already grouped by post, which
+beats a flat text blob — you can filter and cache in one pass. Strip the repeated `Facebook`
+branding noise: `txt.replace(/(Facebook\n?)+/g,'')`.
 
 ```javascript
 (() => {
@@ -138,6 +174,13 @@ Never use the group search feature (`/search/?q=`) to find posts — extract/scr
 - **Scrolling fails to load more posts:** navigating between the main group and buy/sell refreshes the feed.
 - **Cross-origin proxy iframe:** the buy/sell feed can load through `fbsbx.com/maw_proxy_page`; its DOM is invisible to JS eval on the parent page. Symptom: repeated "Facebook" branding text with no post content. Workaround: use the main group URL (`/groups/vanzareceasuri/`) instead.
 - **Virtualized list:** Facebook removes off-screen posts from the DOM — `set=pcb.` links disappear after you scroll past. Collect post data/IDs as you go; don't scroll back up.
+  **Recovery when you cached an ID but lost its text:** don't re-scroll hunting for it. Post
+  IDs are durable — open `https://www.facebook.com/groups/vanzareceasuri/posts/<ID>/`
+  directly (per `fb-extract-post` Method C, incl. its 15s + set-verification guard). On
+  2026-07-17c this rescued 6 IDs captured by ID-only during an early scroll pass, and
+  supplied the 5th watch after the live feed had gone sparse — cached IDs outlive the feed.
+- **A sparse feed late in a session is normal.** Work your cached IDs instead of re-navigating;
+  each extra feed load deepens the throttle for zero new posts.
 - **Feed text scope:** scope feed text reads to `[role="feed"]` — `document.body.innerText` includes sidebar noise.
 
 ## Next
