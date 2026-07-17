@@ -123,11 +123,27 @@ Chrome. Applied that as reliability guidance to the FB-fetching skills:
   as throttling, respond by looking more human (reuse real session, read DOM, jitter, cap
   retries), never by escalating automation.
 
+## Anti-detection review pass (2026-07-17, Fable 5)
+
+Reviewed the first anti-detection pass and strengthened it on three axes:
+1. Grounded the advice in this automation's ACTUAL detection surface. We synthesise no mouse
+   moves / typing (our `.click()` + `window.location` calls are `isTrusted:false`, no pointer
+   trail), so the lever is traffic *rate/shape*, not "look human" broadly. Conceptual model
+   centralised in `watch-troubleshooting` → Bot-Friction Symptoms; FB skills reference it.
+2. Added the strongest lever: `fb-find-posts` now harvests a whole feed read as ONE batch of
+   durable metadata (post IDs + text don't expire), working through it without re-navigating.
+   Reconciled explicitly with iron rule #1 — only the signed image URLs expire, so those stay
+   per-watch in `fb-extract-post`; durable metadata is batched, images are not.
+3. Added an explicit boundary: be a genuine low-rate authenticated user; do NOT forge UA /
+   TLS-JA3 / IP (spoofing, proxy rotation, challenge-solving are out of scope). Plus graduated
+   backoff (pause → one gentle re-read → stop) replacing binary retry/stop.
+
 ## Deferred
 
-- Line budgets: after the anti-detection pass, fb-find-posts=137, fb-extract-post=128,
-  watch-troubleshooting=132 (soft ~120 target). Accepted — the added guidance is load-bearing
-  for live reliability. Same posture as admin-import-watch (139) below.
+- Line budgets: after both anti-detection passes, fb-find-posts=145, fb-extract-post=131,
+  watch-troubleshooting=157 (soft ~120 target; user explicitly waived the cap for this work).
+  Accepted — the guidance is load-bearing for live reliability. Same posture as
+  admin-import-watch (139) below.
 - Legacy deep-reference docs under `skills/browser-use/references/` and `skills/3ceasuri-import/references/` still contain old copies of some JS (e.g. carousel loop in `photo-carousel-collection.md`) and old-env details. They are historical archives (labelled as such in CLAUDE.md), were out of the mandated cleanup scope (only the two SKILL.md files were tombstoned), and nothing links to them from the new skills. Delete them if you want a stricter no-duplication guarantee.
 - SKILLS_REFACTOR_PROMPT.md Phase-3 grep line contradicted its own Locked Decision 5 (the `/opt/data` old-container mention it mandates in `watch-session-setup`). Fixed the prompt file per its "fix the file first" rule.
 - `admin-import-watch` body is ~136 lines (target ~120): the mandated byte-identical blocks (importWatch example ~25, field-value table ~18, quality gates, brand JS ~9, harness wrapper ~6) alone exceed the budget. Accepted as-is rather than deleting required facts.

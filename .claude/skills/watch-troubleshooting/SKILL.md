@@ -38,17 +38,42 @@ Facebook CDN URLs with non-ASCII characters in signed params (e.g. `oh=00_Af...`
 - Commerce listing pages often don't load even in navigated new tabs — use `browser-use eval` on an already-loaded tab, or extract from feed HTML instead.
 - `mbasic.facebook.com` redirects to `www.facebook.com` (`?__mmr=1&_rdr`) — unusable for plain-HTML scraping.
 
-## Bot-Friction Symptoms (slow down, don't escalate)
+## Bot-Friction Symptoms — what's really detected, and how to respond
 
 Frozen/sparse feed, notification screens instead of content, or the same few posts on every
-refresh are usually FB throttling agent-driven input, not a bug or an empty group. FB flags
-**robotic behaviour** (instant clicks, fixed-interval actions, rapid identical navigation)
-even in a genuine Chrome. The fix is to look *more human*, never more aggressive:
-- Reuse the human's real logged-in tabs; don't spawn throwaway automation profiles.
-- Read already-loaded DOM/HTML before synthesising any click or scroll (see `fb-find-posts`).
-- When interacting, jitter delays (variable seconds) and act one step at a time.
-- Cap refreshes: one paced main↔buy/sell round-trip per stall. If two yield nothing new,
-  stop and report "group exhausted for now" — escalating retries makes it worse.
+refresh are usually FB throttling agent-driven traffic — not a bug or an empty group. Two
+facts shape the correct response.
+
+**What FB can actually observe about THIS automation.** We do not simulate a mouse or type
+into FB: our synthetic `.click()` and `window.location`/`goto_url` navigations produce
+`isTrusted:false` events with no pointer trail at all. So the "human scroll cadence /
+off-center clicks / typing rhythm" behavioural checks mostly do not apply to us. Our real
+detection surface is the **rate and shape of traffic**, not mouse realism:
+- navigations / page loads fired per minute,
+- repeated identical navigation loops (main↔buy/sell hammering),
+- little or no dwell time between actions,
+- request volume against the feed/GraphQL endpoints.
+Lever accordingly: **fewer page loads, more extracted per load, real dwell between them.**
+(`fb-find-posts` harvests a whole feed read as one batch for exactly this reason.)
+
+**Session trust is what carries us — protect it.** Attaching to the user's own logged-in
+Chrome supplies the signals that actually matter: aged cookies, a residential IP, a real
+User-Agent, real account history. That is why we reuse existing tabs and never spawn a
+throwaway automation profile — a fresh profile discards every trust signal and looks exactly
+like the datacenter bot the detection is built to catch.
+
+**Graduated backoff on friction (do not escalate):**
+1. First friction signal → PAUSE 30–60s, then gently retry ONCE by re-reading the DOM of an
+   already-loaded page (no re-navigation).
+2. Still stuck → one paced main↔buy/sell round-trip with a human dwell, then re-read.
+3. Nothing new after two paced attempts → stop and report "group exhausted / throttled for
+   now." More retries deepen the throttle.
+
+**Do NOT forge detection signals.** FB's server-side checks include User-Agent validation,
+TLS/JA3 fingerprinting, and IP reputation. The correct — and more robust — answer is to be a
+genuine low-rate authenticated user, NOT to spoof a User-Agent, forge TLS fingerprints,
+rotate proxies, or auto-solve challenges. Those are brittle, escalate the arms race, and are
+out of scope for this runbook.
 
 ## Harness Injection Failure → Manual Field Filling
 

@@ -9,15 +9,23 @@ Discover the next qualifying watch-sale post in the FB group feed and pick its p
 
 **Tool:** The FB tab must be active. Use `browser_scroll` + `browser_console` (synchronous JS only) or `browser-use eval`.
 
-## Prefer reading over interacting (anti-detection)
+## Harvest one feed read as a batch (anti-detection)
 
-FB actively fingerprints agent-driven browsers, and it flags **robotic input patterns**
-(instant clicks, fixed-interval actions, machine-gun navigation) more than the browser
-itself — a real Chrome driven by an agent still gets throttled. A sparse/frozen feed,
-notification screens, or the same few posts on every refresh are often this friction, not
-an empty group. So: **read the DOM/HTML that is already loaded rather than synthesising
-clicks and scrolls.** The primary method below needs zero interaction — always exhaust it
-first. When you must interact, pace it like a human (below), and never hammer.
+Each page load / navigation is what FB rate-detects — not mouse realism (see
+`watch-troubleshooting` → Bot-Friction Symptoms for why). So minimise navigations by
+treating one feed read as a batch, not a single post:
+
+- **Read the already-loaded HTML/DOM before synthesising any scroll or click.** The primary
+  method below needs zero interaction — always exhaust it first.
+- **Extract EVERY qualifying post in that one read and cache the durable parts** — post IDs
+  and text do not expire, so collect them all, then work through them (dedup-check + extract
+  + import) without re-navigating the feed. This drops feed navigations from one-per-watch to
+  one-per-batch.
+- This does **not** violate iron rule #1 ("one watch at a time"). Only the *signed image
+  URLs* expire, so those are still fetched per-watch in `fb-extract-post`, right before
+  import — never pre-collected. You batch durable metadata, not images.
+- When you must interact, pace it like a human (Fallback below); on friction, back off per
+  the graduated ladder in `watch-troubleshooting` rather than retrying harder.
 
 ## Primary Method: Extract from Loaded Feed HTML
 
@@ -88,11 +96,11 @@ REPEAT up to 3 times:
 END REPEAT
 ```
 
-**Do not machine-gun the refresh.** One main↔buy/sell round-trip per stall, with a human
-pause between navigations. Rapid identical navigation is itself a bot signal and tends to
-make FB serve *less*, not more (observed: 4 back-to-back cycles kept returning the same 3
-posts). If two paced round-trips still yield nothing new, treat the group as genuinely
-exhausted for now and stop — don't escalate the automation.
+**Do not machine-gun the refresh.** Rapid identical navigation is itself a bot signal and
+tends to make FB serve *less*, not more (observed: 4 back-to-back cycles kept returning the
+same 3 posts). One paced main↔buy/sell round-trip per stall; on continued friction follow
+the graduated backoff ladder in `watch-troubleshooting` (pause → one gentle re-read → stop
+and report "exhausted for now"). Never escalate to more/faster navigation.
 
 ### DOM Reading JS (synchronous, keep under 3KB)
 

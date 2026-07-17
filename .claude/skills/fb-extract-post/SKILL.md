@@ -72,9 +72,12 @@ for (var step = 0; step < 15; step++) {
 }
 ```
 
-- **Pace the Next clicks like a human.** FB flags fixed-interval clicking; use a jittered
-  2.5–5s gap (above), not a constant 3s. Under browser-use ≥3.0 `js()` is synchronous, so
-  drive the loop from Python instead — collect, click Next, then `time.sleep(2.5 + random.random()*2.5)` —
+- **Pace the Next clicks like a human.** This carousel is the *only* place the runbook
+  synthesises clicks — keep them few and unhurried rather than simulating a mouse (the goal
+  is a low request rate, not pointer realism; see `watch-troubleshooting` → Bot-Friction
+  Symptoms). Use a jittered 2.5–5s gap (above), roughly the time a person spends looking at
+  one photo, not a constant 3s. Under browser-use ≥3.0 `js()` is synchronous, so drive the
+  loop from Python — collect, click Next, then `time.sleep(2.5 + random.random()*2.5)` —
   reusing the selectors above verbatim. Don't burst through all images at once.
 - ArrowRight key does NOT work in the CDP browser — click the div button.
 - On some pages the Next control appears as `[aria-label="View next image"]` or a button whose aria-label includes "Next".
