@@ -6,14 +6,24 @@
     {"id": "979462588171968", "brand": "Oris", "model": "Mecanic Vintage 1960-1970", "price": 800, "images": 5, "location": "Satu Mare"},
     {"id": "2094084168157809", "brand": "Citizen", "model": "Eco-Drive", "price": 500, "images": 5, "location": "Arad"},
     {"id": "1755762585839743", "brand": "Saint Honoré", "model": "Carrousel Moonphase", "price": 1699, "images": 5, "location": "Drobeta-Turnu Severin, Mehedinti", "phone": "0723663086"},
-    {"id": "2085448602323788", "brand": "Luch", "model": "Export Ultra-thin 2209", "price": 100, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T00:00:00"}
+    {"id": "2085448602323788", "brand": "Luch", "model": "Export Ultra-thin 2209", "price": 100, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T00:00:00"},
+    {"id": "2082535002615148", "brand": "Certina", "model": "DS Action Lady Precidrive Chronometer", "price": 1550, "currency": "RON", "images": 8, "location": "Suceava", "timestamp": "2026-07-17T12:00:00"},
+    {"id": "2085107125691269", "brand": "Helfer Geneve", "model": "LH Limited Edition Open Heart", "price": 2000, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T12:10:00"},
+    {"id": "2083958552472793", "brand": "Sandoz", "model": "Automatic N.O.S. FHF 908", "price": 800, "currency": "RON", "images": 10, "timestamp": "2026-07-17T12:25:00"},
+    {"id": "2084626532405995", "brand": "Luch", "model": "Rare Model 1970s 28x38mm", "price": 100, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T12:35:00"},
+    {"id": "2083777372490911", "brand": "Vostok", "model": "Made in USSR Original", "price": 100, "currency": "EUR", "images": 3, "timestamp": "2026-07-17T12:50:00"}
   ],
   "skipped": [
     {"id": "1000292339365017", "brand": "Seiko", "reason": "price too low (99 RON)"},
     {"id": "795776980228419", "brand": "Miromax", "reason": "price too low (430 RON)"},
-    {"id": "2084973822371266", "brand": "Poljot", "reason": "price too low (80 EUR)"}
+    {"id": "2084973822371266", "brand": "Poljot", "reason": "price too low (80 EUR)"},
+    {"id": "2085428075659174", "brand": "Longines", "reason": "no price stated in post"},
+    {"id": "2083736589161656", "brand": "unknown", "reason": "replica AAA"},
+    {"id": "2083362885865693", "brand": "Junghans", "reason": "wall/mantel clock, not a wristwatch; no price"}
   ],
-  "total_imported": 7,
+  "total_imported": 12,
   "target": 5,
-  "status": "running"
+  "status": "idle",
+  "session_imported_count": 5,
+  "last_session_note": "2026-07-17c: TARGET MET 5/5. Deep scrolling the buy/sell feed (window.scrollBy in a Python-paced loop) DID load fresh posts — the previous session's 'exhausted' verdict was premature. Imported: Certina 1550 RON/8img, Helfer Geneve 2000 EUR/4img, Sandoz 800 RON/10img, Luch rare 100 EUR/4img, Vostok 100 EUR/3img. New brands created: Sandoz(36), Vostok(37) — harness + brand-ids.md both synced. Note: feed virtualization drops posts from DOM once scrolled past, so cache post IDs during the scroll pass and open each post page directly afterwards (posts/<ID>/ needs ~15s to render; it shows the home feed first). Feed went sparse/throttled near the end of the session."
 }

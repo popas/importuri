@@ -38,9 +38,11 @@ Eberhard & Co:31
 Oris:33
 Saint Honoré:34
 Luch:35
+Sandoz:36
+Vostok:37
 ```
 
-Last updated: 2026-07-17. Added Luch (35).
+Last updated: 2026-07-17. Added Luch (35), Sandoz (36), Vostok (37).
 
 ## Extraction Script
 
