@@ -35,43 +35,38 @@ curl -s http://$CDP_HOST/json/version
 
 ALWAYS connect browser-use before starting FB operations. The built-in
 `browser_navigate`/`browser_snapshot` fail with UTF-8 encoding errors on FB CDN
-content, so browser-use is the primary tool for FB. Connection requires the
-**browser-level** WS URL:
+content, so browser-use is the primary tool for FB.
+
+**browser-use ≥ 3.0 (current, verified 2026-07-17):** connection is the `BU_CDP_URL`
+env var set to the **HTTP** endpoint (a `ws://` URL fails with "unknown url type: ws"),
+and commands are Python helpers piped on stdin:
 
 ```bash
-# 1. Get browser-level WS URL (NOT page-level!)
-curl -s http://$CDP_HOST/json/version | python3 -c \
-  "import json,sys; print(json.load(sys.stdin)['webSocketDebuggerUrl'])"
-# Returns: ws://$CDP_HOST/devtools/browser/<id>
-
-# 2. Close existing session first if needed
-browser-use close
-
-# 3. Connect
-browser-use --cdp-url "ws://$CDP_HOST/devtools/browser/<id>" tab list
-
-# 4. Tab operations
-browser-use --cdp-url "<url>" tab switch <index>
-browser-use --cdp-url "<url>" tab new <url>
-browser-use --cdp-url "<url>" eval "<js>"
-browser-use --cdp-url "<url>" scroll down
-browser-use --cdp-url "<url>" screenshot
+export BU_CDP_URL="http://$CDP_HOST"
+browser-use <<'PY'
+print(list_tabs())          # [{'targetId': ..., 'title': ..., 'url': ...}, ...]
+PY
+# Helpers: list_tabs(), switch_tab(target_id), new_tab(url), close_tab(target_id),
+#   goto_url(url), wait_for_load(), js(code), scroll(x, y), capture_screenshot(),
+#   page_info(). js() is synchronous — drive multi-step flows (e.g. carousels)
+#   with a Python loop + time.sleep between js() calls.
 ```
 
-**Key details:**
-- Page-level WS URLs (`/devtools/page/<id>`) get HTTP 404 — must use browser-level (`/devtools/browser/<id>`)
-- If you get "Session 'default' is already running with different config", run `browser-use close` first
-- `browser-use eval` works on FB pages even when `browser_console` fails with UTF-8 encoding errors
+**Old CLI (< 3.0, container era):** `browser-use --cdp-url "ws://$CDP_HOST/devtools/browser/<id>" tab list`
+with subcommands `tab switch/new`, `eval`, `scroll`, `screenshot`; needed the
+**browser-level** WS URL from `curl -s http://$CDP_HOST/json/version` (page-level
+`/devtools/page/<id>` URLs get HTTP 404), and `browser-use close` if you hit
+"Session 'default' is already running with different config".
+
+- `browser-use` `js()`/`eval` works on FB pages even when `browser_console` fails with UTF-8 encoding errors
+- If `browser-use` is not installed: `uv tool install browser-use` (or pipx/pip)
 
 ## Open required tabs
 
-```bash
-# Tab 0: Admin add-watch form
-browser-use --cdp-url <url> tab new https://3ceasuri.ro/admin/watches/watch/add/
-
-# Tab 1: FB buy/sell
-browser-use --cdp-url <url> tab new https://www.facebook.com/groups/978581759677150/buy_sell_discussion
-```
+Reuse existing tabs when the right pages are already open (`list_tabs()` first).
+Otherwise open: Tab 0 = `https://3ceasuri.ro/admin/watches/watch/add/`,
+Tab 1 = `https://www.facebook.com/groups/978581759677150/buy_sell_discussion`
+(via `new_tab(url)`, or `tab new` on the old CLI).
 
 If the FB tab shows notifications instead of the feed, don't retry `tab new` —
 navigate the existing tab with `window.location.href` (see `watch-troubleshooting`).

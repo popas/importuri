@@ -16,13 +16,15 @@ Wait 5 seconds after `importWatch` returns. Check for BOTH green banners:
   const t = document.body.innerText;
   return JSON.stringify({
     images_ok: t.includes('imagini salvate'),
-    added_ok: t.includes('added successfully'),
+    added_ok: t.includes('added successfully') || t.includes('adăugat cu succes'),
     banner_text: t.substring(0, 500)
   });
 })()
 ```
 
-Both `images_ok` and `added_ok` must be true.
+Both `images_ok` and `added_ok` must be true. (The admin may render the success
+banner in Romanian — "a fost adăugat cu succes" — or English "added successfully";
+the check accepts either.)
 
 ## 2. CDP timeout means recheck — never assume failure
 

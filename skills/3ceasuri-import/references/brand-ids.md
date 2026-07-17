@@ -37,9 +37,10 @@ Helfer Geneve:30
 Eberhard & Co:31
 Oris:33
 Saint Honoré:34
+Luch:35
 ```
 
-Last updated: 2026-06-21. Added Eberhard & Co (31), Oris (33), Saint Honoré (34).
+Last updated: 2026-07-17. Added Luch (35).
 
 ## Extraction Script
 

@@ -16,7 +16,15 @@ Branch: `skills-refactor`. Update this file at the moment anything completes.
 
 ## In progress
 
-- (nothing — Phases 0-3 complete; Phase 4 live validation pending user decision)
+- (nothing — Phases 0-4 complete)
+
+## Phase 4 live validation (2026-07-17, Mac env, browser-use 3.0)
+
+Ran a real session with the new skills; 1 watch imported end-to-end (Luch Export Ultra-thin 2209, 100 EUR, 4/4 images, new brand Luch:35 created via the new-brand procedure). Skill defects found and FIXED:
+
+1. `watch-session-setup`: browser-use CLI ≥3.0 changed interface — `BU_CDP_URL` env var with the **HTTP** endpoint (ws:// rejected) + Python-heredoc helpers (`list_tabs()`, `js()`, …) instead of `--cdp-url`/subcommands. Skill updated to document 3.0 as current with the old CLI kept as a container-era note; also added install hint and "reuse existing tabs" guidance.
+2. `import-verify-state`: the admin renders the success banner in Romanian ("a fost adăugat cu succes"), so the banner-check JS's `added_ok: t.includes('added successfully')` was a false negative on a successful import. JS now accepts either language.
+3. Not a defect but noted: the carousel JS in `fb-extract-post` uses `await` inside a snippet — with browser-use 3.0's synchronous `js()`, run the loop from Python (collect → click Next → sleep 3s), reusing the skill's selectors verbatim. Covered by the new wording in `watch-session-setup`.
 
 ## Next
 

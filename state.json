@@ -5,12 +5,15 @@
     {"id": "862090369822820", "brand": "Citizen", "model": "Red Arrows Eco-Drive Titanium", "price": 3000, "images": 5, "location": "Batăr, Bihor"},
     {"id": "979462588171968", "brand": "Oris", "model": "Mecanic Vintage 1960-1970", "price": 800, "images": 5, "location": "Satu Mare"},
     {"id": "2094084168157809", "brand": "Citizen", "model": "Eco-Drive", "price": 500, "images": 5, "location": "Arad"},
-    {"id": "1755762585839743", "brand": "Saint Honoré", "model": "Carrousel Moonphase", "price": 1699, "images": 5, "location": "Drobeta-Turnu Severin, Mehedinti", "phone": "0723663086"}
+    {"id": "1755762585839743", "brand": "Saint Honoré", "model": "Carrousel Moonphase", "price": 1699, "images": 5, "location": "Drobeta-Turnu Severin, Mehedinti", "phone": "0723663086"},
+    {"id": "2085448602323788", "brand": "Luch", "model": "Export Ultra-thin 2209", "price": 100, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T00:00:00"}
   ],
   "skipped": [
-    {"id": "1000292339365017", "brand": "Seiko", "reason": "price too low (99 RON)"}
+    {"id": "1000292339365017", "brand": "Seiko", "reason": "price too low (99 RON)"},
+    {"id": "795776980228419", "brand": "Miromax", "reason": "price too low (430 RON)"},
+    {"id": "2084973822371266", "brand": "Poljot", "reason": "price too low (80 EUR)"}
   ],
-  "total_imported": 6,
-  "target": null,
-  "status": "idle"
+  "total_imported": 7,
+  "target": 5,
+  "status": "running"
 }
