@@ -109,8 +109,25 @@ Sources: plan "Known Pitfalls" (both lists, 16 unique) + retry table; browser-us
 
 No step required information missing from the skills; no fixes needed.
 
+## Anti-detection pass (2026-07-17, from bogdanripa "another weekend" post on bot detection)
+
+The post teaches bot *detection*, not scraping: FB flags robotic input patterns (instant
+clicks, fixed-interval actions, machine-gun navigation) even in a genuine agent-driven
+Chrome. Applied that as reliability guidance to the FB-fetching skills:
+- `fb-find-posts`: added "prefer reading over interacting" rationale; scroll fallback now
+  jittered 3–6s, one viewport at a time; capped refresh to one paced main↔buy/sell
+  round-trip per stall (the 4-rapid-cycle sparse-feed observation from the live run).
+- `fb-extract-post`: carousel Next-click delay jittered 2.5–5s instead of fixed 3s; note to
+  drive the loop from Python under browser-use 3.0's synchronous js().
+- `watch-troubleshooting`: new "Bot-Friction Symptoms" section — diagnose frozen/sparse feed
+  as throttling, respond by looking more human (reuse real session, read DOM, jitter, cap
+  retries), never by escalating automation.
+
 ## Deferred
 
+- Line budgets: after the anti-detection pass, fb-find-posts=137, fb-extract-post=128,
+  watch-troubleshooting=132 (soft ~120 target). Accepted — the added guidance is load-bearing
+  for live reliability. Same posture as admin-import-watch (139) below.
 - Legacy deep-reference docs under `skills/browser-use/references/` and `skills/3ceasuri-import/references/` still contain old copies of some JS (e.g. carousel loop in `photo-carousel-collection.md`) and old-env details. They are historical archives (labelled as such in CLAUDE.md), were out of the mandated cleanup scope (only the two SKILL.md files were tombstoned), and nothing links to them from the new skills. Delete them if you want a stricter no-duplication guarantee.
 - SKILLS_REFACTOR_PROMPT.md Phase-3 grep line contradicted its own Locked Decision 5 (the `/opt/data` old-container mention it mandates in `watch-session-setup`). Fixed the prompt file per its "fix the file first" rule.
 - `admin-import-watch` body is ~136 lines (target ~120): the mandated byte-identical blocks (importWatch example ~25, field-value table ~18, quality gates, brand JS ~9, harness wrapper ~6) alone exceed the budget. Accepted as-is rather than deleting required facts.

@@ -38,6 +38,18 @@ Facebook CDN URLs with non-ASCII characters in signed params (e.g. `oh=00_Af...`
 - Commerce listing pages often don't load even in navigated new tabs — use `browser-use eval` on an already-loaded tab, or extract from feed HTML instead.
 - `mbasic.facebook.com` redirects to `www.facebook.com` (`?__mmr=1&_rdr`) — unusable for plain-HTML scraping.
 
+## Bot-Friction Symptoms (slow down, don't escalate)
+
+Frozen/sparse feed, notification screens instead of content, or the same few posts on every
+refresh are usually FB throttling agent-driven input, not a bug or an empty group. FB flags
+**robotic behaviour** (instant clicks, fixed-interval actions, rapid identical navigation)
+even in a genuine Chrome. The fix is to look *more human*, never more aggressive:
+- Reuse the human's real logged-in tabs; don't spawn throwaway automation profiles.
+- Read already-loaded DOM/HTML before synthesising any click or scroll (see `fb-find-posts`).
+- When interacting, jitter delays (variable seconds) and act one step at a time.
+- Cap refreshes: one paced main↔buy/sell round-trip per stall. If two yield nothing new,
+  stop and report "group exhausted for now" — escalating retries makes it worse.
+
 ## Harness Injection Failure → Manual Field Filling
 
 `browser_console` has an expression size limit. The full harness is too large for a single call and fails with "Invalid or unexpected token". When the harness can't be injected, fall back to manual field filling via smaller JS eval calls:
