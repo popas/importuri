@@ -37,7 +37,11 @@ Loop, ONE watch at a time, until TARGET is reached:
   1. watch-session-setup — connect browser-use, confirm the two tabs, load state.json.
   2. fb-find-posts — find the next qualifying post: price >= 500 RON or >= 100 EUR,
      real brand + model in the text, has images, NOT replica/AAA+, NOT bulk, NOT a
-     Vinted/ad link. Extract from loaded feed HTML first; only scroll as a fallback.
+     Vinted/ad link. Read the loaded feed HTML first, but the real watches are
+     usually further down — SCROLL to reach them (Facebook has infinite scroll).
+     Scroll with js('window.scrollBy(0, 1400)'), NOT the scroll(x, y) helper (it
+     pages the feed the wrong way and loads nothing). A sparse initial feed is not
+     an empty group — confirm scrollHeight grows before concluding "exhausted".
   3. admin-import-watch Step 1 — duplicate check with ?q=POST_ID in a SEPARATE tab,
      BEFORE extracting. If it already exists, mark it skipped and go to the next post.
   4. fb-extract-post — all fields + ALL image URLs from that one post.
@@ -56,7 +60,9 @@ Hard rules (from the orchestrator — obey exactly):
 - Always fill description, sourceUrl, and fbListingId.
 - If the feed stalls, shows notifications, or keeps returning the same posts, back off
   per watch-troubleshooting (pause, one gentle re-read, then stop) — do NOT hammer
-  refresh or open new tabs.
+  refresh or open new tabs. But first rule out a broken scroll (is scrollHeight
+  growing?) and spend any post IDs you cached earlier — a throttled feed still lets
+  you open posts/<ID>/ directly.
 
 Report each watch briefly as you finish it (brand, model, price, images saved). Stop
 when TARGET is reached, the group is exhausted, or you hit something only I can fix —
