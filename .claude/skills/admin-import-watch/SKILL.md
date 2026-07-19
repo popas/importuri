@@ -37,7 +37,7 @@ The harness (v5, authoritative) exposes `window.importWatch(data)`. It is **LOST
 
 ```python
 import json
-with open('$PROJECT_ROOT/skills/3ceasuri-import/scripts/import-watch.js') as f:
+with open('$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-watch.js') as f:
     script = f.read()
 wrapper = "(() => { const s = document.createElement('script'); s.textContent = " + json.dumps(script) + "; document.head.appendChild(s); return window.importWatch ? 'OK' : 'NO_FUNC'; })()"
 ```
@@ -97,7 +97,7 @@ await importWatch({
 
 ## Brand selection
 
-The harness selects the brand by ID from `window.BRAND_IDS` automatically (direct `<option>` injection; Select2 search only as fallback for unknown brands). Mapping source of truth: `$PROJECT_ROOT/skills/3ceasuri-import/references/brand-ids.md`. **Never `browser_type` or click Select2 for the Brand field.** For unknown brands, see "New brand procedure". Manual brand injection (used by the troubleshooting fallback):
+The harness selects the brand by ID from `window.BRAND_IDS` automatically (direct `<option>` injection; Select2 search only as fallback for unknown brands). Mapping source of truth: `$PROJECT_ROOT/harness/3ceasuri-import/references/brand-ids.md`. **Never `browser_type` or click Select2 for the Brand field.** For unknown brands, see "New brand procedure". Manual brand injection (used by the troubleshooting fallback):
 
 ```javascript
 var brandId = 25; // Orient
@@ -115,7 +115,7 @@ document.querySelector('#select2-id_brand-container').textContent = 'Orient';
 1. Navigate to `https://3ceasuri.ro/admin/watches/brand/add/`
 2. Fill Name + Slug, Save
 3. Note the new ID from the redirect URL (`/brand/<ID>/change/`)
-4. Add it BOTH to `window.BRAND_IDS` in `$PROJECT_ROOT/skills/3ceasuri-import/scripts/import-watch.js` AND to `$PROJECT_ROOT/skills/3ceasuri-import/references/brand-ids.md` (keep the two in sync)
+4. Add it BOTH to `window.BRAND_IDS` in `$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-watch.js` AND to `$PROJECT_ROOT/harness/3ceasuri-import/references/brand-ids.md` (keep the two in sync)
 5. Re-inject the harness
 
 ## Quality gates (per watch, at submit)

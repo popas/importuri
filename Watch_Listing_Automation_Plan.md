@@ -38,8 +38,8 @@ When anything fails at any step → invoke `watch-troubleshooting`.
 
 - Skills: `.claude/skills/<name>/SKILL.md` — `watch-session-setup`, `fb-find-posts`,
   `fb-extract-post`, `admin-import-watch`, `import-verify-state`, `watch-troubleshooting`
-- Harness (v5, authoritative): `$PROJECT_ROOT/skills/3ceasuri-import/scripts/import-watch.js`
-- Brand ID mapping: `$PROJECT_ROOT/skills/3ceasuri-import/references/brand-ids.md`
+- Harness (v5, authoritative): `$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-watch.js`
+- Brand ID mapping: `$PROJECT_ROOT/harness/3ceasuri-import/references/brand-ids.md`
 - Progress tracker: `$PROJECT_ROOT/state.json`
 
 `$PROJECT_ROOT` and `$CDP_HOST` are defined in `watch-session-setup`.

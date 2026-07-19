@@ -37,12 +37,15 @@ state.json                         ← progress tracker; schema in import-verify
   admin-import-watch/              ← duplicate check, harness injection, importWatch()
   import-verify-state/             ← green-banner verification, state.json update
   watch-troubleshooting/           ← failure modes & fallbacks only
-skills/
+harness/                           ← shared assets (NOT skills — no SKILL.md here)
   3ceasuri-import/
     scripts/import-watch.js        ← THE HARNESS (authoritative, v5) — pointed to by skills
     references/brand-ids.md        ← brand→ID mapping source of truth
   browser-use/references/          ← historical session logs / deep references
 ```
+
+Skills live ONLY in `.claude/skills/` (each a `SKILL.md`, invoked with the Skill tool).
+`harness/` holds shared data/scripts the skills read — it is not itself a skill.
 
 Data flows one direction per watch: **FB post → extract fields + full image URLs →
 inject harness into admin tab → `importWatch({...})` → verify two green banners →
