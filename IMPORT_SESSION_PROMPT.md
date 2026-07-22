@@ -35,7 +35,7 @@ Environment (my Mac, local Chrome — already running):
 
 Loop, ONE watch at a time, until TARGET is reached:
   1. watch-session-setup — connect browser-use, confirm the two tabs, load state.json.
-  2. fb-find-posts — find the next qualifying post: price >= 500 RON or >= 100 EUR,
+  2. fb-find-posts — find the next qualifying post: price >= 100 RON or >= 20 EUR,
      real brand + model in the text, has images, NOT replica/AAA+, NOT bulk, NOT a
      Vinted/ad link. Read the loaded feed HTML first, but the real watches are
      usually further down — SCROLL to reach them (Facebook has infinite scroll).

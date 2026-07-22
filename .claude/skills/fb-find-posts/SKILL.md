@@ -85,7 +85,7 @@ The relevant regexes on `document.documentElement.outerHTML`:
 ## Qualifying Filter (per post)
 
 Collect post data, then filter. Proceed only with posts that PASS all filters:
-- Price >= 500 RON (or >= 100 EUR/$)
+- Price >= 100 RON (or >= 20 EUR/$)
 - Brand + model mentioned in post body
 - Has visible images
 - NOT replica/AAA+, NOT bulk, NOT non-watch item
