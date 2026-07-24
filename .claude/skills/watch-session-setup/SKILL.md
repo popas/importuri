@@ -68,6 +68,21 @@ with subcommands `tab switch/new`, `eval`, `scroll`, `screenshot`; needed the
 - `browser-use` `js()`/`eval` works on FB pages even when `browser_console` fails with UTF-8 encoding errors
 - If `browser-use` is not installed: `uv tool install browser-use` (or pipx/pip)
 
+### Performance (each bash call is a cold browser-use process)
+
+Every `browser-use <<PY` invocation spawns a fresh process that reconnects over CDP and
+prints an update-check banner — several seconds of pure overhead per call. To keep a session
+snappy:
+
+- **Do as much as possible inside ONE heredoc.** `switch_tab` + `js()` + `time.sleep` loops
+  all live in a single process; don't split a carousel or a multi-step probe across calls.
+- **Batch the cheap admin lookups** (dedup checks, brand-ID lookups) into one `new_tab` +
+  `goto_url` loop rather than one process each — see `admin-import-watch` Step 1.
+- **Admin-side (3ceasuri.ro) steps have no UTF-8 problem**, so the built-in
+  `claude-in-chrome` MCP tools work there and skip the browser-use process spin-up — reserve
+  browser-use for FB pages where the UTF-8 codec crash forces it.
+- Silence the update banner if it's noisy: `browser-harness --update -y` once, or ignore it.
+
 ## Open required tabs
 
 Reuse existing tabs when the right pages are already open (`list_tabs()` first).
@@ -90,5 +105,15 @@ The harness is injected into the admin tab per-watch, not here — see the
 
 The state.json update schema (applied after each watch) lives in the
 `import-verify-state` skill.
+
+**Worktree caution (`state.json` lives in git).** If you are running inside a git worktree
+(cwd under `.claude/worktrees/`), that worktree has its **own** `state.json` that can diverge
+from the main checkout's — a worktree branched before the last import session will be missing
+its entries. `$PROJECT_ROOT` above points at the **main checkout**, so the runbook's harness
+and references are read from there, but a worktree's local `state.json` is the copy your
+edits land in. Before trusting either, `diff` the two; the authoritative tracker is whichever
+matches the live 3ceasuri.ro admin (the site is ground truth, not the file). When the two
+have diverged on *different* watches, **merge** their `imported`/`skipped` lists rather than
+letting one overwrite the other — each may hold real imports the other lacks.
 
 Next: invoke `fb-find-posts`.

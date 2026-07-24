@@ -82,10 +82,32 @@ The relevant regexes on `document.documentElement.outerHTML`:
 2. **Photo links with `set=pcb.ID`** (buy/sell feed) — Works with photo viewer carousel
 3. **Photo links with `set=gm.ID`** — May have stuck carousel, less reliable
 
+**Do NOT use the timestamp/permalink line as a source** — it is obfuscated (see DOM Reading
+JS). Every reliable ID above comes from an image/listing link.
+
+### Recovery: a qualifying post with NO photo/permalink link (2026-07-24)
+
+Some posts (video-first posts, or any post whose media hasn't lazy-loaded) render a feed
+child with body text + a price but **zero** `set=pcb.`/`commerce/listing/` links, so no ID is
+recoverable — this silently loses good listings (on 2026-07-24 it cost a ~7500 € Rolex
+Submariner). Before giving up, **force-hydrate the media**:
+
+```python
+# idx = the feed-child index of the link-less post
+js(f'document.querySelector(\'[role="feed"]\').children[{idx}].scrollIntoView({{block:"center"}}); "c"')
+time.sleep(4)                       # let lazy media / video poster load
+# re-read that child's set=pcb.<ID> link
+```
+
+Retry the scroll-into-center + wait once or twice. If a `set=pcb.` link appears, use it. If
+it still doesn't after ~2 tries, the ID is currently unreachable from the feed — **record a
+one-line note (author + title + price) and move on.** Do not attempt to decode the obfuscated
+timestamp, and do not re-navigate the feed hunting for it.
+
 ## Qualifying Filter (per post)
 
 Collect post data, then filter. Proceed only with posts that PASS all filters:
-- Price >= 500 RON (or >= 100 EUR/$)
+- Price >= 100 RON (or >= 20 EUR/$)
 - Brand + model mentioned in post body
 - Has visible images
 - NOT replica/AAA+, NOT bulk, NOT non-watch item
@@ -140,11 +162,24 @@ with 12+ real posts. Per-child gives you `{id, text, images}` already grouped by
 beats a flat text blob — you can filter and cache in one pass. Strip the repeated `Facebook`
 branding noise: `txt.replace(/(Facebook\n?)+/g,'')`.
 
+**The author/timestamp zone is deliberately obfuscated — do NOT parse it (2026-07-24).**
+FB scrambles the "· <time ago>" permalink line by interleaving single-character
+`aria-hidden="true"` decoy spans and reordering with CSS `order`. A raw text read yields
+garbage like `p o o s t n S r e d l f 4 7 u : 4 …`. Because CSS reorders the *visible* chars
+while the DOM order stays scrambled, this text is unrecoverable even after removing decoys —
+**never regex it for the post ID or date.** The post **body** text (brand/model/price) is
+NOT obfuscated and reads clean. The `acceptNode` below skips `aria-hidden` nodes so the
+harvested text is tidier, but the post ID must come from the `set=pcb.<ID>` photo link (see
+Post ID Sources), never from the timestamp line.
+
 ```javascript
 (() => {
   const f = document.querySelector('[role="feed"]') || document.body;
+  const isHidden = el => { for (let e = el; e && e !== f; e = e.parentElement)
+    if (e.getAttribute && e.getAttribute('aria-hidden') === 'true') return true; return false; };
   const w = document.createTreeWalker(f, NodeFilter.SHOW_TEXT, {
-    acceptNode: n => n.textContent.trim().length > 2 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+    acceptNode: n => (n.textContent.trim().length > 2 && !isHidden(n.parentElement))
+      ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
   });
   let t = ''; let n;
   while (n = w.nextNode()) t += n.textContent;

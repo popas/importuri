@@ -1,29 +1,299 @@
 {
   "imported": [
-    {"id": "1322088189444239", "brand": "Doxa", "model": "Mecanic", "price": 500, "images": 3, "location": "Oradea, Bihor"},
-    {"id": "1522090922475993", "brand": "Eberhard & Co", "model": "Automatic 39mm", "price": 5500, "images": 5, "location": "București"},
-    {"id": "862090369822820", "brand": "Citizen", "model": "Red Arrows Eco-Drive Titanium", "price": 3000, "images": 5, "location": "Batăr, Bihor"},
-    {"id": "979462588171968", "brand": "Oris", "model": "Mecanic Vintage 1960-1970", "price": 800, "images": 5, "location": "Satu Mare"},
-    {"id": "2094084168157809", "brand": "Citizen", "model": "Eco-Drive", "price": 500, "images": 5, "location": "Arad"},
-    {"id": "1755762585839743", "brand": "Saint Honoré", "model": "Carrousel Moonphase", "price": 1699, "images": 5, "location": "Drobeta-Turnu Severin, Mehedinti", "phone": "0723663086"},
-    {"id": "2085448602323788", "brand": "Luch", "model": "Export Ultra-thin 2209", "price": 100, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T00:00:00"},
-    {"id": "2082535002615148", "brand": "Certina", "model": "DS Action Lady Precidrive Chronometer", "price": 1550, "currency": "RON", "images": 8, "location": "Suceava", "timestamp": "2026-07-17T12:00:00"},
-    {"id": "2085107125691269", "brand": "Helfer Geneve", "model": "LH Limited Edition Open Heart", "price": 2000, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T12:10:00"},
-    {"id": "2083958552472793", "brand": "Sandoz", "model": "Automatic N.O.S. FHF 908", "price": 800, "currency": "RON", "images": 10, "timestamp": "2026-07-17T12:25:00"},
-    {"id": "2084626532405995", "brand": "Luch", "model": "Rare Model 1970s 28x38mm", "price": 100, "currency": "EUR", "images": 4, "timestamp": "2026-07-17T12:35:00"},
-    {"id": "2083777372490911", "brand": "Vostok", "model": "Made in USSR Original", "price": 100, "currency": "EUR", "images": 3, "timestamp": "2026-07-17T12:50:00"}
+    {
+      "id": "1322088189444239",
+      "brand": "Doxa",
+      "model": "Mecanic",
+      "price": 500,
+      "images": 3,
+      "location": "Oradea, Bihor"
+    },
+    {
+      "id": "1522090922475993",
+      "brand": "Eberhard & Co",
+      "model": "Automatic 39mm",
+      "price": 5500,
+      "images": 5,
+      "location": "București"
+    },
+    {
+      "id": "862090369822820",
+      "brand": "Citizen",
+      "model": "Red Arrows Eco-Drive Titanium",
+      "price": 3000,
+      "images": 5,
+      "location": "Batăr, Bihor"
+    },
+    {
+      "id": "979462588171968",
+      "brand": "Oris",
+      "model": "Mecanic Vintage 1960-1970",
+      "price": 800,
+      "images": 5,
+      "location": "Satu Mare"
+    },
+    {
+      "id": "2094084168157809",
+      "brand": "Citizen",
+      "model": "Eco-Drive",
+      "price": 500,
+      "images": 5,
+      "location": "Arad"
+    },
+    {
+      "id": "1755762585839743",
+      "brand": "Saint Honoré",
+      "model": "Carrousel Moonphase",
+      "price": 1699,
+      "images": 5,
+      "location": "Drobeta-Turnu Severin, Mehedinti",
+      "phone": "0723663086"
+    },
+    {
+      "id": "2085448602323788",
+      "brand": "Luch",
+      "model": "Export Ultra-thin 2209",
+      "price": 100,
+      "currency": "EUR",
+      "images": 4,
+      "timestamp": "2026-07-17T00:00:00"
+    },
+    {
+      "id": "2082535002615148",
+      "brand": "Certina",
+      "model": "DS Action Lady Precidrive Chronometer",
+      "price": 1550,
+      "currency": "RON",
+      "images": 8,
+      "location": "Suceava",
+      "timestamp": "2026-07-17T12:00:00"
+    },
+    {
+      "id": "2085107125691269",
+      "brand": "Helfer Geneve",
+      "model": "LH Limited Edition Open Heart",
+      "price": 2000,
+      "currency": "EUR",
+      "images": 4,
+      "timestamp": "2026-07-17T12:10:00"
+    },
+    {
+      "id": "2083958552472793",
+      "brand": "Sandoz",
+      "model": "Automatic N.O.S. FHF 908",
+      "price": 800,
+      "currency": "RON",
+      "images": 10,
+      "timestamp": "2026-07-17T12:25:00"
+    },
+    {
+      "id": "2084626532405995",
+      "brand": "Luch",
+      "model": "Rare Model 1970s 28x38mm",
+      "price": 100,
+      "currency": "EUR",
+      "images": 4,
+      "timestamp": "2026-07-17T12:35:00"
+    },
+    {
+      "id": "2083777372490911",
+      "brand": "Vostok",
+      "model": "Made in USSR Original",
+      "price": 100,
+      "currency": "EUR",
+      "images": 3,
+      "timestamp": "2026-07-17T12:50:00"
+    },
+    {
+      "id": "2087487592119889",
+      "brand": "Orient",
+      "model": "Crystal Green Dial",
+      "price": 700,
+      "currency": "RON",
+      "images": 11,
+      "location": null,
+      "timestamp": "2026-07-20T00:00:00"
+    },
+    {
+      "id": "2087414332127215",
+      "brand": "Raketa",
+      "model": "USSR Gold Plated",
+      "price": 120,
+      "currency": "EUR",
+      "images": 4,
+      "seller": "Timofeevich Vasilovich",
+      "timestamp": "2026-07-20T00:10:00"
+    },
+    {
+      "id": "2062730684595580",
+      "brand": "Tissot",
+      "model": "Seastar 1000 Chronograph",
+      "price": 1800,
+      "currency": "RON",
+      "images": 7,
+      "reference": "T120.417.11.051",
+      "seller": "Remus Bilboc",
+      "timestamp": "2026-07-20T00:20:00"
+    },
+    {
+      "id": "2084002999135015",
+      "brand": "Rolex",
+      "model": "Datejust 16018",
+      "price": 8000,
+      "currency": "EUR",
+      "images": 6,
+      "reference": "16018",
+      "location": "Constanța",
+      "seller": "Andrei Neagu",
+      "timestamp": "2026-07-20T00:35:00"
+    },
+    {
+      "id": "2082957592572889",
+      "brand": "Raketa",
+      "model": "Made in USSR",
+      "price": 80,
+      "currency": "EUR",
+      "images": 4,
+      "seller": "Timofeevich Vasilovich",
+      "timestamp": "2026-07-24T12:00:00"
+    },
+    {
+      "id": "2080879939447321",
+      "brand": "Luch",
+      "model": "Ultra-thin 2209",
+      "price": 70,
+      "currency": "EUR",
+      "images": 4,
+      "seller": "Timofeevich Vasilovich",
+      "timestamp": "2026-07-24T12:10:00"
+    },
+    {
+      "id": "2082156345986347",
+      "brand": "Slava",
+      "model": "Made in USSR AU20 Gold Plated",
+      "price": 120,
+      "currency": "EUR",
+      "images": 4,
+      "seller": "Timofeevich Vasilovich",
+      "timestamp": "2026-07-24T12:20:00"
+    },
+    {
+      "id": "2082213012647347",
+      "brand": "Fresard",
+      "model": "Mecanic cu Data FE 140-1C",
+      "price": 360,
+      "currency": "RON",
+      "images": 9,
+      "reference": "FE 140-1C",
+      "seller": "AtelierCeasuri Sorin Gabriel",
+      "timestamp": "2026-07-24T12:30:00"
+    }
   ],
   "skipped": [
-    {"id": "1000292339365017", "brand": "Seiko", "reason": "price too low (99 RON)"},
-    {"id": "795776980228419", "brand": "Miromax", "reason": "price too low (430 RON)"},
-    {"id": "2084973822371266", "brand": "Poljot", "reason": "price too low (80 EUR)"},
-    {"id": "2085428075659174", "brand": "Longines", "reason": "no price stated in post"},
-    {"id": "2083736589161656", "brand": "unknown", "reason": "replica AAA"},
-    {"id": "2083362885865693", "brand": "Junghans", "reason": "wall/mantel clock, not a wristwatch; no price"}
+    {
+      "id": "1000292339365017",
+      "brand": "Seiko",
+      "reason": "price too low (99 RON)"
+    },
+    {
+      "id": "795776980228419",
+      "brand": "Miromax",
+      "reason": "price too low (430 RON)"
+    },
+    {
+      "id": "2084973822371266",
+      "brand": "Poljot",
+      "reason": "price too low (80 EUR)"
+    },
+    {
+      "id": "2085428075659174",
+      "brand": "Longines",
+      "reason": "no price stated in post"
+    },
+    {
+      "id": "2083736589161656",
+      "brand": "unknown",
+      "reason": "replica AAA"
+    },
+    {
+      "id": "2083362885865693",
+      "brand": "Junghans",
+      "reason": "wall/mantel clock, not a wristwatch; no price"
+    },
+    {
+      "id": "2087289552139693",
+      "brand": "unknown",
+      "reason": "wall clock (ceas de perete), not a wristwatch"
+    },
+    {
+      "id": "2087284375473544",
+      "brand": "unknown",
+      "reason": "wall clock (ceas de perete), not a wristwatch"
+    },
+    {
+      "id": "2087259582142690",
+      "brand": "unknown",
+      "reason": "wall clock (ceas de perete), not a wristwatch"
+    },
+    {
+      "id": "2087269462141702",
+      "brand": "Seiko mod",
+      "reason": "bulk lot of 5 modded/homage watches; AI-content flagged"
+    },
+    {
+      "id": "2087269398808375",
+      "brand": "Seiko mod",
+      "reason": "bulk lot of modded/homage watches; AI-content flagged"
+    },
+    {
+      "id": "2086401758895139",
+      "brand": "n/a",
+      "reason": "group admin 'welcome new members' post, not a listing"
+    },
+    {
+      "id": "2087139432154705",
+      "brand": "n/a",
+      "reason": "political rant, not a watch listing"
+    },
+    {
+      "id": "2062769644591684",
+      "brand": "n/a",
+      "reason": "political rant, not a watch listing"
+    },
+    {
+      "id": "2085792182289430",
+      "brand": "n/a",
+      "reason": "food/lunch-box post, not a watch"
+    },
+    {
+      "id": "2086299032238745",
+      "brand": "n/a",
+      "reason": "political rant, not a watch listing"
+    },
+    {
+      "id": "2085614902307158",
+      "brand": "n/a",
+      "reason": "political rant, not a watch listing"
+    },
+    {
+      "id": "2084372762431372",
+      "brand": "unknown",
+      "reason": "trade-only bundle of 3, no price stated"
+    },
+    {
+      "id": "2082880059247309",
+      "brand": "n/a",
+      "reason": "replicas (Prezentare replici)"
+    },
+    {
+      "id": "2084264405775541",
+      "brand": "n/a",
+      "reason": "post did not render / unreadable"
+    }
   ],
-  "total_imported": 12,
+  "total_imported": 20,
   "target": 5,
-  "status": "idle",
-  "session_imported_count": 5,
-  "last_session_note": "2026-07-17c: TARGET MET 5/5. Deep scrolling the buy/sell feed (window.scrollBy in a Python-paced loop) DID load fresh posts — the previous session's 'exhausted' verdict was premature. Imported: Certina 1550 RON/8img, Helfer Geneve 2000 EUR/4img, Sandoz 800 RON/10img, Luch rare 100 EUR/4img, Vostok 100 EUR/3img. New brands created: Sandoz(36), Vostok(37) — harness + brand-ids.md both synced. Note: feed virtualization drops posts from DOM once scrolled past, so cache post IDs during the scroll pass and open each post page directly afterwards (posts/<ID>/ needs ~15s to render; it shows the home feed first). Feed went sparse/throttled near the end of the session."
+  "status": "paused",
+  "session_imported_count": 4,
+  "last_session_note": "2026-07-24: imported 4/5 (stopped by user request to fix skill issues). This session added: Raketa Made in USSR 80 EUR/4img (2082957592572889), Luch Ultra-thin 2209 70 EUR/4img (2080879939447321), Slava AU20 Gold Plated 120 EUR/4img (2082156345986347), Fresard Mecanic cu Data FE 140-1C 360 RON/9img (2082213012647347). New brands created: Slava(39), Fresard(40) — harness + brand-ids.md synced. New price floor 100 RON / 20 EUR confirmed in effect. Tracker reconciled: merged the main checkout's uncommitted July-20 batch (Orient Crystal Green, Racheta gold, Tissot Seastar, Rolex Datejust) with this session's 4 -> 20 imports total. COULD NOT import: ~7500 EUR Rolex Submariner (Emerik Buchen) — feed child had no photo/permalink link, no ID recoverable. Unprocessed durable candidate IDs (dedup-checked, all new): Slava-perfect 2081689669366348, Levrette 1930s 2081635499371765, Urech 1960s 2080985866103395, Orient Crystal ref 469EC7-70CA 2080773889457926."
 }

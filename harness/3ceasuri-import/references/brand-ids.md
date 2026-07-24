@@ -24,7 +24,7 @@ Tissot:12
 Poljot:11
 Cartier:10
 Le Duc:9
-Racheta:8
+Raketa:8
 Omega:7
 TITUS Geneve:6
 Glashutte:5
@@ -40,9 +40,17 @@ Saint Honoré:34
 Luch:35
 Sandoz:36
 Vostok:37
+Slava:39
+Fresard:40
 ```
 
-Last updated: 2026-07-17. Added Luch (35), Sandoz (36), Vostok (37).
+Last updated: 2026-07-24. Added `Slava`(39), `Fresard`(40). Brand 8 renamed `Racheta` → `Raketa` (2026-07-22).
+
+**Alias:** the harness's `window.BRAND_IDS` also keeps `"Racheta": 8` so a post using the
+old Romanian spelling still resolves to brand 8. Without it the lookup misses, falls back to
+Select2, and creates a duplicate brand (that is how the stray `Raketa`(38) appeared on
+2026-07-20). Keep the alias when regenerating this mapping from the admin — it will not
+appear in the extraction output.
 
 ## Extraction Script
 
