@@ -187,6 +187,17 @@
       "reference": "FE 140-1C",
       "seller": "AtelierCeasuri Sorin Gabriel",
       "timestamp": "2026-07-24T12:30:00"
+    },
+    {
+      "id": "2080773889457926",
+      "brand": "Orient",
+      "model": "Crystal Automatic",
+      "price": 700,
+      "currency": "RON",
+      "images": 8,
+      "reference": "469EC7-70 CA",
+      "seller": "Costi Schiverniciuc",
+      "timestamp": "2026-07-24T13:00:00"
     }
   ],
   "skipped": [
@@ -291,9 +302,9 @@
       "reason": "post did not render / unreadable"
     }
   ],
-  "total_imported": 20,
+  "total_imported": 21,
   "target": 5,
   "status": "paused",
-  "session_imported_count": 4,
-  "last_session_note": "2026-07-24: imported 4/5 (stopped by user request to fix skill issues). This session added: Raketa Made in USSR 80 EUR/4img (2082957592572889), Luch Ultra-thin 2209 70 EUR/4img (2080879939447321), Slava AU20 Gold Plated 120 EUR/4img (2082156345986347), Fresard Mecanic cu Data FE 140-1C 360 RON/9img (2082213012647347). New brands created: Slava(39), Fresard(40) — harness + brand-ids.md synced. New price floor 100 RON / 20 EUR confirmed in effect. Tracker reconciled: merged the main checkout's uncommitted July-20 batch (Orient Crystal Green, Racheta gold, Tissot Seastar, Rolex Datejust) with this session's 4 -> 20 imports total. COULD NOT import: ~7500 EUR Rolex Submariner (Emerik Buchen) — feed child had no photo/permalink link, no ID recoverable. Unprocessed durable candidate IDs (dedup-checked, all new): Slava-perfect 2081689669366348, Levrette 1930s 2081635499371765, Urech 1960s 2080985866103395, Orient Crystal ref 469EC7-70CA 2080773889457926."
+  "session_imported_count": 5,
+  "last_session_note": "2026-07-24: imported 5 watches. This session added: Raketa Made in USSR 80 EUR/4img (2082957592572889), Luch Ultra-thin 2209 70 EUR/4img (2080879939447321), Slava AU20 Gold Plated 120 EUR/4img (2082156345986347), Fresard Mecanic cu Data FE 140-1C 360 RON/9img (2082213012647347); Orient Crystal Automatic 700 RON/8img ref 469EC7-70 CA (2080773889457926, harness re-test post-changes). New brands created: Slava(39), Fresard(40) — harness + brand-ids.md synced. New price floor 100 RON / 20 EUR confirmed in effect. Tracker reconciled: merged the main checkout's uncommitted July-20 batch (Orient Crystal Green, Racheta gold, Tissot Seastar, Rolex Datejust) with this session's 4 -> 20 imports total. COULD NOT import: ~7500 EUR Rolex Submariner (Emerik Buchen) — feed child had no photo/permalink link, no ID recoverable. Unprocessed durable candidate IDs (dedup-checked, all new): Slava-perfect 2081689669366348, Levrette 1930s 2081635499371765, Urech 1960s 2080985866103395, Orient Crystal ref 469EC7-70CA 2080773889457926."
 }
