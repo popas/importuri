@@ -180,23 +180,45 @@ else:
 if price is not None: data["price"] = price
 data["currency"] = cur
 
-# brand — match a known BRAND_IDS key present in the text
+# brand — match a known BRAND_IDS key present in the text (diacritic-insensitive:
+# a post's "Helfer Genève" must still resolve to BRAND_IDS "Helfer Geneve")
+def _norm(s):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)).lower()
+lown = _norm(text)
 brand_ids = json.loads(re.search(r"window\.BRAND_IDS\s*=\s*(\{.*?\});", open(HARNESS).read()).group(1))
 brand = None
 for name in sorted(brand_ids, key=len, reverse=True):
-    if re.search(r"\b" + re.escape(name.lower()) + r"\b", low):
+    if re.search(r"\b" + re.escape(_norm(name)) + r"\b", lown):
         brand = name; break
 if brand: data["brand"] = brand
-# model — best-effort: the descriptive remainder of the brand's line
+# model — descriptive remainder of the brand's line, brand words stripped off the front.
+# Also mark where the real body starts (the brand line) so the description can drop the
+# author/timestamp preamble (which includes the aria-hidden obfuscation garbage).
+lines = text.splitlines()
+body_start = 0
 if brand:
-    for line in text.splitlines():
-        if brand.lower() in line.lower():
-            model = re.sub(r"\b" + re.escape(brand) + r"\b", "", line, flags=re.I).strip(" .-·")
+    bwords = set(_norm(brand).split())
+    for i, line in enumerate(lines):
+        if _norm(brand) in _norm(line):
+            body_start = i
+            words = line.split()
+            while words and _norm(words[0]).strip(".-–·:") in bwords:
+                words.pop(0)
+            model = " ".join(words).strip(" .-–·:")
             if model: data["model"] = model[:80]
             break
 
 data["images"]     = images
-data["description"] = text.strip()
+# description: real body only — drop the author/timestamp preamble and trailing FB UI noise
+_NOISE = ("see translation", "see more", "vezi mai mult", "rate this translation",
+          "no comments yet", "be the first to comment", "write a public comment")
+def _is_noise(ln):
+    n = _norm(ln.strip())
+    return any(n.startswith(x) for x in _NOISE)
+_body = [ln for ln in lines[body_start:] if not _is_noise(ln)]
+while _body and not _body[-1].strip(): _body.pop()      # trim trailing blank lines
+data["description"] = "\n".join(_body).strip() or text.strip()
 data["sourceUrl"]  = "https://www.facebook.com/groups/vanzareceasuri/posts/%s/" % POST_ID
 data["fbListingId"] = POST_ID
 data.update({k: v for k, v in OVERRIDES.items() if k != "force"})   # overrides win
