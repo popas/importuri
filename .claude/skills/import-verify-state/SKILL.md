@@ -49,15 +49,49 @@ js(BANNER_CHECK)                              # the page is the only source of t
 
 Retrying on this exception would double-import the watch. Verify first, always.
 
-## 3. Partial images — still imported
+## 3. Read back the saved record — "saved" ≠ "correct"
+
+The two green banners prove the row was **saved**, not that every field **persisted**. Fields
+the harness maps to the wrong element, enum values the form rejects, or images that failed to
+attach are all invisible at the banner stage. After the banners pass, **open the saved
+record's change page and read the fields back** — this is the only check that catches a silent
+field/image drop.
+
+The banners render on the blank *add* page (post "Save and add another"), so navigate to the
+saved row first: `.../admin/watches/watch/?q=<POST_ID>` → follow its `/change/` link, then:
+
+```javascript
+(() => {
+  const g = id => { const e = document.getElementById(id);
+    return e ? (e.tagName === 'SELECT' ? (e.options[e.selectedIndex]||{}).value : e.value)
+             : 'MISSING:' + id; };
+  const imgs = document.querySelectorAll('.field-image img, [id*="images-group"] img, img[src*="/media/"]').length;
+  return JSON.stringify({
+    brandId: g('id_brand'),               // numeric brand ID (NOT the name)
+    price: g('id_price'), currency: g('id_currency'),
+    ref: g('id_reference_number'),        // NOTE: id_reference_number, not id_reference
+    diameter: g('id_case_diameter_mm'),   // NOTE: id_case_diameter_mm, not id_diameter
+    fbId: g('id_facebook_listing_id'), imgs
+  });
+})()
+```
+
+**The element IDs are non-obvious** — reference is `id_reference_number` and diameter is
+`id_case_diameter_mm`; reading `id_reference`/`id_diameter` returns null and fakes a bug
+(happened 2026-07-24). Confirm: `brandId` numeric and correct, `price`/`currency` match,
+`ref`/`diameter` present when the post stated them, `fbId` set, and `imgs` equals the count
+you collected. Any mismatch → treat as a failed field (fix + re-inject + re-save that field),
+even though the banners were green.
+
+## 4. Partial images — still imported
 
 If only partial images saved, the watch is still imported — note the image count discrepancy. Fetch failures come from CORS restrictions (3ceasuri.ro → fbcdn.net), network timeouts, and expired FB CDN signed URLs. Diagnose via `[HARNESS] FETCH FAIL:` messages in the browser console. The watch can be saved without images. **NEVER skip a watch solely due to image issues** — save it, then retry image fetching separately.
 
-## 4. Failure path — no green banners
+## 5. Failure path — no green banners
 
 If NO green banners, check `document.body.innerText` for error messages. Fix the issue, re-inject harness, re-inject images, and retry (max 2 retries per the retry policy in `watch-troubleshooting`).
 
-## 5. Update state.json
+## 6. Update state.json
 
 State file: `$PROJECT_ROOT/state.json`. Update after EVERY import or skip — this enables crash recovery.
 

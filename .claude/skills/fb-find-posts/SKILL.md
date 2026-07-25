@@ -113,6 +113,11 @@ Collect post data, then filter. Proceed only with posts that PASS all filters:
 - NOT replica/AAA+, NOT bulk, NOT non-watch item
 - NOT Vinted invite links, NOT ads
 - Skip cars and bulk lots
+- **Skip posts whose media STARTS with a video** — a leading `<video>` / play-button /
+  `0:00 / 0:NN` scrubber as the *first* media element marks an ad or promoted reel; skip it.
+  (A photo-first post that merely also *contains* a video is fine.) Detect per feed-child:
+  `child.querySelector('video, [aria-label*="Play"]')` appears *before* the first
+  `a[href*="/photo/"]` in DOM order → treat as video-first → skip.
 
 ## Fallback: Limited Scrolling
 

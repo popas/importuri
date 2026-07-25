@@ -39,6 +39,9 @@ When anything fails at any step → invoke `watch-troubleshooting`.
 - Skills: `.claude/skills/<name>/SKILL.md` — `watch-session-setup`, `fb-find-posts`,
   `fb-extract-post`, `admin-import-watch`, `import-verify-state`, `watch-troubleshooting`
 - Harness (v5, authoritative): `$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-watch.js`
+- One-shot importer: `$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py` — runs the
+  whole per-watch flow (extract → skip-if-video → infer → import → verify+readback) for one
+  post ID in a single `browser-use` call; see `admin-import-watch` → "One-shot importer"
 - Brand ID mapping: `$PROJECT_ROOT/harness/3ceasuri-import/references/brand-ids.md`
 - Progress tracker: `$PROJECT_ROOT/state.json`
 

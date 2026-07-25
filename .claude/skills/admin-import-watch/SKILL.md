@@ -7,6 +7,29 @@ description: Invoke per watch — first for the duplicate check (?q=POST_ID) BEF
 
 The admin side of importing ONE watch. `$PROJECT_ROOT` / `$CDP_HOST` from `watch-session-setup`.
 
+## One-shot importer (preferred when the post ID is known)
+
+`$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py` collapses this skill +
+`fb-extract-post` + `import-verify-state` into a single `browser-use` call for one post. It
+gates on `pcb.<ID>`, **skips video-first (ad) posts**, collects the carousel, infers fields
+(RO→enum + defaults + the gold-plating rule from `fb-extract-post`), creates the brand if
+missing, injects the harness, calls `importWatch`, verifies both banners, and **reads the
+saved record back** (the `id_reference_number` / `id_case_diameter_mm` check).
+
+```bash
+export BU_CDP_URL="http://$CDP_HOST"
+# review first — DRY_RUN extracts + infers + prints, imports nothing:
+POST_ID=<id> DRY_RUN=1 browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
+# then import (override anything the inference got wrong):
+POST_ID=<id> OVERRIDES='{"model":"...","caseMat":"steel"}' \
+  browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
+```
+
+Still run the **duplicate check (Step 1 below) first**, and after a `NEW_BRAND:` line update
+`BRAND_IDS` + `references/brand-ids.md` and commit. Parse the `RESULT:` line (banners +
+readback) to update `state.json`. Fall back to the manual steps below when inference is
+unreliable or the post needs hand-holding.
+
 ## Step 1: Duplicate check (BEFORE extracting images)
 
 Query the admin by exact `facebook_listing_id` in a SEPARATE tab — never navigate the add-watch tab away for this.

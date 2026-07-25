@@ -160,6 +160,32 @@ Stripping, truncating, or regex-"upgrading" them returns "Bad URL hash". Use the
 | **FB listing/post ID** | Numeric ID from URL | "123456789" |
 | **ALL image URLs** | From DOM: `img[src*="scontent"]` with `naturalWidth > 200` | Complete URLs |
 
+## Field inference — RO→enum mapping & defaults
+
+Map free Romanian post text to the harness enums with the table below. **Infer only what the
+text supports; apply the default only when the text is silent — never invent a specific
+claim.** The consolidated importer (`harness/3ceasuri-import/scripts/import-post.py`) encodes
+exactly these rules; keep the two in sync.
+
+| Field | RO/EN cues → value | Default when silent |
+|-------|--------------------|---------------------|
+| `condition` | nou→`new`; ca nou/excelent/impecabil/foarte îngrijit→`excellent`; bun/folosit→`good`; acceptabil/uzat→`fair`; defect/nefuncțional→`broken` | `good` |
+| `movement` | automat/automatic→`automatic`; mecanic/manual/cheiță/întoarcere manuală→`manual`; quartz/baterie→`quartz`; smart→`smart` | *(none — leave unset if unclear)* |
+| `caseMat` | otel/inox→`steel`; aur masiv/solid gold→`gold`; titan→`titanium`; **placat/gold-plated/AU\d+/dublé** → `steel` **(plating is a coating, not the case metal)** | `steel` |
+| `braceletMat` | piele→`leather`; metal/otel/brățară→`steel`; cauciuc→`rubber`; nylon/textil→`nylon`; aur→`gold` | *(none)* |
+| `type` | barbati/bărbătesc→`men`; femei/dama/lady→`women`; unisex→`unisex`; copii→`kids`; sport→`sports` | `men` |
+| `displayMat` | safir/sapphire→`sapphire`; cristal mineral/mineral→`mineral`; acrilic/plexi→`acrylic` | *(none)* |
+| `waterRes` | rezistent la apă/WR/\d+m/ATM→`water_resistant_yes`; nu e rezistent→`water_resistant_no` | *(none)* |
+| `currency` | `€`/euro→`EUR`; `lei`/`ron`→`RON`; a bare number → **RON** | `RON` |
+
+- **Gold-plating trap:** "placat cu aur", "gold plated", "AU20", "dublé" describe a *coating*
+  over a base case (usually steel). Set `caseMat: "steel"` and mention the plating in
+  `description` — do **not** set `caseMat: "gold"`. (On 2026-07-24 a plated Slava was wrongly
+  filed as a solid-gold case.)
+- Leave a field **unset** rather than guessing a specific enum the text doesn't support
+  (`movement`, `braceletMat`, `displayMat`, `waterRes` have no default) — an empty field is
+  honest; a wrong one misrepresents the watch.
+
 ## Pitfalls
 
 - Individual post pages are slow (~15s) and render the home feed (or notifications) first —
