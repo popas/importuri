@@ -30,29 +30,55 @@ Still run the **duplicate check (Step 1 below) first**, and after a `NEW_BRAND:`
 readback) to update `state.json`. Fall back to the manual steps below when inference is
 unreliable or the post needs hand-holding.
 
-## Step 1: Duplicate check (BEFORE extracting images)
+## Step 1: Duplicate check — TWO STAGES (SEPARATE tab; never navigate the add-watch tab)
 
-Query the admin by exact `facebook_listing_id` in a SEPARATE tab — never navigate the add-watch tab away for this.
+Dedup on two things: the exact post id (Stage 1) **and** the author+watch fingerprint
+(Stage 2, which catches the SAME watch reposted under a NEW post id — Stage 1 cannot).
 
 On browser-use ≥3.0 (old `--cdp-url ... tab new` syntax is dead — see `watch-session-setup`):
+
+### Stage 1 — exact `facebook_listing_id` (BEFORE extracting images)
 
 ```python
 t = new_tab("https://3ceasuri.ro/admin/watches/watch/?q=POST_ID")
 time.sleep(3)
 js('(() => document.querySelector(".paginator").innerText)()')   # "0 watchs" = new
-# ... more checks via goto_url() in this SAME tab ...
+```
+
+- results found → **skip this post** (already imported), close tab, next
+- "0 watchs" → proceed to extraction, then Stage 2
+
+### Stage 2 — author + brand/model fingerprint
+
+Needs the post author id (`fbAuthorId`) from `fb-extract-post`, so it runs **after
+extraction, before `importWatch`**. Same separate tab:
+
+```python
+goto_url("https://3ceasuri.ro/admin/watches/watch/?q=AUTHOR_ID")   # search hits facebook_author_id
+time.sleep(3)
+rows = js("(() => JSON.stringify([...document.querySelectorAll('#result_list tbody tr')].map(tr=>({"
+          "brand:(tr.querySelector('td.field-brand')||{}).innerText,"
+          "model:(tr.querySelector('td.field-model_name')||{}).innerText,"
+          "fbid:(tr.querySelector('td.field-facebook_listing_id')||{}).innerText}))))()")
 close_tab(t)
 ```
 
-- If results found → **skip this post**, close tab, move to next
-- If "0 watchs" → proceed to extraction
-- If 0 results feels suspicious → fall back to searching brand+model (still in the separate tab)
+- a returned row whose **brand AND model match** this post → **repost → skip** (log which
+  `fbid` it matched). Price is NOT required to match — a repost with a dropped price is
+  still a repost.
+- the author has only *different* watches (e.g. one seller listing 4 distinct pieces) → not
+  a match → import normally.
+- no `fbAuthorId` captured → fall back to `?q=PHONE` for Stage 2, or skip Stage 2
+  (Stage-1-only, the old behavior) when there's no phone either.
 
-**Batch the dedup checks against your cached post IDs.** One `new_tab`, then `goto_url` per
-ID (~2.5s apart) — the admin is our own site, so it has no FB-style rate concern, and
-clearing all candidates up front means a throttled feed can't strand you mid-loop. Iron rule
-#1 still holds: only ONE watch gets extracted+imported at a time; you're batching cheap
-durable lookups, not images.
+`import-post.py` performs **both stages automatically** (Stage 1 up front, Stage 2 after
+inference), so the one-shot path needs no manual dedup.
+
+**Batch Stage 1 against your cached post IDs.** One `new_tab`, then `goto_url` per ID
+(~2.5s apart) — the admin is our own site, so it has no FB-style rate concern, and clearing
+all candidates up front means a throttled feed can't strand you mid-loop. Stage 2 is
+per-watch (it needs that watch's extracted author). Iron rule #1 still holds: only ONE watch
+gets extracted+imported at a time; you're batching cheap durable lookups, not images.
 
 ## Step 2: Re-inject the harness (repeat before EVERY watch)
 
@@ -104,6 +130,8 @@ await importWatch({
   description: "Raw FB post text here — harness auto-formats to professional description",
   sourceUrl: "https://www.facebook.com/groups/vanzareceasuri/posts/POST_ID/",
   fbListingId: "POST_ID",
+  fbAuthorId: "100078...",         // FB poster's numeric id — Stage-2 dedup key
+  fbAuthorName: "Costi Schiverniciuc",
   phone: "0731394148",
   location: "Satu Mare, Bihor",
   seller: "Razvan Vasile",
@@ -112,7 +140,7 @@ await importWatch({
 });
 ```
 
-**Field notes:** `description` is raw FB text (harness formats it); `currency` auto-detected if omitted (`$`→USD, `€`→EUR, `lei`→RON); `phone` stripped of spaces/dots; `location` = "City, County"; `seller` = full name; `year` = single or range ("1960-1970"); `reference` from "ref. ABC-1234"; `priceNote` = free text ("negociabil"). See the field-value table for `waterRes`/`displayMat` and all other enums.
+**Field notes:** `description` is raw FB text (harness formats it); `currency` auto-detected if omitted (`$`→USD, `€`→EUR, `lei`→RON); `phone` stripped of spaces/dots; `location` = "City, County"; `seller` = full name; `fbAuthorId`/`fbAuthorName` = the FB poster's numeric id + display name (from `fb-extract-post`; `fbAuthorId` is the Stage-2 dedup key — stored in `facebook_author_id`); `year` = single or range ("1960-1970"); `reference` from "ref. ABC-1234"; `priceNote` = free text ("negociabil"). See the field-value table for `waterRes`/`displayMat` and all other enums.
 
 **NEVER modify image URLs.** No regex upgrades, no param stripping. The harness fetches them as-is with automatic retry (3 attempts).
 

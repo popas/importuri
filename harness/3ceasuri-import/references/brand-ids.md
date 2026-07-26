@@ -42,9 +42,10 @@ Sandoz:36
 Vostok:37
 Slava:39
 Fresard:40
+Chaika:41
 ```
 
-Last updated: 2026-07-24. Added `Slava`(39), `Fresard`(40). Brand 8 renamed `Racheta` → `Raketa` (2026-07-22).
+Last updated: 2026-07-26. Added `Chaika`(41). Added `Slava`(39), `Fresard`(40) on 2026-07-24. Brand 8 renamed `Racheta` → `Raketa` (2026-07-22).
 
 **Alias:** the harness's `window.BRAND_IDS` also keeps `"Racheta": 8` so a post using the
 old Romanian spelling still resolves to brand 8. Without it the lookup misses, falls back to

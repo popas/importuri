@@ -8,6 +8,10 @@ This harness repo is only the browser-automation runbook. When a change requires
 touching the actual database schema, admin config, or import view (i.e. not just the
 harness JS), edit the Django project above.
 
+## Deployment
+Pushing to GitHub (`github.com:popas/ceasuri.git`, branch `main`) **auto-deploys** and
+runs pending migrations on production. No manual migrate step needed on prod.
+
 ## Key files
 - `watches/models.py` — the `Watch` model (fields: `facebook_listing_id`,
   `phone`, `location`, `price`, `brand` FK, `model_name`, `reference_number`,

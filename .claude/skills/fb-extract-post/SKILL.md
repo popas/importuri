@@ -154,11 +154,39 @@ Stripping, truncating, or regex-"upgrading" them returns "Bad URL hash". Use the
 | **Phone** | Regex: `/(?:\+?40[\s.]?\|0)7\d{2}[\s.]?[\s.]?\d{3}[\s.]?\d{3}/` | "0731394148" |
 | **Location** | From text: "în [City], [County]" or "Listed in [City]" | "Satu Mare", "București" |
 | **Seller** | From commerce listing: "Seller details\n[Name]" | "Razvan Vasile" |
+| **Author FB id** (`fbAuthorId`) | Numeric id in the post-header author link `a[href*="/user/"]` (`/user/<id>/`) | "100078…" |
+| **Author name** (`fbAuthorName`) | Text of that author link | "Costi Schiverniciuc" |
 | **Reference** | Regex: `/ref\.?\s*[:\-]?\s*([A-Z0-9\-\/]+)/i` | "ABC-1234" |
 | **Description** | Full raw post text (harness auto-formats) | Raw FB text |
 | **Source URL** | FB post/listing URL | Full URL |
 | **FB listing/post ID** | Numeric ID from URL | "123456789" |
 | **ALL image URLs** | From DOM: `img[src*="scontent"]` with `naturalWidth > 200` | Complete URLs |
+
+## Author capture (for repost dedup)
+
+Read the **post author** and pass it in the `importWatch` payload as `fbAuthorId` /
+`fbAuthorName`. It is stored on the watch and powers Stage-2 dedup in
+`admin-import-watch` (catching the same watch reposted under a new post id).
+
+```javascript
+// within the post container (the article/dialog that holds the pcb.<POST_ID> photo link)
+(() => {
+  // the poster has TWO /user/ links: the avatar (no text) then the name (text).
+  // Take the id from the first, the name from the first one that actually has text.
+  const aus = [...cont.querySelectorAll('a[href*="/user/"]')];
+  let fbAuthorId = null, fbAuthorName = null;
+  for (const a of aus) {
+    if (!fbAuthorId) { const m = (a.href || '').match(/\/user\/(\d+)/); if (m) fbAuthorId = m[1]; }
+    const tx = (a.innerText || '').trim().replace(/\s+/g, ' ');
+    if (tx && !fbAuthorName) fbAuthorName = tx;
+  }
+  return JSON.stringify({fbAuthorId, fbAuthorName});
+})()
+```
+
+`fbAuthorId` (the numeric profile id) is the real dedup key — stable and always present.
+If no `/user/` link is found, leave both unset; Stage 2 falls back to phone or is skipped.
+Clicking an author link navigates to the profile — only *read* the href, never click it.
 
 ## Field inference — RO→enum mapping & defaults
 

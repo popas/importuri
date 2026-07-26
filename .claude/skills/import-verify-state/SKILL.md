@@ -98,10 +98,11 @@ State file: `$PROJECT_ROOT/state.json`. Update after EVERY import or skip — th
 ```json
 {
   "imported": [
-    {"id": "POST_ID", "brand": "Orient", "model": "Bambino", "price": 1200, "images": 5, "timestamp": "2026-06-20T12:00:00"}
+    {"id": "POST_ID", "brand": "Orient", "model": "Bambino", "price": 1200, "images": 5, "timestamp": "2026-06-20T12:00:00", "author_id": "100078...", "author_name": "Costi Schiverniciuc"}
   ],
   "skipped": [
-    {"id": "POST_ID", "reason": "duplicate"}
+    {"id": "POST_ID", "reason": "duplicate"},
+    {"id": "POST_ID", "reason": "repost (author+brand+model match)", "existing_fb_id": "OTHER_POST_ID"}
   ],
   "total_imported": 0,
   "target": 20

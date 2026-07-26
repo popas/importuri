@@ -45,6 +45,28 @@ def die(msg):       emit("ERROR", {"post_id": POST_ID, "msg": msg}); raise Syste
 if not POST_ID or not POST_ID.isdigit():
     die("POST_ID env var must be a numeric FB post ID")
 
+def _norm(s):
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c)).lower().strip()
+
+# --- dedup: read admin result rows for a ?q= query (own site, no rate limit) -
+_ROWS_JS = ("(() => {const g=(tr,c)=>{const e=tr.querySelector('td.field-'+c);return e?(e.innerText||'').trim():'';};"
+            "return JSON.stringify([...document.querySelectorAll('#result_list tbody tr')].map(tr=>"
+            "({brand:g(tr,'brand'),model:g(tr,'model_name'),fbid:g(tr,'facebook_listing_id')})));})()")
+
+def admin_rows(query, return_to):
+    """Query the watch admin by ?q=, return [{brand,model,fbid}], restore return_to tab."""
+    t = new_tab("https://3ceasuri.ro/admin/watches/watch/?q=%s" % query)
+    t = t["targetId"] if isinstance(t, dict) else t
+    time.sleep(3)
+    try:
+        rows = json.loads(js(_ROWS_JS))
+    except Exception:
+        rows = []
+    close_tab(t)
+    switch_tab(return_to)
+    return rows
+
 # --- resolve tabs -----------------------------------------------------------
 tabs = list_tabs()
 def find_tab(pred):
@@ -61,6 +83,11 @@ if not PHOTO_TAB:
     PHOTO_TAB = new_tab("https://www.facebook.com/")["targetId"] if isinstance(new_tab("https://www.facebook.com/"), dict) else None
     tabs = list_tabs()
     PHOTO_TAB = PHOTO_TAB or find_tab(lambda u, t: "facebook.com" in u)
+
+# --- 0. dedup Stage 1: exact facebook_listing_id (skip before any FB work) ---
+if admin_rows(POST_ID, PHOTO_TAB):
+    emit("SKIP", {"post_id": POST_ID, "reason": "already imported (facebook_listing_id match)"})
+    raise SystemExit(0)
 
 # --- 1. open post page, gate on the post's own photo set --------------------
 switch_tab(PHOTO_TAB)
@@ -85,6 +112,12 @@ info = json.loads(js(
    '(() => { const link=[...document.querySelectorAll(\'a[href*="/photo/"]\')]'
    '.find(l=>(l.href||"").indexOf("pcb.%s")>-1);'
    ' const cont=(link&&(link.closest(\'[role="article"]\')||link.closest(\'div[role="dialog"]\')))||document.body;'
+   # post author: first /user/<id> link in the post container = the poster (header link)
+   # the poster has TWO /user/ links: the avatar (no text) then the name (text). Take the
+   # id from the first, the name from the first one that actually has text.
+   ' const aus=[...cont.querySelectorAll(\'a[href*="/user/"]\')]; let aId=null,aName=null;'
+   ' for(const a of aus){ if(!aId){const m=(a.href||"").match(/\\/user\\/(\\d+)/); if(m)aId=m[1];}'
+   ' const tx=((a.innerText||"").trim().replace(/\\s+/g," ")); if(tx&&!aName)aName=tx; }'
    # video-first: a <video>/scrubber that precedes the first photo in DOM order
    ' const nodes=[...cont.querySelectorAll(\'video,[aria-label*="Play"],a[href*="/photo/"]\')];'
    ' let firstIsVideo=false; for(const n of nodes){ const isVid=(n.tagName==="VIDEO")||'
@@ -92,9 +125,22 @@ info = json.loads(js(
    ' const isPhoto=n.tagName==="A"; if(isVid){firstIsVideo=true;break;} if(isPhoto){break;} }'
    ' const d=document.querySelector(\'div[role="dialog"]\')||cont;'
    ' let txt=(d.innerText||"").replace(/(Facebook\\n?)+/g,"");'
-   ' return JSON.stringify({firstIsVideo, txt:txt.substring(0,1200)}); })()' % POST_ID))
+   ' return JSON.stringify({firstIsVideo, txt:txt.substring(0,1200), authorId:aId, authorName:aName}); })()' % POST_ID))
 text = info["txt"]
-emit("EXTRACT", {"post_id": POST_ID, "hit": hit, "video_first": info["firstIsVideo"], "chars": len(text)})
+emit("EXTRACT", {"post_id": POST_ID, "hit": hit, "video_first": info["firstIsVideo"], "chars": len(text),
+                 "author_id": info.get("authorId"), "author_name": info.get("authorName")})
+
+# --- 1b. blocklisted sellers: never import (user directive) ------------------
+_BLOCK = {}
+try:
+    _bl = json.load(open(os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/references/seller-blocklist.json")))
+    _BLOCK = {a["id"]: a.get("name") for a in _bl.get("authors", [])}
+except Exception:
+    pass
+if info.get("authorId") and info["authorId"] in _BLOCK:
+    emit("SKIP", {"post_id": POST_ID, "reason": "blocklisted seller",
+                  "author_id": info["authorId"], "author_name": _BLOCK.get(info["authorId"])})
+    raise SystemExit(0)
 
 # --- 2. skip video-first posts (ad heuristic) -------------------------------
 if info["firstIsVideo"] and OVERRIDES.get("force") is not True:
@@ -182,9 +228,6 @@ data["currency"] = cur
 
 # brand — match a known BRAND_IDS key present in the text (diacritic-insensitive:
 # a post's "Helfer Genève" must still resolve to BRAND_IDS "Helfer Geneve")
-def _norm(s):
-    import unicodedata
-    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)).lower()
 lown = _norm(text)
 brand_ids = json.loads(re.search(r"window\.BRAND_IDS\s*=\s*(\{.*?\});", open(HARNESS).read()).group(1))
 brand = None
@@ -216,17 +259,44 @@ _NOISE = ("see translation", "see more", "vezi mai mult", "rate this translation
 def _is_noise(ln):
     n = _norm(ln.strip())
     return any(n.startswith(x) for x in _NOISE)
-_body = [ln for ln in lines[body_start:] if not _is_noise(ln)]
-while _body and not _body[-1].strip(): _body.pop()      # trim trailing blank lines
-data["description"] = "\n".join(_body).strip() or text.strip()
+def _build_desc(bs):
+    body = [ln for ln in lines[bs:] if not _is_noise(ln)]
+    while body and not body[-1].strip(): body.pop()     # trim trailing blank lines
+    return "\n".join(body).strip()
+data["description"] = _build_desc(body_start) or text.strip()
 data["sourceUrl"]  = "https://www.facebook.com/groups/vanzareceasuri/posts/%s/" % POST_ID
 data["fbListingId"] = POST_ID
+if info.get("authorId"):   data["fbAuthorId"]   = info["authorId"]
+if info.get("authorName"): data["fbAuthorName"] = info["authorName"]
 data.update({k: v for k, v in OVERRIDES.items() if k != "force"})   # overrides win
+# An override-supplied brand (every NEW brand comes this way) wasn't known when body_start
+# was computed above, so the scrambled author/timestamp preamble leaked into the description.
+# Redo the strip using the final brand — unless the caller supplied their own description.
+if "description" not in OVERRIDES and data.get("brand"):
+    _nb = _norm(data["brand"]); _bs = 0
+    for _i, _ln in enumerate(lines):
+        if _nb and _nb in _norm(_ln): _bs = _i; break
+    if _bs > body_start:
+        data["description"] = _build_desc(_bs) or data["description"]
 emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
 
 if not data.get("brand"): die("could not infer brand; pass OVERRIDES {\"brand\":\"...\"}")
 if not data.get("model"): die("could not infer model; pass OVERRIDES {\"model\":\"...\"}")
 if data.get("price") is None: die("could not infer price; pass OVERRIDES {\"price\":N,\"currency\":\"RON|EUR\"}")
+
+# --- 4b. dedup Stage 2: same author + same brand/model = repost (new post id)
+# Author sells many different watches, so identity alone is not enough — require
+# a brand+model fingerprint match. Price is intentionally NOT required (a repost
+# with a dropped price is still a repost).
+author_id = data.get("fbAuthorId")
+if author_id:
+    for row in admin_rows(author_id, ADMIN_TAB):
+        if _norm(row.get("brand")) == _norm(data["brand"]) and _norm(row.get("model")) == _norm(data["model"]):
+            emit("SKIP", {"post_id": POST_ID, "reason": "repost (author+brand+model match)",
+                          "author_id": author_id, "author_name": data.get("fbAuthorName"),
+                          "match": {"brand": data["brand"], "model": data["model"],
+                                    "existing_fb_id": row.get("fbid")}})
+            raise SystemExit(0)
 
 # --- 5. ensure brand exists (create + flag if new) --------------------------
 new_brand_id = None
@@ -291,11 +361,16 @@ if chg.get("url"):
         'return e?(e.tagName==="SELECT"?(e.options[e.selectedIndex]||{}).value:e.value):null;};'
         'const imgs=document.querySelectorAll(\'.field-image img,[id*="images-group"] img,img[src*="/media/"]\').length;'
         'return JSON.stringify({brandId:g("id_brand"),price:g("id_price"),currency:g("id_currency"),'
-        'ref:g("id_reference_number"),diameter:g("id_case_diameter_mm"),fbId:g("id_facebook_listing_id"),imgs});})()'))
+        'ref:g("id_reference_number"),diameter:g("id_case_diameter_mm"),fbId:g("id_facebook_listing_id"),'
+        'authorId:g("id_facebook_author_id"),authorName:g("id_facebook_author_name"),imgs});})()'))
 
-ok = banners.get("images_ok") and banners.get("added_ok")
-emit("RESULT", {"post_id": POST_ID, "ok": bool(ok), "banners": banners,
+# The "added successfully" banner is flaky on multi-image saves; a readback that found the
+# record by its own fbId is authoritative proof the add committed. Accept either signal.
+readback_ok = bool(readback and str(readback.get("fbId")) == str(POST_ID))
+ok = bool(banners.get("images_ok") and (banners.get("added_ok") or readback_ok))
+emit("RESULT", {"post_id": POST_ID, "ok": bool(ok), "banners": banners, "readback_ok": readback_ok,
                 "expected_images": len(images), "readback": readback,
                 "new_brand": ({"name": data["brand"], "id": new_brand_id} if new_brand_id else None),
                 "state_entry": {"id": POST_ID, "brand": data["brand"], "model": data["model"],
-                                "price": data["price"], "currency": data["currency"], "images": len(images)}})
+                                "price": data["price"], "currency": data["currency"], "images": len(images),
+                                "author_id": data.get("fbAuthorId"), "author_name": data.get("fbAuthorName")}})

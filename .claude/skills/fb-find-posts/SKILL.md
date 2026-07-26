@@ -113,6 +113,11 @@ Collect post data, then filter. Proceed only with posts that PASS all filters:
 - NOT replica/AAA+, NOT bulk, NOT non-watch item
 - NOT Vinted invite links, NOT ads
 - Skip cars and bulk lots
+- **Skip blocklisted sellers.** Read the feed child's author id from its
+  `a[href*="/user/"]` link (`/user/<id>`) and drop the post if that id is in
+  `harness/3ceasuri-import/references/seller-blocklist.json`. `import-post.py` also enforces
+  this (it `SKIP`s a blocklisted author after extraction), but skipping at discovery avoids
+  wasted work.
 - **Skip posts whose media STARTS with a video** — a leading `<video>` / play-button /
   `0:00 / 0:NN` scrubber as the *first* media element marks an ad or promoted reel; skip it.
   (A photo-first post that merely also *contains* a video is fine.) Detect per feed-child:

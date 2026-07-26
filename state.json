@@ -209,6 +209,30 @@
       "seller": "Buzec Andrei",
       "timestamp": "2026-07-25T12:00:00",
       "note": "imported via import-post.py one-shot importer"
+    },
+    {
+      "id": "2091944898340825",
+      "brand": "Chaika",
+      "model": "Olympic",
+      "price": 70,
+      "currency": "EUR",
+      "images": 4,
+      "timestamp": "2026-07-26T00:00:00",
+      "author_id": "100014204027198",
+      "author_name": "Timofeevich Vasilovich"
+    },
+    {
+      "id": "2091211401747508",
+      "brand": "Seiko",
+      "model": "Prospex SPB155J1 Baby Climber",
+      "price": 2800,
+      "currency": "RON",
+      "images": 12,
+      "reference": "SPB155J1",
+      "location": "Suceava",
+      "timestamp": "2026-07-26T00:10:00",
+      "author_id": "100014225717406",
+      "watch_pk": 89
     }
   ],
   "skipped": [
@@ -313,9 +337,9 @@
       "reason": "post did not render / unreadable"
     }
   ],
-  "total_imported": 22,
+  "total_imported": 24,
   "target": 5,
   "status": "paused",
   "session_imported_count": 6,
-  "last_session_note": "2026-07-24: imported 5 watches. This session added: Raketa Made in USSR 80 EUR/4img (2082957592572889), Luch Ultra-thin 2209 70 EUR/4img (2080879939447321), Slava AU20 Gold Plated 120 EUR/4img (2082156345986347), Fresard Mecanic cu Data FE 140-1C 360 RON/9img (2082213012647347); Orient Crystal Automatic 700 RON/8img ref 469EC7-70 CA (2080773889457926, harness re-test post-changes). New brands created: Slava(39), Fresard(40) — harness + brand-ids.md synced. New price floor 100 RON / 20 EUR confirmed in effect. Tracker reconciled: merged the main checkout's uncommitted July-20 batch (Orient Crystal Green, Racheta gold, Tissot Seastar, Rolex Datejust) with this session's 4 -> 20 imports total. COULD NOT import: ~7500 EUR Rolex Submariner (Emerik Buchen) — feed child had no photo/permalink link, no ID recoverable. Unprocessed durable candidate IDs (dedup-checked, all new): Slava-perfect 2081689669366348, Levrette 1930s 2081635499371765, Urech 1960s 2080985866103395, Orient Crystal ref 469EC7-70CA 2080773889457926."
+  "last_session_note": "2026-07-26: harness author-dedup test. Imported Chaika Olympic (Timofeevich). New rule: block seller Timofeevich Vasilovich (100014204027198) going forward."
 }

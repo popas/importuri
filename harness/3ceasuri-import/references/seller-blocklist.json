@@ -1,0 +1,10 @@
+{
+  "_comment": "FB sellers whose posts must NEVER be imported. Matched by facebook author id (the stable /user/<id> value captured during extraction). Add an entry to block a seller; the importer and the discovery skill both honor this list.",
+  "authors": [
+    {
+      "id": "100014204027198",
+      "name": "Timofeevich Vasilovich",
+      "reason": "user directive 2026-07-26: stop importing this seller"
+    }
+  ]
+}
