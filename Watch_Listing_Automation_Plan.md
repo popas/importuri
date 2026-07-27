@@ -9,23 +9,34 @@ current phase; skills point to each other and to shared assets.
 ```
 SETUP (once per session)
   └── invoke `watch-session-setup`
-        (env vars, browser-use connect, admin + FB tabs, load state.json, ask user for target)
+        (env vars, browser-use connect, admin + FB tabs, session state, target)
 
-PER WATCH (repeat until target reached)
-  ├── invoke `fb-find-posts`        → next qualifying post + post ID
-  ├── duplicate check               → `admin-import-watch` Step 1 (?q=POST_ID, separate tab)
-  ├── invoke `fb-extract-post`      → fields + ALL image URLs from that ONE post
-  ├── invoke `admin-import-watch`   → re-inject harness, call importWatch({...})
-  ├── invoke `import-verify-state`  → two green banners, update state.json
-  └── repeat
+DISCOVER (once per session, NOT per watch)
+  └── invoke `fb-find-posts`  → runs find-posts.py → CANDIDATES: + STATS:
+        (objective filters + Stage-1 dedup done inside; you triage the snippets)
+        → surviving ids persist to harness/3ceasuri-import/.candidates.json
+
+PER WATCH (repeat until target reached — ONE FRESH CONTEXT EACH)
+  ├── take the next id from .candidates.json
+  ├── invoke `admin-import-watch` → POST_ID=<id> browser-use < import-post.py
+  │     (dedup → extract → infer → import → verify → readback, one call)
+  │     on REVIEW: fix with OVERRIDES and re-run with CONFIRM=1
+  ├── invoke `import-verify-state` → append to history.jsonl, bump session counters
+  └── /clear, then next id
 ```
 
 When anything fails at any step → invoke `watch-troubleshooting`.
 
+**Why a fresh context per watch:** nothing from watch N is needed for watch N+1 — the
+durable state is the candidates file, `history.jsonl`, and the admin. Carrying each
+watch forward is what drags a session past 150k tokens. Never repeat discovery: it
+costs a feed navigation and deepens FB throttling.
+
 ## The 5 iron rules
 
-1. **One watch at a time.** Find → Extract → Import → Confirm → Repeat. Never
-   batch-collect multiple watches (FB CDN URLs expire within the session).
+1. **One watch at a time.** Extract → Import → Confirm → Repeat. Never batch-collect
+   *images* — FB CDN URLs expire within the session. Batching durable metadata (post
+   ids, text, admin dedup lookups) is fine and is what discovery does.
 2. **Never modify image URLs.** Signed params (`_nc_ohc`, `oh`, `oe`) are required;
    use the exact `img.src`.
 3. **Verify by page content, not return value.** Check for both `imagini salvate`
@@ -39,10 +50,12 @@ When anything fails at any step → invoke `watch-troubleshooting`.
 - Skills: `.claude/skills/<name>/SKILL.md` — `watch-session-setup`, `fb-find-posts`,
   `fb-extract-post`, `admin-import-watch`, `import-verify-state`, `watch-troubleshooting`
 - Harness (v5, authoritative): `$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-watch.js`
-- One-shot importer: `$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py` — runs the
-  whole per-watch flow (extract → skip-if-video → infer → import → verify+readback) for one
-  post ID in a single `browser-use` call; see `admin-import-watch` → "One-shot importer"
-- Brand ID mapping: `$PROJECT_ROOT/harness/3ceasuri-import/references/brand-ids.md`
-- Progress tracker: `$PROJECT_ROOT/state.json`
+- Discovery: `.../scripts/find-posts.py` — whole feed sweep in one call
+- Importer: `.../scripts/import-post.py` — whole per-watch flow in one call
+- Fallback references (read only on failure): `.../references/feed-dom.md`,
+  `.../references/post-extraction.md`
+- Brand ID mapping: `.../references/brand-ids.md`
+- Session state: `$PROJECT_ROOT/state.json` (bookkeeping only) · local log:
+  `history.jsonl` · **ground truth for what is imported: the 3ceasuri.ro admin**
 
 `$PROJECT_ROOT` and `$CDP_HOST` are defined in `watch-session-setup`.

@@ -98,22 +98,28 @@ The harness is injected into the admin tab per-watch, not here — see the
 
 ## Load state & decide target
 
-1. Load `$PROJECT_ROOT/state.json`.
-2. Report the imported and skipped totals to the user.
-3. ASK THE USER for this session's target number of watches. Any `target` value
-   already in the file is stale — do not trust it.
+1. Read `$PROJECT_ROOT/state.json` — session bookkeeping only (`session_date`, `target`,
+   `session_imported`, `session_skipped`, `status`, `note`). It deliberately holds **no**
+   cumulative totals: on 2026-07-27 the old counter said 33 while the site held 80+.
+2. If `status` is not `idle`, the previous session crashed mid-run — say so, and check
+   `harness/3ceasuri-import/.candidates.json` for ids left unimported before scraping anew.
+3. **Never quote an import total from a local file.** The live count arrives free as
+   `STATS.admin_total` on the first `find-posts.py` call; report it from there. `history.jsonl`
+   is the local append-only log — `wc -l` it if the user wants local activity, but say plainly
+   that the admin is authoritative.
+4. ASK THE USER for this session's target number of watches. Any `target` already in the file
+   is stale — do not trust it. Write the new target and `status: "running"` before starting.
 
-The state.json update schema (applied after each watch) lives in the
-`import-verify-state` skill.
+The record-keeping rules (what to append where, after each watch) live in
+`import-verify-state`.
 
-**Worktree caution (`state.json` lives in git).** If you are running inside a git worktree
-(cwd under `.claude/worktrees/`), that worktree has its **own** `state.json` that can diverge
-from the main checkout's — a worktree branched before the last import session will be missing
-its entries. `$PROJECT_ROOT` above points at the **main checkout**, so the runbook's harness
-and references are read from there, but a worktree's local `state.json` is the copy your
-edits land in. Before trusting either, `diff` the two; the authoritative tracker is whichever
-matches the live 3ceasuri.ro admin (the site is ground truth, not the file). When the two
-have diverged on *different* watches, **merge** their `imported`/`skipped` lists rather than
-letting one overwrite the other — each may hold real imports the other lacks.
+**Worktree caution (both files live in git).** If you are running inside a git worktree (cwd
+under `.claude/worktrees/`), that worktree has its **own** `state.json` and `history.jsonl`,
+which can diverge from the main checkout's. `$PROJECT_ROOT` above points at the **main
+checkout**, so the harness and references are read from there, but a worktree's local copies
+are where your edits land. `history.jsonl` is append-only, so reconcile by concatenating and
+de-duplicating on `id`+`event` rather than letting one file overwrite the other. Divergence no
+longer risks a wrong dedup verdict — that question is answered by the admin, not by these
+files.
 
 Next: invoke `fb-find-posts`.

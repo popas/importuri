@@ -91,26 +91,42 @@ If only partial images saved, the watch is still imported — note the image cou
 
 If NO green banners, check `document.body.innerText` for error messages. Fix the issue, re-inject harness, re-inject images, and retry (max 2 retries per the retry policy in `watch-troubleshooting`).
 
-## 6. Update state.json
+## 6. Record the outcome
 
-State file: `$PROJECT_ROOT/state.json`. Update after EVERY import or skip — this enables crash recovery.
+**Ground truth is the admin, not a local file.** On 2026-07-27 the tracker claimed 33 imports
+while the site held 80+ — a hand-maintained counter had been drifting for weeks. Never answer
+"is this already imported?" or "how many do we have?" from a local file:
+
+- *Is this watch on the site?* → admin `?q=<post_id>` (both scripts do this automatically)
+- *How many watches are on the site?* → the changelist paginator; `find-posts.py` already
+  reports it once per session as `STATS.admin_total`, so read it there rather than navigating
+
+Two local files, each with one job:
+
+**`history.jsonl`** — append-only, one JSON object per line, never read back in bulk. Append
+after every import and every skip. An append cannot drift the way a counter does.
 
 ```json
-{
-  "imported": [
-    {"id": "POST_ID", "brand": "Orient", "model": "Bambino", "price": 1200, "images": 5, "timestamp": "2026-06-20T12:00:00", "author_id": "100078...", "author_name": "Costi Schiverniciuc"}
-  ],
-  "skipped": [
-    {"id": "POST_ID", "reason": "duplicate"},
-    {"id": "POST_ID", "reason": "repost (author+brand+model match)", "existing_fb_id": "OTHER_POST_ID"}
-  ],
-  "total_imported": 0,
-  "target": 20
-}
+{"event":"import","id":"POST_ID","brand":"Orient","model":"Bambino","price":1200,"currency":"RON","images":5,"ts":"2026-07-27T12:00:00","author_id":"100078…","author_name":"Costi Schiverniciuc"}
+{"event":"skip","id":"POST_ID","brand":"Rodania","reason":"no price stated in post"}
 ```
 
-`total_imported` is the running count of successful imports; `target` is the session goal.
+The `RESULT:` line from `import-post.py` carries a ready-made `state_entry` — append it with
+`event` and `ts` added. Skips the scripts make (`SKIP:` lines) are worth appending too: the
+admin records what *was* imported, only `history.jsonl` records what was rejected and why.
+
+```bash
+python3 -c 'import json,sys,time;r=json.loads(sys.argv[1]);r.update(event="import",ts=time.strftime("%Y-%m-%dT%H:%M:%S"));open("'"$PROJECT_ROOT"'/history.jsonl","a").write(json.dumps(r,ensure_ascii=False)+"\n")' "$STATE_ENTRY"
+```
+
+**`state.json`** — session bookkeeping only: `session_date`, `target`, `session_imported`,
+`session_skipped`, `status`, `note`. Update the counters as you go so a crashed session can be
+resumed. It holds no cumulative totals by design; do not reintroduce them.
 
 ## Next
 
-If the session target isn't reached, loop back to `fb-find-posts` for the next watch. The harness form is ready again via "Save and add another", but it must be re-injected — see `admin-import-watch`.
+If the session target isn't reached, take the next id from
+`harness/3ceasuri-import/.candidates.json` — do **not** re-run discovery. Start it in a fresh
+context (`/clear`): nothing from this watch is needed for the next one, and carrying it
+forward is what pushes a session past 150k tokens. The harness form is ready again via "Save
+and add another", but it must be re-injected — see `admin-import-watch`.

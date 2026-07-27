@@ -1,4 +1,4 @@
-# Reusable prompt — run the watch-import workflow
+# Reusable prompts — run the watch-import workflow
 
 ## Before you paste (one-time per session)
 
@@ -8,75 +8,89 @@
 3. Open two tabs: the FB buy/sell group and `https://3ceasuri.ro/admin/`.
 4. `browser-use` must be installed (`uv tool install browser-use`).
 
-Then paste the prompt below. Change **TARGET** to how many watches you want this run.
+There are **two** prompts now. Paste A once, then paste B once per watch, doing `/clear`
+in between. The split is what keeps each watch cheap: nothing from watch N is needed for
+watch N+1, and `/clear` is a command only you can issue — the agent cannot clear itself.
+
+If you'd rather not bother, pasting B repeatedly without `/clear` still works correctly;
+it just costs more as the context grows.
 
 ---
 
-## The prompt (copy from here)
+## Prompt A — setup + discovery (paste once)
 
 ```
-Run the 3ceasuri watch-import workflow. Follow Watch_Listing_Automation_Plan.md and
-invoke each skill with the Skill tool in the given order — do NOT improvise, skip a
-skill, or write your own browser code instead of following the skill.
-
-TARGET: import 5 new watches this session (stop earlier if the group has no more
-qualifying posts). Do not ask me for the target — it is 5.
+Run the 3ceasuri watch-import workflow, discovery phase only. Follow
+Watch_Listing_Automation_Plan.md and invoke skills with the Skill tool — do NOT
+improvise or write your own browser code instead of running the scripts.
 
 Environment (my Mac, local Chrome — already running):
 - CDP host is 127.0.0.1:9222 (Chrome launched with --remote-debugging-port=9222).
-- browser-use is CLI 3.0. Run every browser command in bash like this:
+- browser-use is CLI 3.0. Run browser commands in bash like this:
   export PATH="$HOME/.local/bin:$PATH"; export BU_CDP_URL="http://127.0.0.1:9222"
-  then a python heredoc using the helpers: list_tabs(), switch_tab(target_id),
-  goto_url(url), js(code), scroll(x,y), new_tab(url), close_tab(target_id),
-  wait_for_load(), page_info(). js() is synchronous — for multi-step flows
-  (carousels, scrolling) loop in Python with time.sleep between js() calls.
 - Reuse the Facebook and admin tabs that are already open. Do not open a fresh
   Chrome profile.
 
-Loop, ONE watch at a time, until TARGET is reached:
-  1. watch-session-setup — connect browser-use, confirm the two tabs, load state.json.
-  2. fb-find-posts — find the next qualifying post: price >= 100 RON or >= 20 EUR,
-     real brand + model in the text, has images, NOT replica/AAA+, NOT bulk, NOT a
-     Vinted/ad link. Read the loaded feed HTML first, but the real watches are
-     usually further down — SCROLL to reach them (Facebook has infinite scroll).
-     Scroll with js('window.scrollBy(0, 1400)'), NOT the scroll(x, y) helper (it
-     pages the feed the wrong way and loads nothing). A sparse initial feed is not
-     an empty group — confirm scrollHeight grows before concluding "exhausted".
-  3. admin-import-watch Step 1 — duplicate check with ?q=POST_ID in a SEPARATE tab,
-     BEFORE extracting. If it already exists, mark it skipped and go to the next post.
-  4. fb-extract-post — all fields + ALL image URLs from that one post.
-  5. admin-import-watch — re-inject the harness, then call importWatch({...}). If the
-     brand is not in the mapping, follow the new-brand procedure and update BOTH the
-     harness and brand-ids.md.
-  6. import-verify-state — confirm the import by PAGE CONTENT (both green banners),
-     never by the return value, then update state.json.
-  7. Repeat.
+TARGET: 5 watches this session. Do not ask me for the target — it is 5.
 
-Hard rules (from the orchestrator — obey exactly):
-- One watch at a time. Never pre-collect images for multiple watches (FB image URLs
-  expire).
-- Never modify image URLs (the signed _nc_ohc / oh / oe params are required).
-- Re-inject the harness after every page navigation or form submit.
-- Always fill description, sourceUrl, and fbListingId.
-- If the feed stalls, shows notifications, or keeps returning the same posts, back off
-  per watch-troubleshooting (pause, one gentle re-read, then stop) — do NOT hammer
-  refresh or open new tabs. But first rule out a broken scroll (is scrollHeight
-  growing?) and spend any post IDs you cached earlier — a throttled feed still lets
-  you open posts/<ID>/ directly.
+1. watch-session-setup — connect browser-use, confirm the two tabs, read session state.
+2. fb-find-posts — run find-posts.py ONCE (MAX_CANDIDATES=8). Do not hand-scroll the
+   feed and do not run the script twice: re-running it costs a feed navigation and
+   deepens FB throttling.
+3. Triage the CANDIDATES: snippets it returns and tell me which ids you'd import and
+   which you're dropping as bulk lots / non-watches / missing brand or model. Report
+   STATS.admin_total as the real site count.
 
-Report each watch briefly as you finish it (brand, model, price, images saved). Stop
-when TARGET is reached, the group is exhausted, or you hit something only I can fix —
-and tell me which.
+Then STOP. Do not import anything yet — I'll clear the context and paste the per-watch
+prompt.
 ```
-
-(end of prompt)
 
 ---
 
+## Prompt B — import one watch (paste after each `/clear`)
+
+```
+Continue the 3ceasuri watch-import workflow: import the NEXT unimported candidate from
+harness/3ceasuri-import/.candidates.json. Do not re-run discovery.
+
+Environment: export PATH="$HOME/.local/bin:$PATH"; export BU_CDP_URL="http://127.0.0.1:9222"
+
+1. admin-import-watch — POST_ID=<id> browser-use < harness/3ceasuri-import/scripts/import-post.py
+   One call does dedup, extraction, inference, import, banner verification and readback.
+   Do NOT run a DRY_RUN pass first.
+   - On REVIEW: — read the reasons, fix them with OVERRIDES, re-run with CONFIRM=1.
+     Judge the inference yourself: gold PLATING is not a gold case; leave a field unset
+     rather than guessing an enum the post text doesn't support.
+   - On NEW_BRAND: — add it to BOTH window.BRAND_IDS in import-watch.js AND
+     references/brand-ids.md, then commit.
+   - On SKIP: — record why and move to the next candidate.
+2. import-verify-state — confirm by PAGE CONTENT (both green banners) or a successful
+   readback, never by the return value. Append the outcome to history.jsonl and bump the
+   session counters in state.json.
+3. Report the watch briefly (brand, model, price, images saved) and tell me how many
+   candidates remain. Then stop — I'll /clear and paste this again.
+```
+
+(end of prompts)
+
+---
+
+## Hard rules (unchanged — the scripts enforce most of them)
+
+- One watch at a time. Never pre-collect images for multiple watches (FB image URLs expire).
+  Batching post ids and dedup lookups is fine — that's what discovery does.
+- Never modify image URLs (the signed `_nc_ohc` / `oh` / `oe` params are required).
+- Re-inject the harness after every page navigation or form submit.
+- Always fill description, sourceUrl, and fbListingId.
+- **Never quote an import count from a local file.** The admin is ground truth; `state.json`
+  is session bookkeeping and `history.jsonl` is a local log of activity.
+- If the feed stalls or keeps returning the same posts, back off per watch-troubleshooting
+  (pause, one gentle re-read, then stop) — do NOT hammer refresh or open new tabs.
+
 ## Model note
 
-Sonnet is the safe "simple" floor for this — it involves multi-step browser
-orchestration, JS extraction, and judgment (qualifying posts, RO→EN field mapping,
-new-brand handling). Haiku can drive the mechanical steps but is more likely to
-mis-handle the judgment calls and the browser-use heredoc flow; if you use Haiku,
-watch the first watch closely before trusting a full run.
+Discovery and extraction are now scripted, so the model's remaining job is judgment:
+triaging candidate snippets, and handling `REVIEW:` (new brands, weak inference, plating
+vs solid gold). Sonnet remains the safe floor for that. Haiku can drive the mechanical
+steps but is likelier to mishandle exactly those judgment calls; if you use Haiku, watch
+the first watch closely before trusting a full run.

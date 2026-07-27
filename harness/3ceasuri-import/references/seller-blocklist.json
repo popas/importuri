@@ -5,6 +5,11 @@
       "id": "100014204027198",
       "name": "Timofeevich Vasilovich",
       "reason": "user directive 2026-07-26: stop importing this seller"
+    },
+    {
+      "id": "61570499365288",
+      "name": "Dan Daniel",
+      "reason": "user directive 2026-07-27: deals in wall/floor/mantel clocks, not wristwatches, so nothing he posts is importable. Observed in the 2026-07-27 sweep: 2087284375473544 'Ceasuri de perete funcționale, prețuri cuprinse între 200-350 ron' (bulk, price range), 2084763422392306 'Polaris, 31 zile, cheie' and 2084766165725365 '76 cm height, 30 cm width' (both floor/wall clocks). He accounted for most of that sweep's rejects."
     }
   ]
 }

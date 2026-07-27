@@ -7,28 +7,39 @@ description: Invoke per watch — first for the duplicate check (?q=POST_ID) BEF
 
 The admin side of importing ONE watch. `$PROJECT_ROOT` / `$CDP_HOST` from `watch-session-setup`.
 
-## One-shot importer (preferred when the post ID is known)
+## One-shot importer — THE DEFAULT PATH
 
 `$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py` collapses this skill +
 `fb-extract-post` + `import-verify-state` into a single `browser-use` call for one post. It
-gates on `pcb.<ID>`, **skips video-first (ad) posts**, collects the carousel, infers fields
-(RO→enum + defaults + the gold-plating rule from `fb-extract-post`), creates the brand if
-missing, injects the harness, calls `importWatch`, verifies both banners, and **reads the
-saved record back** (the `id_reference_number` / `id_case_diameter_mm` check).
+runs **both dedup stages**, gates on `pcb.<ID>`, **skips video-first (ad) posts and
+blocklisted sellers**, collects the carousel, infers fields (RO→enum + defaults + the
+gold-plating rule), creates the brand if missing, injects the harness, calls `importWatch`,
+verifies both banners, and **reads the saved record back**.
 
 ```bash
 export BU_CDP_URL="http://$CDP_HOST"
-# review first — DRY_RUN extracts + infers + prints, imports nothing:
-POST_ID=<id> DRY_RUN=1 browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
-# then import (override anything the inference got wrong):
-POST_ID=<id> OVERRIDES='{"model":"...","caseMat":"steel"}' \
+POST_ID=<id>    browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
+LISTING_ID=<id> browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py  # kind:"listing"
+```
+
+**Do not run a DRY_RUN pass first.** It doubles the browser work and the output on posts that
+need no supervision. The script judges its own confidence and stops on its own when it should:
+if the brand is new, the model or price didn't infer, fewer than 2 images came back, or the
+description is thin, it emits `REVIEW:` and imports **nothing** — no DB write, no brand
+created. Fix what it flagged and re-run:
+
+```bash
+POST_ID=<id> CONFIRM=1 OVERRIDES='{"brand":"Westbury","model":"Chronograph Valjoux 7733"}' \
   browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
 ```
 
-Still run the **duplicate check (Step 1 below) first**, and after a `NEW_BRAND:` line update
-`BRAND_IDS` + `references/brand-ids.md` and commit. Parse the `RESULT:` line (banners +
-readback) to update `state.json`. Fall back to the manual steps below when inference is
-unreliable or the post needs hand-holding.
+`CONFIRM=1` passes the review gate; it cannot wave through a missing brand/model/price — the
+form would reject those. `DRY_RUN=1` still exists for deliberate inspection.
+
+Marker lines: `EXTRACT: SKIP: INFER: REVIEW: NEW_BRAND: RESULT: ERROR:`. After a `NEW_BRAND:`
+line update `BRAND_IDS` + `references/brand-ids.md` and commit. Parse `RESULT:` to append to
+`history.jsonl` (see `import-verify-state`). Fall back to the manual steps below only when the
+post needs hand-holding.
 
 ## Step 1: Duplicate check — TWO STAGES (SEPARATE tab; never navigate the add-watch tab)
 
@@ -63,9 +74,17 @@ rows = js("(() => JSON.stringify([...document.querySelectorAll('#result_list tbo
 close_tab(t)
 ```
 
-- a returned row whose **brand AND model match** this post → **repost → skip** (log which
-  `fbid` it matched). Price is NOT required to match — a repost with a dropped price is
-  still a repost.
+- a returned row whose **model matches** this post → **repost → skip** (log which `fbid` it
+  matched). Price is NOT required to match — a repost with a dropped price is still a repost.
+  **Match on model, not brand:** the changelist renders the BRAND cell as empty text even for
+  records that definitely have one (verified 2026-07-27), so a `brand AND model` rule never
+  fires — that was dead code, and a known Helfer repost went straight through it. Brand is
+  only useful to *veto* a match when it is non-empty and different.
+- Search by the **model string as well as the author id**. Records imported before author
+  capture existed have no `facebook_author_id`, so an author-only lookup cannot see them.
+- A model-only match on a *generic* name (short, one word, no digits) is reported as
+  `REVIEW:` instead of skipped — neither silently dropping a new watch nor silently
+  importing a duplicate.
 - the author has only *different* watches (e.g. one seller listing 4 distinct pieces) → not
   a match → import normally.
 - no `fbAuthorId` captured → fall back to `?q=PHONE` for Stage 2, or skip Stage 2
@@ -74,11 +93,14 @@ close_tab(t)
 `import-post.py` performs **both stages automatically** (Stage 1 up front, Stage 2 after
 inference), so the one-shot path needs no manual dedup.
 
-**Batch Stage 1 against your cached post IDs.** One `new_tab`, then `goto_url` per ID
-(~2.5s apart) — the admin is our own site, so it has no FB-style rate concern, and clearing
-all candidates up front means a throttled feed can't strand you mid-loop. Stage 2 is
-per-watch (it needs that watch's extracted author). Iron rule #1 still holds: only ONE watch
-gets extracted+imported at a time; you're batching cheap durable lookups, not images.
+**Both scripts already do this for you.** `find-posts.py` batches Stage 1 across every
+candidate at discovery time (the admin is our own site, so it has no FB-style rate concern),
+and `import-post.py` re-runs Stage 1 up front plus Stage 2 after inference. The manual steps
+above are for the fallback path only. Iron rule #1 still holds: only ONE watch gets
+extracted+imported at a time; batching cheap durable lookups is not batching watches.
+
+The admin is also the **only** trustworthy answer to "have I imported this already" — the
+local tracker is session bookkeeping, not a record of the site (see `import-verify-state`).
 
 ## Step 2: Re-inject the harness (repeat before EVERY watch)
 

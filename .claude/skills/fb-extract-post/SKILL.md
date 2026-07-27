@@ -1,231 +1,64 @@
 ---
 name: fb-extract-post
-description: Invoke after a qualifying post ID is chosen and the duplicate check has passed — extracts all fields and ALL image URLs from that ONE post, then hands them to admin-import-watch.
+description: Invoke only when import-post.py cannot handle a post by itself — extraction and field inference normally run inside that script, not by hand.
 ---
 
 # fb-extract-post
 
-Extract every field and EVERY image URL from one already-selected FB post. Try methods in
-order: **A (commerce listing page) → B (feed HTML you already extracted) → C (individual post
-page, last resort).** `$PROJECT_ROOT` / `$CDP_HOST` are defined in `watch-session-setup`.
+**Extraction is not a separate phase any more.** `import-post.py` (see `admin-import-watch`)
+opens the post, gates on `pcb.<ID>`, collects the carousel, infers every field, and imports —
+in one call. Do not hand-extract a post the script can handle: doing so costs ~8 round-trips
+and re-derives rules the script already encodes.
 
-## Method A: Commerce listing page (PREFERRED)
+Invoke this skill only for the cases the script does not cover:
 
-Navigate to `https://www.facebook.com/commerce/listing/LISTING_ID/`
+- ~~commerce listings~~ — no longer a fallback case: run `import-post.py` with
+  `LISTING_ID=<id>` instead of `POST_ID=<id>`. It reads the listing page (all images are in
+  the DOM at once, no carousel) and strips the page chrome before inference — that chrome
+  once turned the seller's "Joined in 2011" into the watch's year.
+- **The script emitted `ERROR:`** — "never surfaced its pcb photo set", "carousel drifted",
+  "collected 0 images". Diagnose with the same reference, then either fix the input or
+  fall back to filling the form by hand (`watch-troubleshooting`).
+- **You disagree with its inference** — don't re-extract; pass `OVERRIDES` (below).
 
-**Why preferred:** All images are in the DOM simultaneously — no Next button, no carousel,
-no stuck viewer. The page shows 5 thumbnails (Thumbnail 0-4) plus the main image, all in the
-DOM simultaneously — do NOT click through them. The `img[src*="scontent"]` with `naturalWidth > 200` filter catches them all.
+## Correcting inference without re-extracting
 
-```javascript
-// In browser_console on the commerce listing page
-(() => {
-  const seen = new Set();
-  const urls = [];
-  Array.from(document.querySelectorAll('img')).forEach(img => {
-    if (img.src && img.src.includes('scontent') && img.naturalWidth > 200) {
-      const base = img.src.split('?')[0];
-      if (!seen.has(base)) { seen.add(base); urls.push(img.src); }  // COMPLETE URL
-    }
-  });
-  return JSON.stringify({urls, count: urls.length});
-})()
+The script emits `INFER:` with everything it derived, and stops at `REVIEW:` when it is
+unsure. Correct it by re-running the same post id with overrides — overrides always win:
+
+```bash
+POST_ID=<id> CONFIRM=1 OVERRIDES='{"model":"Bambino Automatic","caseMat":"steel"}' \
+  browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
 ```
 
-Extract text (title, price, condition, brand, description) from the same page.
+Override keys are the `importWatch` field names: `brand model price currency condition movement
+type diameter caseMat braceletMat displayMat waterRes year reference phone location seller
+description priceNote`. Plus `force: true` to import a video-first post the script would skip.
 
-## Method B: Feed HTML text (no navigation)
+**Judgement to apply when reviewing `INFER:` output** — the script is deliberately conservative,
+so check these rather than assume:
 
-If the post has no commerce listing, use the post text already captured by the feed-HTML
-extraction during discovery (`fb-find-posts`); collect images via the photo-viewer carousel below using the post's `set=pcb.` photo link.
+- **Gold plating is not gold.** "placat cu aur", "gold plated", "AU20", "dublé" describe a
+  coating over a steel case. The script already maps these to `caseMat: "steel"`; if you
+  override, keep it steel and mention the plating in the description.
+- **An empty field is honest; a wrong one misrepresents the watch.** `movement`,
+  `braceletMat`, `displayMat` and `waterRes` have no default on purpose. Don't fill them in
+  from a guess the post text doesn't support.
+- **Model quality.** The script takes the brand's line minus the brand words. If that yields a
+  fragment or swallowed the whole post, override with a clean descriptive model.
 
-### Photo-viewer carousel collection (`set=pcb.` vs `set=gm.`)
+The full RO→enum table, defaults, and the extraction methods live in
+`harness/3ceasuri-import/references/post-extraction.md` — the script mirrors it, so change
+both together or neither.
 
-- `set=pcb.<PHOTO_SET_ID>` opens a photo viewer with a WORKING "Next photo" carousel
-  (`div[aria-label="Next photo"]` with class `x1qjc9v5`).
-- `set=gm.<POST_ID>` opens a viewer whose Next button does NOT advance — carousel gets
-  stuck on the first image; do NOT use `set=gm.` links for image collection.
+## Rules that still bind you
 
-```javascript
-var urls = []; var seen = new Set();
-for (var step = 0; step < 15; step++) {
-  // Collect current largest image
-  var imgs = Array.from(document.querySelectorAll('img')).filter(function(i) {
-    return i.naturalWidth > 400 && i.getBoundingClientRect().width > 50 &&
-           !i.src.includes('static.xx.fbcdn') && !i.src.startsWith('data:');
-  });
-  imgs.sort((a,b) => b.naturalWidth - a.naturalWidth);
-  if (imgs.length > 0) {
-    var base = imgs[0].src.split('?')[0].split('/').pop();
-    if (!seen.has(base)) { seen.add(base); urls.push(imgs[0].src); }
-  }
-  // Click Next — MUST use the visible button with class x1qjc9v5
-  var btns = document.querySelectorAll('div[aria-label="Next photo"]');
-  var clicked = false;
-  for (var i = 0; i < btns.length; i++) {
-    if (btns[i].getBoundingClientRect().width > 0 && btns[i].className.indexOf('x1qjc9v5') > -1) {
-      btns[i].click(); clicked = true; break;
-    }
-  }
-  if (!clicked) break; // Next button gone — rare; the carousel usually WRAPS instead
-  await new Promise(r => setTimeout(r, 2500 + Math.random() * 2500)); // human-ish 2.5–5s between clicks
-}
-```
-
-**The carousel wraps — it does not run out of Next buttons.** `!clicked` almost never fires
-(observed 0/4 times on 2026-07-17c). Termination comes from **filename dedupe + a step cap**:
-run ~step-cap = expected images + 4, and the wrap re-serves images you already have, so the
-unique count simply stops growing. Trust the deduped count, not the loop exit.
-
-**Verify you never left the set.** A wrap is harmless; drifting into another post's photos is
-not. Assert after the loop — if this fails, discard the URLs and re-open the post's own link:
-
-```python
-js('(() => location.href.indexOf("pcb.<POST_ID>") > -1 ? "same-set" : location.href)()')
-# expect "same-set"
-```
-
-**The feed's `+N` badge undercounts the set** — a Certina previewing `+4` held 8 real images.
-Never cap collection at the badge number; let dedupe decide.
-
-- **Pace the Next clicks like a human.** This carousel is the *only* place the runbook
-  synthesises clicks — keep them few and unhurried rather than simulating a mouse (the goal
-  is a low request rate, not pointer realism; see `watch-troubleshooting` → Bot-Friction
-  Symptoms). Use a jittered 2.5–5s gap (above), roughly the time a person spends looking at
-  one photo, not a constant 3s. Under browser-use ≥3.0 `js()` is synchronous, so drive the
-  loop from Python — collect, click Next, then `time.sleep(2.5 + random.random()*2.5)` —
-  reusing the selectors above verbatim. Don't burst through all images at once.
-- ArrowRight key does NOT work in the CDP browser — click the div button.
-- On some pages the Next control appears as `[aria-label="View next image"]` or a button whose aria-label includes "Next".
-- Dedupe collected URLs by filename (part before `?`).
-
-## Method C: Individual post page
-
-Navigate to `https://www.facebook.com/groups/vanzareceasuri/posts/POST_ID/` and wait
-**~15 seconds** (8–10s was not enough on 2026-07-17c).
-
-Promoted from "last resort": this is the **only** way to reach a post the virtualized feed
-has dropped, and it worked reliably 6/6 times once given enough time. It's the standard
-partner to ID-caching in `fb-find-posts`.
-
-**The trap — it renders the HOME FEED first, and looks convincing.** At ~10s
-`document.title` already showed the correct post title while `document.body` was still the
-home feed (stories, unrelated authors). Photo links scraped at that moment belonged to a
-**completely different post** (`pcb.36937378642577166`) and would have imported someone
-else's photos under this watch.
-
-**Never trust the title as a readiness signal.** Gate on the post's own set appearing:
-
-```python
-js('''(() => {
-  let hit = null;
-  document.querySelectorAll('a[href*="/photo/"]').forEach(l => {
-    if ((l.href||'').indexOf('pcb.<POST_ID>') > -1) hit = l.href.split('&__cft__')[0];
-  });
-  return JSON.stringify({hit, ready: !!hit});
-})()''')
-```
-
-Only proceed once `hit` is non-null — that link is also the carousel entry point. If it's
-still null after ~15s, wait once more, then fall back to Method B. Expand the body with a
-`See more` / `Vezi mai mult` click inside `div[role="dialog"]` before reading text.
-
-## NEVER modify image URLs
-
-Facebook CDN URLs carry signed params (`_nc_ohc=`, `oh=`, `oe=`) that are REQUIRED.
-Stripping, truncating, or regex-"upgrading" them returns "Bad URL hash". Use the EXACT
-`img.src`. FB CDN URLs also expire within hours — extract and import within the same session, re-extract fresh URLs on retry.
-
-## Data to Extract
-
-| Field | How to Extract | Example |
-|-------|---------------|---------|
-| **Brand** | From post text or commerce listing title | "Oris", "Seiko" |
-| **Model name** | From post text, descriptive | "Mecanic Vintage", "Red Arrows Eco-Drive" |
-| **Condition** | Map RO→EN | "nou"→`new`, "excelent"→`excellent`, "bun"→`good` |
-| **Movement** | From text | "mecanic"→`manual`, "automatic"→`automatic`, "quartz"→`quartz` |
-| **Price** | Numeric value | 800, 3000, 5500 |
-| **Currency** | Auto-detect from text | `$`→`USD`, `€`→`EUR`, `lei`→`RON` |
-| **Case diameter** | Regex: `(\d+(?:\.\d+)?)\s*mm` | 35.5, 39, 42 |
-| **Case material** | From text | "otel"→`steel`, "aur"→`gold`, "titan"→`titanium` |
-| **Bracelet material** | From text | "piele"→`leather`, "metal"→`steel`, "cauciuc"→`rubber` |
-| **Year** | Regex: `(19\|20)\d{2}(?:\s*[-–]\s*(19\|20)\d{2})?` | "1960-1970", "1985" |
-| **Watch type** | From text | "barbati"→`men`, "femei"→`women` |
-| **Phone** | Regex: `/(?:\+?40[\s.]?\|0)7\d{2}[\s.]?[\s.]?\d{3}[\s.]?\d{3}/` | "0731394148" |
-| **Location** | From text: "în [City], [County]" or "Listed in [City]" | "Satu Mare", "București" |
-| **Seller** | From commerce listing: "Seller details\n[Name]" | "Razvan Vasile" |
-| **Author FB id** (`fbAuthorId`) | Numeric id in the post-header author link `a[href*="/user/"]` (`/user/<id>/`) | "100078…" |
-| **Author name** (`fbAuthorName`) | Text of that author link | "Costi Schiverniciuc" |
-| **Reference** | Regex: `/ref\.?\s*[:\-]?\s*([A-Z0-9\-\/]+)/i` | "ABC-1234" |
-| **Description** | Full raw post text (harness auto-formats) | Raw FB text |
-| **Source URL** | FB post/listing URL | Full URL |
-| **FB listing/post ID** | Numeric ID from URL | "123456789" |
-| **ALL image URLs** | From DOM: `img[src*="scontent"]` with `naturalWidth > 200` | Complete URLs |
-
-## Author capture (for repost dedup)
-
-Read the **post author** and pass it in the `importWatch` payload as `fbAuthorId` /
-`fbAuthorName`. It is stored on the watch and powers Stage-2 dedup in
-`admin-import-watch` (catching the same watch reposted under a new post id).
-
-```javascript
-// within the post container (the article/dialog that holds the pcb.<POST_ID> photo link)
-(() => {
-  // the poster has TWO /user/ links: the avatar (no text) then the name (text).
-  // Take the id from the first, the name from the first one that actually has text.
-  const aus = [...cont.querySelectorAll('a[href*="/user/"]')];
-  let fbAuthorId = null, fbAuthorName = null;
-  for (const a of aus) {
-    if (!fbAuthorId) { const m = (a.href || '').match(/\/user\/(\d+)/); if (m) fbAuthorId = m[1]; }
-    const tx = (a.innerText || '').trim().replace(/\s+/g, ' ');
-    if (tx && !fbAuthorName) fbAuthorName = tx;
-  }
-  return JSON.stringify({fbAuthorId, fbAuthorName});
-})()
-```
-
-`fbAuthorId` (the numeric profile id) is the real dedup key — stable and always present.
-If no `/user/` link is found, leave both unset; Stage 2 falls back to phone or is skipped.
-Clicking an author link navigates to the profile — only *read* the href, never click it.
-
-## Field inference — RO→enum mapping & defaults
-
-Map free Romanian post text to the harness enums with the table below. **Infer only what the
-text supports; apply the default only when the text is silent — never invent a specific
-claim.** The consolidated importer (`harness/3ceasuri-import/scripts/import-post.py`) encodes
-exactly these rules; keep the two in sync.
-
-| Field | RO/EN cues → value | Default when silent |
-|-------|--------------------|---------------------|
-| `condition` | nou→`new`; ca nou/excelent/impecabil/foarte îngrijit→`excellent`; bun/folosit→`good`; acceptabil/uzat→`fair`; defect/nefuncțional→`broken` | `good` |
-| `movement` | automat/automatic→`automatic`; mecanic/manual/cheiță/întoarcere manuală→`manual`; quartz/baterie→`quartz`; smart→`smart` | *(none — leave unset if unclear)* |
-| `caseMat` | otel/inox→`steel`; aur masiv/solid gold→`gold`; titan→`titanium`; **placat/gold-plated/AU\d+/dublé** → `steel` **(plating is a coating, not the case metal)** | `steel` |
-| `braceletMat` | piele→`leather`; metal/otel/brățară→`steel`; cauciuc→`rubber`; nylon/textil→`nylon`; aur→`gold` | *(none)* |
-| `type` | barbati/bărbătesc→`men`; femei/dama/lady→`women`; unisex→`unisex`; copii→`kids`; sport→`sports` | `men` |
-| `displayMat` | safir/sapphire→`sapphire`; cristal mineral/mineral→`mineral`; acrilic/plexi→`acrylic` | *(none)* |
-| `waterRes` | rezistent la apă/WR/\d+m/ATM→`water_resistant_yes`; nu e rezistent→`water_resistant_no` | *(none)* |
-| `currency` | `€`/euro→`EUR`; `lei`/`ron`→`RON`; a bare number → **RON** | `RON` |
-
-- **Gold-plating trap:** "placat cu aur", "gold plated", "AU20", "dublé" describe a *coating*
-  over a base case (usually steel). Set `caseMat: "steel"` and mention the plating in
-  `description` — do **not** set `caseMat: "gold"`. (On 2026-07-24 a plated Slava was wrongly
-  filed as a solid-gold case.)
-- Leave a field **unset** rather than guessing a specific enum the text doesn't support
-  (`movement`, `braceletMat`, `displayMat`, `waterRes` have no default) — an empty field is
-  honest; a wrong one misrepresents the watch.
-
-## Pitfalls
-
-- Individual post pages are slow (~15s) and render the home feed (or notifications) first —
-  a correct `document.title` does NOT mean the post is loaded. Gate on `pcb.<POST_ID>`
-  appearing in a photo link (Method C), never on the title.
-- **Always verify the photo set ID belongs to the post you think you're extracting** — both
-  the post page (before load) and a drifting carousel can hand you another post's images.
-  Cross-post image contamination is silent and survives into the import.
-- `document.title` is blocked for values containing signed query params — read image URLs directly from `img.src` in the DOM, never via `document.title`.
-- Timestamp links ("about an hour ago") do NOT open dialogs in the CDP browser (their hrefs still carry post IDs); clicking an author name navigates to the profile, not the post.
-- `set=gm.` carousels get stuck; `set=pcb.` carousels work.
+- **Never modify image URLs.** Signed params (`_nc_ohc`, `oh`, `oe`) are required; use the
+  exact `img.src`. They expire within hours — extract and import in the same session.
+- **Always verify the photo set belongs to the post you think you're extracting.** Cross-post
+  image contamination is silent and survives into the import.
+- Pass the **raw** FB post text as `description` — the harness formats it.
 
 ## Next
 
-Pass the extracted raw fields + complete image URLs to `admin-import-watch`. Do NOT pre-format the description — pass the raw FB post text (the harness formats it).
+`admin-import-watch` → `import-verify-state`.

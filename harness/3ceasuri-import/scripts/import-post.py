@@ -15,16 +15,27 @@
 #     browser-use < harness/3ceasuri-import/scripts/import-post.py
 #
 # Env:
-#   POST_ID       (required) numeric FB post ID
+#   POST_ID       numeric FB post ID (group post — gated on its pcb photo set)
+#   LISTING_ID    numeric commerce-listing ID instead, for find-posts.py candidates
+#                 with kind:"listing". Those have no pcb set; the listing page holds
+#                 every image in the DOM at once, so there is no carousel to walk.
 #   PROJECT_ROOT  repo root (default: the Mac path below)
 #   ADMIN_TAB     targetId of the admin add-watch tab (auto-found if omitted)
 #   PHOTO_TAB     targetId of a scratch FB tab for the photo viewer (auto/created)
 #   OVERRIDES     JSON object of field overrides merged over inference (authoritative)
-#   DRY_RUN       "1" = extract + infer + print, do NOT import (review first)
+#   DRY_RUN       "1" = extract + infer + print, do NOT import (force a review pass)
+#   CONFIRM       "1" = proceed past the REVIEW gate (see below)
+#
+# Do NOT run a DRY_RUN pass by default — it doubles the browser work and the
+# output on posts that need no supervision. The script judges its own confidence
+# and stops on its own when it should: if the brand is new, the model/price did
+# not infer, fewer than 2 images came back, or the description is thin, it emits
+# REVIEW: and imports NOTHING. Fix it with OVERRIDES and re-run with CONFIRM=1.
+# Everything else imports in one pass.
 #
 # Emits marker lines the operator/parent can parse:
-#   EXTRACT: {...}   SKIP: {...}   INFER: {...}   NEW_BRAND: {...}
-#   RESULT: {...}    ERROR: {...}
+#   EXTRACT: {...}   SKIP: {...}   INFER: {...}   REVIEW: {...}
+#   NEW_BRAND: {...} RESULT: {...} ERROR: {...}
 #
 # Field inference mirrors .claude/skills/fb-extract-post/SKILL.md — keep in sync.
 # A NEW brand is created in the DB and injected at runtime, but the source files
@@ -34,16 +45,26 @@
 import os, re, json, time, random
 
 PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
-POST_ID   = os.environ.get("POST_ID", "").strip()
+POST_ID    = os.environ.get("POST_ID", "").strip()
+LISTING_ID = os.environ.get("LISTING_ID", "").strip()
+# find-posts.py emits kind:"listing" for commerce listings, which have no pcb photo set and
+# so cannot be gated or carousel-collected like a group post. They take a different route to
+# the same inference/import pipeline: LISTING_ID instead of POST_ID.
+IS_LISTING = bool(LISTING_ID) and not POST_ID
+if IS_LISTING:
+    POST_ID = LISTING_ID
 OVERRIDES = json.loads(os.environ.get("OVERRIDES", "{}"))
 DRY_RUN   = os.environ.get("DRY_RUN", "") == "1"
+CONFIRM   = os.environ.get("CONFIRM", "") == "1"   # proceed past the REVIEW gate
 HARNESS   = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
+SOURCE_URL = (("https://www.facebook.com/commerce/listing/%s/" % POST_ID) if IS_LISTING
+              else ("https://www.facebook.com/groups/vanzareceasuri/posts/%s/" % POST_ID))
 
 def emit(tag, obj): print(tag + ": " + json.dumps(obj, ensure_ascii=False))
 def die(msg):       emit("ERROR", {"post_id": POST_ID, "msg": msg}); raise SystemExit(1)
 
 if not POST_ID or not POST_ID.isdigit():
-    die("POST_ID env var must be a numeric FB post ID")
+    die("set POST_ID (group post) or LISTING_ID (commerce listing) to a numeric FB id")
 
 def _norm(s):
     import unicodedata
@@ -89,46 +110,101 @@ if admin_rows(POST_ID, PHOTO_TAB):
     emit("SKIP", {"post_id": POST_ID, "reason": "already imported (facebook_listing_id match)"})
     raise SystemExit(0)
 
-# --- 1. open post page, gate on the post's own photo set --------------------
-switch_tab(PHOTO_TAB)
-goto_url("https://www.facebook.com/groups/vanzareceasuri/posts/%s/" % POST_ID)
-hit = None
-for _ in range(4):                       # ~15s+ ; renders home feed first, gate on pcb.<ID>
-    time.sleep(5)
-    r = js(('(() => { let h=null; document.querySelectorAll(\'a[href*="/photo/"]\').forEach(l=>{'
-            'if((l.href||"").indexOf("pcb.%s")>-1) h=l.href.split("&__cft__")[0];}); '
-            'return JSON.stringify({hit:h}); })()') % POST_ID)
-    hit = json.loads(r).get("hit")
-    if hit: break
-if not hit:
-    die("post %s never surfaced its pcb photo set (private/removed, or still hydrating)" % POST_ID)
+# --- 1L. commerce listing: every image is in the DOM at once, no carousel ----
+if IS_LISTING:
+    switch_tab(PHOTO_TAB)
+    goto_url(SOURCE_URL)
+    LISTING_JS = ('(() => {const seen={},urls=[];'
+                  'document.querySelectorAll("img").forEach(i=>{'
+                  'if(i.src&&i.src.indexOf("scontent")>-1&&i.naturalWidth>200){'
+                  'const b=i.src.split("?")[0]; if(!seen[b]){seen[b]=1;urls.push(i.src);}}});'
+                  'let aId=null,aName=null;'
+                  'document.querySelectorAll(\'a[href*="/user/"],a[href*="profile.php?id="]\').forEach(a=>{'
+                  'const h=a.href||""; if(!aId){const m=h.match(/\\/user\\/(\\d+)/)||h.match(/profile\\.php\\?id=(\\d+)/);'
+                  'if(m)aId=m[1];} const tx=((a.innerText||"").trim().replace(/\\s+/g," "));'
+                  'if(tx&&!aName)aName=tx;});'
+                  'const m=document.querySelector(\'[role="main"]\')||document.body;'
+                  'const txt=(m.innerText||"").replace(/(Facebook\\n?)+/g,"");'
+                  'return JSON.stringify({urls:urls,txt:txt.substring(0,1200),authorId:aId,authorName:aName});})()')
+    info, images = None, []
+    for _ in range(4):                   # listing pages hydrate like post pages do
+        time.sleep(5)
+        try:
+            info = json.loads(js(LISTING_JS))
+        except Exception:
+            continue
+        images = info.get("urls") or []
+        if images:
+            break
+    if not info or not images:
+        die("commerce listing %s surfaced no scontent images (removed, or still hydrating)" % POST_ID)
+    info["firstIsVideo"] = False         # listings lead with photos, not reels
 
-# expand "See more" and read the post body text
-js('(() => { const d=document.querySelector(\'div[role="dialog"]\')||document.body;'
-   ' d.querySelectorAll(\'div[role="button"],span\').forEach(b=>{const t=(b.innerText||"").trim();'
-   ' if(t==="See more"||t==="Vezi mai mult"){b.click();}}); return "ok"; })()')
-time.sleep(1)
-info = json.loads(js(
-   '(() => { const link=[...document.querySelectorAll(\'a[href*="/photo/"]\')]'
-   '.find(l=>(l.href||"").indexOf("pcb.%s")>-1);'
-   ' const cont=(link&&(link.closest(\'[role="article"]\')||link.closest(\'div[role="dialog"]\')))||document.body;'
-   # post author: first /user/<id> link in the post container = the poster (header link)
-   # the poster has TWO /user/ links: the avatar (no text) then the name (text). Take the
-   # id from the first, the name from the first one that actually has text.
-   ' const aus=[...cont.querySelectorAll(\'a[href*="/user/"]\')]; let aId=null,aName=null;'
-   ' for(const a of aus){ if(!aId){const m=(a.href||"").match(/\\/user\\/(\\d+)/); if(m)aId=m[1];}'
-   ' const tx=((a.innerText||"").trim().replace(/\\s+/g," ")); if(tx&&!aName)aName=tx; }'
-   # video-first: a <video>/scrubber that precedes the first photo in DOM order
-   ' const nodes=[...cont.querySelectorAll(\'video,[aria-label*="Play"],a[href*="/photo/"]\')];'
-   ' let firstIsVideo=false; for(const n of nodes){ const isVid=(n.tagName==="VIDEO")||'
-   '((n.getAttribute&&(n.getAttribute("aria-label")||"").indexOf("Play")>-1)); '
-   ' const isPhoto=n.tagName==="A"; if(isVid){firstIsVideo=true;break;} if(isPhoto){break;} }'
-   ' const d=document.querySelector(\'div[role="dialog"]\')||cont;'
-   ' let txt=(d.innerText||"").replace(/(Facebook\\n?)+/g,"");'
-   ' return JSON.stringify({firstIsVideo, txt:txt.substring(0,1200), authorId:aId, authorName:aName}); })()' % POST_ID))
-text = info["txt"]
-emit("EXTRACT", {"post_id": POST_ID, "hit": hit, "video_first": info["firstIsVideo"], "chars": len(text),
-                 "author_id": info.get("authorId"), "author_name": info.get("authorName")})
+    def _clean_listing(t):
+        """A commerce listing page wraps the seller's text in UI chrome. Inference must
+        NOT see it: on 2026-07-27 'Joined in 2011' (when the SELLER joined Facebook) was
+        read as the watch's year. Keep only the block after 'Details'."""
+        body = t
+        m = re.search(r"\n\s*Details\s*\n", body)
+        if m:
+            body = body[m.end():]
+        for marker in ("Seller information", "Seller details", "Location is approximate",
+                       "Related searches", "Message Seller", "Learn more about",
+                       "Joined ", "In stock"):
+            i = body.find(marker)
+            if i > 20:                   # keep the marker only if real text precedes it
+                body = body[:i]
+        body = "\n".join(ln for ln in body.splitlines() if ln.strip()).strip(" ·\t\n")
+        return body if len(body.strip()) >= 20 else t
+
+    text = _clean_listing(info["txt"])
+    info["txt"] = text
+    hit = SOURCE_URL
+    emit("EXTRACT", {"post_id": POST_ID, "kind": "listing", "hit": hit, "images": len(images),
+                     "chars": len(text), "author_id": info.get("authorId"),
+                     "author_name": info.get("authorName")})
+
+# --- 1. open post page, gate on the post's own photo set --------------------
+if not IS_LISTING:
+  switch_tab(PHOTO_TAB)
+  goto_url(SOURCE_URL)
+  hit = None
+  for _ in range(4):                       # ~15s+ ; renders home feed first, gate on pcb.<ID>
+      time.sleep(5)
+      r = js(('(() => { let h=null; document.querySelectorAll(\'a[href*="/photo/"]\').forEach(l=>{'
+              'if((l.href||"").indexOf("pcb.%s")>-1) h=l.href.split("&__cft__")[0];}); '
+              'return JSON.stringify({hit:h}); })()') % POST_ID)
+      hit = json.loads(r).get("hit")
+      if hit: break
+  if not hit:
+      die("post %s never surfaced its pcb photo set (private/removed, or still hydrating)" % POST_ID)
+
+  # expand "See more" and read the post body text
+  js('(() => { const d=document.querySelector(\'div[role="dialog"]\')||document.body;'
+     ' d.querySelectorAll(\'div[role="button"],span\').forEach(b=>{const t=(b.innerText||"").trim();'
+     ' if(t==="See more"||t==="Vezi mai mult"){b.click();}}); return "ok"; })()')
+  time.sleep(1)
+  info = json.loads(js(
+     '(() => { const link=[...document.querySelectorAll(\'a[href*="/photo/"]\')]'
+     '.find(l=>(l.href||"").indexOf("pcb.%s")>-1);'
+     ' const cont=(link&&(link.closest(\'[role="article"]\')||link.closest(\'div[role="dialog"]\')))||document.body;'
+     # post author: first /user/<id> link in the post container = the poster (header link)
+     # the poster has TWO /user/ links: the avatar (no text) then the name (text). Take the
+     # id from the first, the name from the first one that actually has text.
+     ' const aus=[...cont.querySelectorAll(\'a[href*="/user/"]\')]; let aId=null,aName=null;'
+     ' for(const a of aus){ if(!aId){const m=(a.href||"").match(/\\/user\\/(\\d+)/); if(m)aId=m[1];}'
+     ' const tx=((a.innerText||"").trim().replace(/\\s+/g," ")); if(tx&&!aName)aName=tx; }'
+     # video-first: a <video>/scrubber that precedes the first photo in DOM order
+     ' const nodes=[...cont.querySelectorAll(\'video,[aria-label*="Play"],a[href*="/photo/"]\')];'
+     ' let firstIsVideo=false; for(const n of nodes){ const isVid=(n.tagName==="VIDEO")||'
+     '((n.getAttribute&&(n.getAttribute("aria-label")||"").indexOf("Play")>-1)); '
+     ' const isPhoto=n.tagName==="A"; if(isVid){firstIsVideo=true;break;} if(isPhoto){break;} }'
+     ' const d=document.querySelector(\'div[role="dialog"]\')||cont;'
+     ' let txt=(d.innerText||"").replace(/(Facebook\\n?)+/g,"");'
+     ' return JSON.stringify({firstIsVideo, txt:txt.substring(0,1200), authorId:aId, authorName:aName}); })()' % POST_ID))
+  text = info["txt"]
+  emit("EXTRACT", {"post_id": POST_ID, "hit": hit, "video_first": info["firstIsVideo"], "chars": len(text),
+                   "author_id": info.get("authorId"), "author_name": info.get("authorName")})
 
 # --- 1b. blocklisted sellers: never import (user directive) ------------------
 _BLOCK = {}
@@ -148,29 +224,30 @@ if info["firstIsVideo"] and OVERRIDES.get("force") is not True:
     raise SystemExit(0)
 
 # --- 3. collect images via the pcb carousel ---------------------------------
-switch_tab(PHOTO_TAB)
-goto_url(hit)
-time.sleep(8)
-COLLECT = ('(() => {var imgs=Array.from(document.querySelectorAll("img")).filter(i=>i.naturalWidth>400'
-           '&&i.getBoundingClientRect().width>50&&!i.src.includes("static.xx.fbcdn")&&!i.src.startsWith("data:"));'
-           'imgs.sort((a,b)=>b.naturalWidth-a.naturalWidth);return imgs.length?imgs[0].src:"";})()')
-NEXT = ('(() => {var b=document.querySelectorAll(\'div[aria-label="Next photo"]\');'
-        'for(var i=0;i<b.length;i++){if(b[i].getBoundingClientRect().width>0&&b[i].className.indexOf("x1qjc9v5")>-1)'
-        '{b[i].click();return "c";}}return "x";})()')
-images, seen = [], set()
-for _ in range(15):
-    s = js(COLLECT)
-    if s:
-        base = s.split("?")[0].split("/")[-1]
-        if base not in seen:
-            seen.add(base); images.append(s)
-    if js(NEXT) == "x": break
-    time.sleep(2.5 + random.random() * 2.5)
-same = js('(() => location.href.indexOf("pcb.%s")>-1?"same-set":location.href)()' % POST_ID)
-if same != "same-set":
-    die("carousel drifted off the post's photo set (%s) — images may be contaminated" % same)
-if not images:
-    die("collected 0 images for post %s" % POST_ID)
+if not IS_LISTING:
+  switch_tab(PHOTO_TAB)
+  goto_url(hit)
+  time.sleep(8)
+  COLLECT = ('(() => {var imgs=Array.from(document.querySelectorAll("img")).filter(i=>i.naturalWidth>400'
+             '&&i.getBoundingClientRect().width>50&&!i.src.includes("static.xx.fbcdn")&&!i.src.startsWith("data:"));'
+             'imgs.sort((a,b)=>b.naturalWidth-a.naturalWidth);return imgs.length?imgs[0].src:"";})()')
+  NEXT = ('(() => {var b=document.querySelectorAll(\'div[aria-label="Next photo"]\');'
+          'for(var i=0;i<b.length;i++){if(b[i].getBoundingClientRect().width>0&&b[i].className.indexOf("x1qjc9v5")>-1)'
+          '{b[i].click();return "c";}}return "x";})()')
+  images, seen = [], set()
+  for _ in range(15):
+      s = js(COLLECT)
+      if s:
+          base = s.split("?")[0].split("/")[-1]
+          if base not in seen:
+              seen.add(base); images.append(s)
+      if js(NEXT) == "x": break
+      time.sleep(2.5 + random.random() * 2.5)
+  same = js('(() => location.href.indexOf("pcb.%s")>-1?"same-set":location.href)()' % POST_ID)
+  if same != "same-set":
+      die("carousel drifted off the post's photo set (%s) — images may be contaminated" % same)
+  if not images:
+      die("collected 0 images for post %s" % POST_ID)
 
 # --- 4. infer fields (RO->enum + defaults; see fb-extract-post SKILL) --------
 low = text.lower()
@@ -239,18 +316,25 @@ if brand: data["brand"] = brand
 # Also mark where the real body starts (the brand line) so the description can drop the
 # author/timestamp preamble (which includes the aria-hidden obfuscation garbage).
 lines = text.splitlines()
-body_start = 0
-if brand:
-    bwords = set(_norm(brand).split())
+
+def derive_from_brand(bname):
+    """Locate the brand's line -> (body_start, model). The real post body starts at
+    the brand line (everything above it is the author/timestamp preamble), and the
+    model is that same line with the brand words stripped off the front."""
+    if not bname:
+        return 0, None
+    nb, bwords = _norm(bname), set(_norm(bname).split())
     for i, line in enumerate(lines):
-        if _norm(brand) in _norm(line):
-            body_start = i
+        if nb in _norm(line):
             words = line.split()
             while words and _norm(words[0]).strip(".-–·:") in bwords:
                 words.pop(0)
-            model = " ".join(words).strip(" .-–·:")
-            if model: data["model"] = model[:80]
-            break
+            mdl = " ".join(words).strip(" .-–·:")[:80]
+            return i, (mdl or None)
+    return 0, None
+
+body_start, _model = derive_from_brand(brand)
+if _model: data["model"] = _model
 
 data["images"]     = images
 # description: real body only — drop the author/timestamp preamble and trailing FB UI noise
@@ -264,39 +348,90 @@ def _build_desc(bs):
     while body and not body[-1].strip(): body.pop()     # trim trailing blank lines
     return "\n".join(body).strip()
 data["description"] = _build_desc(body_start) or text.strip()
-data["sourceUrl"]  = "https://www.facebook.com/groups/vanzareceasuri/posts/%s/" % POST_ID
+data["sourceUrl"]  = SOURCE_URL
 data["fbListingId"] = POST_ID
 if info.get("authorId"):   data["fbAuthorId"]   = info["authorId"]
 if info.get("authorName"): data["fbAuthorName"] = info["authorName"]
 data.update({k: v for k, v in OVERRIDES.items() if k != "force"})   # overrides win
-# An override-supplied brand (every NEW brand comes this way) wasn't known when body_start
-# was computed above, so the scrambled author/timestamp preamble leaked into the description.
-# Redo the strip using the final brand — unless the caller supplied their own description.
-if "description" not in OVERRIDES and data.get("brand"):
-    _nb = _norm(data["brand"]); _bs = 0
-    for _i, _ln in enumerate(lines):
-        if _nb and _nb in _norm(_ln): _bs = _i; break
-    if _bs > body_start:
+# An override-supplied brand (every NEW brand comes this way) wasn't known when the brand
+# line was located above, so BOTH the model and the description were derived from the wrong
+# offset — the model not at all, and the scrambled author/timestamp preamble leaking into the
+# description. Redo both against the final brand, without overwriting anything the caller set.
+if data.get("brand"):
+    _bs, _mdl = derive_from_brand(data["brand"])
+    if _mdl and "model" not in OVERRIDES and not data.get("model"):
+        data["model"] = _mdl
+    if "description" not in OVERRIDES and _bs > body_start:
         data["description"] = _build_desc(_bs) or data["description"]
 emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
 
+# --- 4a. confidence gate: halt for review ONLY when inference is weak --------
+# Replaces the old "always DRY_RUN first, then import" double pass, which paid
+# for a second full browser round-trip on every post including the obvious ones.
+# A confident post imports in a single pass; a doubtful one stops here, before
+# any DB write, and asks for OVERRIDES + CONFIRM=1.
+review = []
+if not data.get("brand"):                   review.append("brand not inferred")
+elif data["brand"] not in brand_ids:        review.append("NEW brand '%s' — will be created in the DB" % data["brand"])
+if not data.get("model"):                   review.append("model not inferred")
+if data.get("price") is None:               review.append("price not inferred")
+if len(images) < 2:                         review.append("only %d image(s) collected" % len(images))
+if len((data.get("description") or "").strip()) < 40:
+                                            review.append("description looks thin (%d chars)" % len((data.get("description") or "").strip()))
+if review and not CONFIRM and not DRY_RUN:
+    emit("REVIEW", {"post_id": POST_ID, "reasons": review, "images": len(images),
+                    "inferred": {k: (v if k != "images" else len(v)) for k, v in data.items()},
+                    "rerun": "POST_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../import-post.py" % POST_ID})
+    raise SystemExit(0)
+
+# Hard requirements — CONFIRM cannot wave these through, the form would reject them.
 if not data.get("brand"): die("could not infer brand; pass OVERRIDES {\"brand\":\"...\"}")
 if not data.get("model"): die("could not infer model; pass OVERRIDES {\"model\":\"...\"}")
 if data.get("price") is None: die("could not infer price; pass OVERRIDES {\"price\":N,\"currency\":\"RON|EUR\"}")
 
-# --- 4b. dedup Stage 2: same author + same brand/model = repost (new post id)
-# Author sells many different watches, so identity alone is not enough — require
-# a brand+model fingerprint match. Price is intentionally NOT required (a repost
-# with a dropped price is still a repost).
+# --- 4b. dedup Stage 2: the same watch reposted under a NEW post id ----------
+# Verified live on 2026-07-27, and the original author+brand+model rule turned out to be
+# dead code: the admin changelist renders the BRAND cell as empty text (confirmed against a
+# record whose brand id is definitely set), so `brand match AND model match` was never true.
+# A known Helfer repost sailed straight through it. Two independent lookups now, matching on
+# MODEL, with brand used only to *veto* — plus a REVIEW when the evidence is weak, so a
+# generic model name can neither silently skip a new watch nor silently import a duplicate.
 author_id = data.get("fbAuthorId")
+my_model, my_brand = _norm(data.get("model")), _norm(data.get("brand"))
+
+def _distinctive(m):
+    """Distinctive enough that an exact match means 'same watch', not 'same word'."""
+    return len(m) >= 8 and (any(c.isdigit() for c in m) or len(m.split()) >= 2)
+
+hits = []
 if author_id:
-    for row in admin_rows(author_id, ADMIN_TAB):
-        if _norm(row.get("brand")) == _norm(data["brand"]) and _norm(row.get("model")) == _norm(data["model"]):
-            emit("SKIP", {"post_id": POST_ID, "reason": "repost (author+brand+model match)",
-                          "author_id": author_id, "author_name": data.get("fbAuthorName"),
-                          "match": {"brand": data["brand"], "model": data["model"],
-                                    "existing_fb_id": row.get("fbid")}})
-            raise SystemExit(0)
+    hits += [(r, "author") for r in admin_rows(author_id, ADMIN_TAB)]
+if data.get("model"):
+    import urllib.parse
+    hits += [(r, "model") for r in admin_rows(urllib.parse.quote(data["model"]), ADMIN_TAB)]
+
+for row, via in hits:
+    if _norm(row.get("model")) != my_model or not my_model:
+        continue
+    row_brand = _norm(row.get("brand"))
+    if row_brand and row_brand != my_brand:
+        continue                       # genuinely a different brand — not a repost
+    if row.get("fbid") == POST_ID:
+        continue                       # that's this very post
+    strong = (via == "author") or _distinctive(my_model)
+    detail = {"post_id": POST_ID, "author_id": author_id, "author_name": data.get("fbAuthorName"),
+              "matched_via": via, "brand_confirmed": bool(row_brand),
+              "match": {"brand": data.get("brand"), "model": data.get("model"),
+                        "existing_fb_id": row.get("fbid")}}
+    if strong:
+        emit("SKIP", dict(detail, reason="repost (%s match)" % ("author+model" if via == "author" else "model")))
+        raise SystemExit(0)
+    if not CONFIRM:
+        emit("REVIEW", dict(detail, reasons=["possible repost: model '%s' already on the site, "
+                                             "but the name is generic and the brand could not be "
+                                             "confirmed — check, then CONFIRM=1 to import anyway"
+                                             % data.get("model")]))
+        raise SystemExit(0)
 
 # --- 5. ensure brand exists (create + flag if new) --------------------------
 new_brand_id = None

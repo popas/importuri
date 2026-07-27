@@ -66,7 +66,8 @@ detection surface is the **rate and shape of traffic**, not mouse realism:
 - little or no dwell time between actions,
 - request volume against the feed/GraphQL endpoints.
 Lever accordingly: **fewer page loads, more extracted per load, real dwell between them.**
-(`fb-find-posts` harvests a whole feed read as one batch for exactly this reason.)
+(`find-posts.py` harvests a whole feed sweep in one run for exactly this reason — one
+navigation per session instead of one per watch.)
 
 **Session trust is what carries us — protect it.** Attaching to the user's own logged-in
 Chrome supplies the signals that actually matter: aged cookies, a residential IP, a real
@@ -81,10 +82,11 @@ like the datacenter bot the detection is built to catch.
 3. Nothing new after two paced attempts → stop and report "group exhausted / throttled for
    now." More retries deepen the throttle.
 
-**Before you stop, spend your cached post IDs.** A throttled *feed* does not block individual
-post pages: on 2026-07-17c the feed went sparse at 4/5 watches, and the 5th came from an ID
-cached earlier in the session, opened directly via `posts/<ID>/`. Exhaust cached IDs
-(dedup-check → `fb-extract-post` Method C) before reporting exhaustion — and say which one
+**Before you stop, spend the candidates you already have.** A throttled *feed* does not block
+individual post pages: on 2026-07-17c the feed went sparse at 4/5 watches, and the 5th came
+from an ID cached earlier in the session, opened directly via `posts/<ID>/`. Work
+`harness/3ceasuri-import/.candidates.json` to the end (each id still imports normally via
+`import-post.py`) before reporting exhaustion — and say which one
 you hit, "feed throttled" and "no qualifying posts left" are different outcomes for the user.
 
 **Do NOT forge detection signals.** FB's server-side checks include User-Agent validation,
