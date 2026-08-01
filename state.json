@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-07-27",
-  "target": 2,
-  "session_imported": 1,
+  "session_date": "2026-07-30",
+  "target": 5,
+  "session_imported": 5,
   "session_skipped": 1,
   "status": "idle",
-  "note": "2026-07-27 live test: imported Ralmor via new LISTING_ID path (brand 48); fixed Stage-2 dedup (was dead code — admin brand column renders empty), verified on Helfer repost; find-posts.py filter fixes (plural wall clocks, bulk price ranges, phone-digit price bug, cm furniture)."
+  "note": "2026-07-30 session: 5 imported (Citizen Promaster, Timex Indiglo, Seksy bangle, Sekonda/Slava 2428, Edox Delfin), 1 skipped (earrings). New brands Timex(49), Seksy(50), Edox(51). Admin total 90 before the last 2 imports. Note: model inference returns whole sentences on long RO posts - fixed by hand on 2 records."
 }
