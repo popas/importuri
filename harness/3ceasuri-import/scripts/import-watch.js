@@ -228,6 +228,7 @@ async function importWatch(data) {
   set('id_currency', data.currency);
   set('id_description', professionalDesc);
   set('id_source_url', data.sourceUrl);
+  set('id_video_url', data.videoUrl);
   set('id_facebook_listing_id', data.fbListingId);
   set('id_facebook_author_id', data.fbAuthorId);
   set('id_facebook_author_name', data.fbAuthorName);
@@ -237,7 +238,7 @@ async function importWatch(data) {
     data.diameter&&'diameter', data.caseMat&&'case', data.braceletMat&&'bracelet',
     data.gender&&'gender', data.style&&'style', data.year&&'year', data.waterRes&&'WR', data.displayMat&&'glass',
     data.reference&&'ref', data.phone&&'phone', data.seller&&'seller', data.location&&'location',
-    data.fbAuthorId&&'author'
+    data.fbAuthorId&&'author', data.videoUrl&&'video'
   ].filter(Boolean);
   L('FIELDS: model,price,cond,movement' + (optionalFields.length ? ', ' + optionalFields.join(',') : ''));
 

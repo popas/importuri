@@ -31,7 +31,7 @@
 #
 # WHAT THIS SCRIPT DECIDES vs WHAT YOU DECIDE
 #   It applies only *objective* filters — ones a regex can get right every time:
-#   video-first ads, blocklisted sellers, missing price, price under the floor,
+#   blocklisted sellers, missing price, price under the floor,
 #   explicit replica wording, wall clocks, already-imported ids. Everything
 #   requiring judgement (is this really a watch? a bulk lot? a real brand+model?)
 #   stays with you: read the emitted snippets and pick. Dropped posts are
@@ -231,8 +231,9 @@ def consider(it):
         return
     seen_ids.add(key)
     txt = it.get("txt") or ""
-    if it.get("vf"):
-        drop("video_first", it); return
+    # video-first is NOT a rejection any more (user directive 2026-08-04): a clip is
+    # just another asset, saved to Watch.video_url. Such a post still needs a pcb.<id>
+    # photo link to be importable, and `key` above already enforces that.
     if it.get("au") and it["au"] in BLOCK:
         drop("blocklisted_seller", it); return
     if REPLICA.search(txt):
@@ -250,7 +251,7 @@ def consider(it):
     candidates[key] = {"id": it.get("id") or it.get("lid"),
                        "kind": "post" if it.get("id") else "listing",
                        "price": amt, "cur": cur, "brand": b,
-                       "new_brand": b is None,
+                       "new_brand": b is None, "video": bool(it.get("vf")),
                        "author": it.get("au"), "text": txt}
 
 def sweep(pr):
@@ -340,7 +341,8 @@ except Exception as e:
     notes.append("could not write %s: %s" % (OUT, e))
 
 emit("CANDIDATES", [{"id": c["id"], "kind": c["kind"], "price": c["price"], "cur": c["cur"],
-                     "brand": c["brand"], "new_brand": c["new_brand"], "author": c["author"],
+                     "brand": c["brand"], "new_brand": c["new_brand"], "video": c["video"],
+                     "author": c["author"],
                      "snip": re.sub(r"\s+", " ", c["text"])[:SNIPPET]}
                     for c in ordered])
 if DEBUG_DROPS:

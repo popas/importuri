@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-07-30",
+  "session_date": "2026-08-04",
   "target": 5,
-  "session_imported": 5,
-  "session_skipped": 1,
-  "status": "idle",
-  "note": "2026-07-30 session: 5 imported (Citizen Promaster, Timex Indiglo, Seksy bangle, Sekonda/Slava 2428, Edox Delfin), 1 skipped (earrings). New brands Timex(49), Seksy(50), Edox(51). Admin total 90 before the last 2 imports. Note: model inference returns whole sentences on long RO posts - fixed by hand on 2 records."
+  "session_imported": 0,
+  "session_skipped": 0,
+  "status": "running",
+  "note": "2026-08-04 session: target 5 new watches; previous session (2026-08-03) ended with status=running and an empty candidates file, so fresh discovery is required."
 }

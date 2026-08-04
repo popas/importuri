@@ -107,8 +107,14 @@ fails = []
 def check(cond, msg):
     if not cond: fails.append(msg)
 
-check(got == {"111", "1010", "1212"}, "expected {111,1010,1212} survivors, got %s" % sorted(got))
-check(stats["dropped"].get("video_first") == 1, "video_first not dropped")
+by_all = lambda i: next((c for c in cands if c["id"] == i), {})
+
+check(got == {"111", "222", "1010", "1212"}, "expected {111,222,1010,1212} survivors, got %s" % sorted(got))
+# video-first is a candidate now (user directive 2026-08-04): the clip goes to
+# Watch.video_url instead of costing us the listing.
+check(stats["dropped"].get("video_first") is None, "video_first must no longer be a drop reason")
+check(by_all("222").get("video") is True, "video-first candidate must be flagged video:true")
+check(by_all("111").get("video") is False, "photo-only candidate must be flagged video:false")
 check(stats["dropped"].get("blocklisted_seller") == 1, "blocklisted seller not dropped")
 check(stats["dropped"].get("replica") == 1, "replica not dropped")
 check(stats["dropped"].get("not_wristwatch") == 2, "wall clocks not dropped (singular AND plural)")
@@ -128,7 +134,7 @@ check(all(len(c["snip"]) <= 180 for c in cands), "snippet exceeds SNIPPET cap")
 check(len(out) < 1800, "emitted output too large: %d bytes" % len(out))
 
 saved = json.load(open("/tmp/claude-501/cand-test.json"))
-check(len(saved["candidates"]) == 3, "candidates file should hold 3 records")
+check(len(saved["candidates"]) == 4, "candidates file should hold 4 records")
 check(all("text" in c for c in saved["candidates"]), "candidates file must keep FULL text for resumption")
 
 print("emitted bytes:", len(out))

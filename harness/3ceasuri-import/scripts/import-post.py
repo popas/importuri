@@ -4,7 +4,7 @@
 #
 # Runs the entire per-watch flow in a single browser-use process, replacing the
 # ~8 hand-orchestrated calls of the find/extract/import/verify skills:
-#   post page -> gate on pcb.<ID> -> SKIP if video-first (ad) -> carousel images
+#   post page -> gate on pcb.<ID> -> capture video permalink (if any) -> carousel images
 #   -> infer fields (RO->enum + defaults, plating rule) -> ensure brand
 #   -> inject harness -> importWatch() -> verify banners -> read back the record.
 #
@@ -199,11 +199,20 @@ if not IS_LISTING:
      ' let firstIsVideo=false; for(const n of nodes){ const isVid=(n.tagName==="VIDEO")||'
      '((n.getAttribute&&(n.getAttribute("aria-label")||"").indexOf("Play")>-1)); '
      ' const isPhoto=n.tagName==="A"; if(isVid){firstIsVideo=true;break;} if(isPhoto){break;} }'
+     # video permalink: FB serves the clip itself from a blob: MSE url, which is
+     # worthless once the tab closes — the durable reference is the /videos/, /reel/
+     # or /watch/?v= link FB renders alongside it. Only accept an http(s) <video src>.
+     ' let vurl=null;'
+     ' const vl=[...cont.querySelectorAll(\'a[href*="/videos/"],a[href*="/reel/"],a[href*="/watch/?v="]\')];'
+     ' if(vl.length) vurl=vl[0].href.split("?")[0].indexOf("/watch")>-1 ? vl[0].href : vl[0].href.split("?")[0];'
+     ' if(!vurl){ const v=cont.querySelector("video[src]"); '
+     ' if(v&&/^https?:/.test(v.getAttribute("src")||"")) vurl=v.getAttribute("src"); }'
      ' const d=document.querySelector(\'div[role="dialog"]\')||cont;'
      ' let txt=(d.innerText||"").replace(/(Facebook\\n?)+/g,"");'
-     ' return JSON.stringify({firstIsVideo, txt:txt.substring(0,1200), authorId:aId, authorName:aName}); })()' % POST_ID))
+     ' return JSON.stringify({firstIsVideo, videoUrl:vurl, txt:txt.substring(0,1200), authorId:aId, authorName:aName}); })()' % POST_ID))
   text = info["txt"]
-  emit("EXTRACT", {"post_id": POST_ID, "hit": hit, "video_first": info["firstIsVideo"], "chars": len(text),
+  emit("EXTRACT", {"post_id": POST_ID, "hit": hit, "video_first": info["firstIsVideo"],
+                   "video_url": info.get("videoUrl"), "chars": len(text),
                    "author_id": info.get("authorId"), "author_name": info.get("authorName")})
 
 # --- 1b. blocklisted sellers: never import (user directive) ------------------
@@ -218,10 +227,14 @@ if info.get("authorId") and info["authorId"] in _BLOCK:
                   "author_id": info["authorId"], "author_name": _BLOCK.get(info["authorId"])})
     raise SystemExit(0)
 
-# --- 2. skip video-first posts (ad heuristic) -------------------------------
-if info["firstIsVideo"] and OVERRIDES.get("force") is not True:
-    emit("SKIP", {"post_id": POST_ID, "reason": "video-first post (ad); pass OVERRIDES {\"force\":true} to import anyway"})
-    raise SystemExit(0)
+# --- 2. video posts are imported, not skipped (user directive 2026-08-04) ----
+# The clip is saved to Watch.video_url; the photos still come from the pcb carousel
+# below, and a post with no usable photos is caught by the <2-images review gate.
+VIDEO_URL = OVERRIDES.get("videoUrl") or info.get("videoUrl")
+if info["firstIsVideo"]:
+    emit("VIDEO", {"post_id": POST_ID, "video_url": VIDEO_URL,
+                   "note": "video-first post; importing with video_url" if VIDEO_URL
+                           else "video-first post but no durable video permalink found"})
 
 # --- 3. collect images via the pcb carousel ---------------------------------
 if not IS_LISTING:
@@ -358,6 +371,7 @@ def _build_desc(bs):
 data["description"] = _build_desc(body_start) or text.strip()
 data["sourceUrl"]  = SOURCE_URL
 data["fbListingId"] = POST_ID
+if VIDEO_URL: data["videoUrl"] = VIDEO_URL
 if info.get("authorId"):   data["fbAuthorId"]   = info["authorId"]
 if info.get("authorName"): data["fbAuthorName"] = info["authorName"]
 data.update({k: v for k, v in OVERRIDES.items() if k != "force"})   # overrides win
@@ -505,6 +519,7 @@ if chg.get("url"):
         'const imgs=document.querySelectorAll(\'.field-image img,[id*="images-group"] img,img[src*="/media/"]\').length;'
         'return JSON.stringify({brandId:g("id_brand"),price:g("id_price"),currency:g("id_currency"),'
         'ref:g("id_reference_number"),diameter:g("id_case_diameter_mm"),fbId:g("id_facebook_listing_id"),'
+        'videoUrl:g("id_video_url"),'
         'authorId:g("id_facebook_author_id"),authorName:g("id_facebook_author_name"),imgs});})()'))
 
 # The "added successfully" banner is flaky on multi-image saves; a readback that found the
@@ -516,4 +531,5 @@ emit("RESULT", {"post_id": POST_ID, "ok": bool(ok), "banners": banners, "readbac
                 "new_brand": ({"name": data["brand"], "id": new_brand_id} if new_brand_id else None),
                 "state_entry": {"id": POST_ID, "brand": data["brand"], "model": data["model"],
                                 "price": data["price"], "currency": data["currency"], "images": len(images),
+                                "video_url": data.get("videoUrl"),
                                 "author_id": data.get("fbAuthorId"), "author_name": data.get("fbAuthorName")}})

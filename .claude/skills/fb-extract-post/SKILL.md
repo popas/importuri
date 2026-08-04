@@ -33,7 +33,8 @@ POST_ID=<id> CONFIRM=1 OVERRIDES='{"model":"Bambino Automatic","caseMat":"steel"
 
 Override keys are the `importWatch` field names: `brand model price currency condition movement
 type diameter caseMat braceletMat displayMat waterRes year reference phone location seller
-description priceNote`. Plus `force: true` to import a video-first post the script would skip.
+description priceNote videoUrl`. Video-first posts import normally now; pass `videoUrl` only to
+correct a clip permalink the script could not read off the post.
 
 **Judgement to apply when reviewing `INFER:` output** — the script is deliberately conservative,
 so check these rather than assume:

@@ -9,7 +9,7 @@ ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
 SRC = os.path.join(ROOT, "harness/3ceasuri-import/scripts/import-post.py")
 
 
-def run(post_text, n_images=5, env=None, admin_rows_for=None):
+def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None):
     """Execute import-post.py against a canned post; return (markers, trace)."""
     state = {"url": "", "img": 0, "brand_tab_opened": False, "imported": None}
     admin_rows_for = admin_rows_for or (lambda q: [])
@@ -37,7 +37,7 @@ def run(post_text, n_images=5, env=None, admin_rows_for=None):
         if "See more" in e:
             return "ok"
         if "firstIsVideo" in e:
-            return json.dumps({"firstIsVideo": False, "txt": post_text,
+            return json.dumps({"firstIsVideo": bool(video), "videoUrl": video, "txt": post_text,
                                "authorId": "100055", "authorName": "Ion Popescu"})
         if "naturalWidth>400" in e:
             state["img"] += 1
@@ -156,6 +156,16 @@ def rows(q):
 m, st = run(GOOD, admin_rows_for=rows)
 check(m.get("SKIP", {}).get("reason", "").startswith("repost"), "G: stage-2 repost dedup broken: %s" % m.get("SKIP"))
 check(st["imported"] is None, "G: repost must not import")
+
+# --- H. video-first post imports (user directive 2026-08-04) and carries video_url
+VURL = "https://www.facebook.com/reel/123456789"
+m, st = run(GOOD, video=VURL)
+check("SKIP" not in m, "H: video-first post must no longer be skipped, got %s" % m.get("SKIP"))
+check(m.get("VIDEO", {}).get("video_url") == VURL, "H: VIDEO marker missing the url: %s" % m.get("VIDEO"))
+check(m["INFER"].get("videoUrl") == VURL, "H: videoUrl not in the inferred payload")
+check(VURL in (st["imported"] or ""), "H: videoUrl not passed to importWatch")
+check(m.get("RESULT", {}).get("ok") is True, "H: video post should import ok")
+check(m["RESULT"]["state_entry"].get("video_url") == VURL, "H: state_entry must carry video_url")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

@@ -19,7 +19,7 @@ dedup on every candidate**, writes the full records to
 `harness/3ceasuri-import/.candidates.json`, and prints two lines:
 
 ```
-CANDIDATES: [{"id","kind","price","cur","brand","new_brand","author","snip"}, …]
+CANDIDATES: [{"id","kind","price","cur","brand","new_brand","video","author","snip"}, …]
 STATS: {"candidates","seen","scrolls","dropped":{…},"admin_total","notes"}
 ```
 
@@ -27,7 +27,7 @@ Rejects are reported as **counts**, not entries — a feed full of ads costs you
 
 ## What the script decides vs what YOU decide
 
-It applies only filters a regex gets right every time: video-first ads, blocklisted sellers,
+It applies only filters a regex gets right every time: blocklisted sellers,
 missing price, price under the floor (100 RON / 20 EUR), explicit replica wording, wall clocks,
 and already-imported post ids.
 
@@ -38,6 +38,11 @@ and already-imported post ids.
 - missing a real brand **or** model in the body text
 - Vinted invite links, promoted ads, group-admin announcements
 - cars, parts, straps, or anything that isn't the watch itself
+
+`video: true` marks a post whose first media is a clip. Since 2026-08-04 these are **imported,
+not dropped** — `import-post.py` saves the video permalink to `Watch.video_url` and still takes
+the photos from the carousel. Judge them like any other candidate; a clip-only post with no
+usable photos is caught later by the <2-images review gate.
 
 `brand: null` / `new_brand: true` means no known brand matched — usually a genuinely new brand
 (fine, the importer will flag it), sometimes a sign the post isn't a watch at all. Judge from
