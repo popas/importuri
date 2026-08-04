@@ -42,7 +42,7 @@
 # (BRAND_IDS in import-watch.js + references/brand-ids.md) must still be updated
 # by hand afterwards — watch for the NEW_BRAND: line and sync + commit.
 # =============================================================================
-import os, re, json, time, random, sys
+import os, re, json, time, random, sys, base64
 
 PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
 # This file is piped to browser-use on stdin, so there is no __file__ to hang a
@@ -433,9 +433,33 @@ if not OVERRIDES and not SKIP_PROMPT and not DRY_RUN:
     # The photos ship with the contract: `model`, `gender`, materials and dial colour
     # are visible far more often than they are written, and the ad naming no model at
     # all is the normal case, not the exception.
+    #
+    # They are saved to disk rather than handed over as URLs. FB CDN links are signed
+    # and expire inside the session, so a contract answered a few minutes later would
+    # point at dead images. Fetching happens in the page context — the same way the
+    # harness pulls these URLs at import time — because a bare GET from this process
+    # does not carry the browser's session.
+    photo_dir = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/.photos", str(POST_ID))
+    os.makedirs(photo_dir, exist_ok=True)
+    photos, failed = [], 0
+    for _i, _url in enumerate(images, 1):
+        try:
+            _b64 = js("(async () => { const r = await fetch(%s); const b = await r.blob();"
+                      " return await new Promise(res => { const fr = new FileReader();"
+                      " fr.onloadend = () => res(String(fr.result).split(',')[1]);"
+                      " fr.readAsDataURL(b); }); })()" % json.dumps(_url))
+            if not _b64 or len(_b64) < 500:
+                failed += 1
+                continue
+            _path = os.path.join(photo_dir, "%02d.jpg" % _i)
+            with open(_path, "wb") as _f:
+                _f.write(base64.b64decode(_b64))
+            photos.append(_path)
+        except Exception:
+            failed += 1
     emit("EXTRACT_PROMPT", {"post_id": POST_ID,
                             "prompt": infer_fields.build_prompt(text, brand_ids.keys()),
-                            "images": images,
+                            "photos": photos, "photos_failed": failed,
                             "rerun": "POST_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../import-post.py" % POST_ID})
     raise SystemExit(0)
 

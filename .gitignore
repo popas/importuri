@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 harness/3ceasuri-import/.candidates.json
+
+# per-post photos saved for the extraction contract (regenerated per run)
+.photos/

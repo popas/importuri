@@ -67,6 +67,8 @@ movement, material, or year because it is "usually" that.
   handset, bracelet and caseback identify most watches: a Fossil ladies' watch with a
   crystal bezel, Roman numerals and a 4:30 date is a "Jacqueline". Read the caseback
   if a photo shows it — that is where the reference lives.
+  The photos are saved to disk and their paths are in `EXTRACT_PROMPT.photos` — read
+  them from there, never from a Facebook URL (those are signed and expire mid-session).
   Read ONE photo by default — the dial answers the model question on its own. Open a
   second only when you actually need the caseback (for `reference`). Reading all four
   "to be safe" is the expensive habit, not the reading itself; see references/post-extraction.md.

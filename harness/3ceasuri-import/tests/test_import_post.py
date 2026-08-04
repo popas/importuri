@@ -19,6 +19,11 @@ def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None):
         # the whole of import-watch.js / the watch JSON, which contain strings like
         # "imagini salvate" and "naturalWidth" — so match those two FIRST or a later
         # branch will swallow them.
+        # The photo fetch is an (async ...) expression AND uses FileReader, both of
+        # which collide with earlier branches (importWatch / the injected harness).
+        # Match on a string unique to it.
+        if "String(fr.result)" in e:                                       # photo fetch -> base64
+            return "A" * 800
         if "createElement('script')" in e:                                 # harness injection
             return "OK"
         if e.startswith("(async"):                                         # importWatch call
@@ -189,7 +194,11 @@ check("one of automatic | manual | quartz | smart" in prompt, "J: movement enum 
 check("LOOK AT THE PHOTOS" in prompt, "J: photo-identification rule missing")
 check("Never a filler noun" in prompt, "J: filler-model ban missing")
 check("Never derive a reference from the design" in prompt, "J: reference guard missing")
-check(len(m["EXTRACT_PROMPT"]["images"]) == 5, "J: photos must ship with the contract, got %r" % len(m["EXTRACT_PROMPT"].get("images", [])))
+saved = m["EXTRACT_PROMPT"]["photos"]
+check(len(saved) == 5, "J: photos must ship with the contract, got %r" % len(saved))
+check(m["EXTRACT_PROMPT"]["photos_failed"] == 0, "J: photo saving reported failures")
+check(all(not p.startswith("http") for p in saved), "J: contract must hand over local paths, not URLs")
+check(all(os.path.exists(p) and os.path.getsize(p) > 0 for p in saved), "J: photos not actually written to disk")
 
 # --- K. filled contract imports in the second pass; OVERRIDES are the values used
 # A contract answer is complete: authoritative-about-silence means anything left
