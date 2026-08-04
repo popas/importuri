@@ -179,3 +179,51 @@ a specific claim.
   Cross-post contamination is silent and survives into the import.
 - `document.title` is blocked for values containing signed query params — read `img.src`.
 - Timestamp links do NOT open dialogs in the CDP browser; clicking an author name navigates.
+
+## Identifying the watch from its photos (2026-08-04)
+
+The ad naming no model is the normal case, not the exception — 3 of 7 imports on
+2026-08-04. The photos answer it: a Fossil ladies' watch with a crystal bezel, Roman
+numerals and a 4:30 date is a **Jacqueline**, and that listing's text said only "Ceas
+Fossil original". Gender, style, case/bracelet material and dial colour come free from
+the same photo, and the text almost never states them.
+
+`EXTRACT_PROMPT.images` carries the URLs. They are FB CDN signed URLs — they expire
+within the session, so fetch them during the run, not later.
+
+### How many photos to read
+
+**One, by default — the dial.** Open a second only when you need the caseback for a
+`reference`. Measured on the Fossil listing (1999212757387077):
+
+| | |
+|---|---|
+| What FB serves | 720×960 (0.69 MP) |
+| Tokens per photo (≈ w×h/750) | ~920 |
+| Cost per photo (Opus 5 input, $5/MTok) | ~$0.005 |
+| One photo vs. the whole ad's text (~150 tok) | ~6× |
+| All four photos of one watch | ~3,700 tok ≈ $0.018 |
+
+Three things that matter more than that number:
+
+- **Don't add downscaling.** The model's cap is 2576 px on the long edge (~4,784 tokens
+  per image); FB already serves ~720×960, so we sit at the cheap end for free. Resizing
+  would complicate the script and save nothing.
+- **The real cost is carrying photos in context, not reading them.** An image stays in
+  the context window and is re-sent on every later turn of that conversation. Four
+  photos read early in a long session multiply across every step after. This is exactly
+  what the one-fresh-context-per-watch rule protects against — keep `/clear`ing between
+  watches and the photos are paid for once.
+- **It is cheaper than being wrong.** A wrong model means a correction pass: another
+  browser-use call, admin navigation, and the reasoning around it — thousands of
+  transcript tokens. One 920-token photo prevents that.
+
+### What a photo may NOT establish
+
+A design match identifies a model *family*, not the exact variant — Jacqueline ships
+under several references. **Never write a `reference` from a design match**; it may only
+come from text actually read (the ad, or a legible caseback/papers photo). A wrong
+reference on a public listing is worse than an empty field.
+
+A model identified this way is our classification, not the seller's claim: put it in
+`model`, note it in `notes`, and leave their `description` as they wrote it.

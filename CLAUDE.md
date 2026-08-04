@@ -19,8 +19,9 @@ for the current phase.
      connects browser-use, opens tabs, reads session state, asks the user for a target)
    - `fb-find-posts` — once per session; runs `find-posts.py` and returns candidates
    - `admin-import-watch` → `import-verify-state` — per watch, in a FRESH context each
-     (`/clear` between watches; `import-post.py` does dedup+extract+import+verify in
-     one call). `fb-extract-post` is now a fallback, not a routine step.
+     (`/clear` between watches). `import-post.py` runs TWO passes: pass 1 emits the
+     extraction contract + photos and writes nothing, you fill it, pass 2 imports with
+     `CONFIRM=1 OVERRIDES=…`. `fb-extract-post` is a fallback, not a routine step.
    - `watch-troubleshooting` — only when something fails
 
 Do not load the whole runbook or multiple skills at once — each skill is
@@ -43,13 +44,13 @@ harness/                           ← shared assets (NOT skills — no SKILL.md
   3ceasuri-import/
     scripts/import-watch.js        ← THE HARNESS (authoritative, v5) — injected into admin
     scripts/find-posts.py          ← whole-feed discovery in ONE browser-use call
-    scripts/import-post.py         ← whole per-watch flow in ONE browser-use call
+    scripts/import-post.py         ← per-watch flow; TWO passes (contract out, filled back)
     scripts/infer_fields.py        ← the extraction contract: DB enums + the prompt + a validator
                                      (NO API call — the agent in the loop fills it via OVERRIDES)
     .candidates.json               ← discovery output; lets a /clear'd context resume
     references/brand-ids.md        ← brand→ID mapping source of truth
     references/feed-dom.md         ← discovery DOM lore — read ONLY when find fails
-    references/post-extraction.md  ← extraction/carousel lore — read ONLY when import fails
+    references/post-extraction.md  ← extraction/carousel lore + photo-identification policy
     references/seller-blocklist.json ← authors never to import
     tests/                         ← offline stubs: python3 tests/test_*.py (no browser)
   browser-use/references/          ← historical session logs / deep references
@@ -60,13 +61,15 @@ Skills live ONLY in `.claude/skills/` (each a `SKILL.md`, invoked with the Skill
 
 The two `.py` scripts are **browser-use payloads**: pipe them on stdin
 (`POST_ID=… browser-use < import-post.py`), never `python3 script.py`. They print
-parseable marker lines (`CANDIDATES: STATS: EXTRACT: INFER: REVIEW: RESULT: …`) and keep
+parseable marker lines (`CANDIDATES: STATS: EXTRACT: EXTRACT_PROMPT: INFER: REVIEW: RESULT: …`) and keep
 everything else inside their own process — that is the whole point, so don't reimplement
 their steps as individual `js()` calls.
 
-Data flows one direction per watch: **candidate id → import-post.py (dedup → extract →
-infer → inject harness → `importWatch({...})` → two green banners → readback) → append
-`history.jsonl`.**
+Data flows one direction per watch: **candidate id → pass 1 (dedup → extract →
+`EXTRACT_PROMPT` + photos, no DB write) → you fill the contract → pass 2 (`CONFIRM=1
+OVERRIDES=…` → validate → inject harness → `importWatch({...})` → two green banners →
+readback) → append `history.jsonl`.** A contract field you omit is cleared, not
+defaulted — answer it in full.
 
 **Ground truth for "is this imported / how many are there" is the 3ceasuri.ro admin**,
 never a local file. The old `state.json` counter drifted to 33 while the site held 80+.

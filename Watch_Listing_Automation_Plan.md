@@ -18,9 +18,13 @@ DISCOVER (once per session, NOT per watch)
 
 PER WATCH (repeat until target reached — ONE FRESH CONTEXT EACH)
   ├── take the next id from .candidates.json
-  ├── invoke `admin-import-watch` → POST_ID=<id> browser-use < import-post.py
-  │     (dedup → extract → infer → import → verify → readback, one call)
-  │     on REVIEW: fix with OVERRIDES and re-run with CONFIRM=1
+  ├── invoke `admin-import-watch` → TWO passes, because YOU do the inference:
+  │     pass 1: POST_ID=<id> browser-use < import-post.py
+  │             (dedup → extract → EXTRACT_PROMPT + photos → writes NOTHING)
+  │     you:    read the contract AND one photo, fill every field
+  │     pass 2: POST_ID=<id> CONFIRM=1 OVERRIDES='{…}' browser-use < import-post.py
+  │             (validate → import → verify → readback)
+  │     a field you leave out is CLEARED, so answer in full
   ├── invoke `import-verify-state` → append to history.jsonl, bump session counters
   └── /clear, then next id
 ```

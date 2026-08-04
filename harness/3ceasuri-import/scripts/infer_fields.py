@@ -67,6 +67,9 @@ movement, material, or year because it is "usually" that.
   handset, bracelet and caseback identify most watches: a Fossil ladies' watch with a
   crystal bezel, Roman numerals and a 4:30 date is a "Jacqueline". Read the caseback
   if a photo shows it — that is where the reference lives.
+  Read ONE photo by default — the dial answers the model question on its own. Open a
+  second only when you actually need the caseback (for `reference`). Reading all four
+  "to be safe" is the expensive habit, not the reading itself; see references/post-extraction.md.
   Still nothing identifiable? Use the defining trait, short and factual:
   "Automatic 21 Jewels", "Vintage anii 1970-1980".
   **Never a filler noun.** "Original", "Clasic", "Ceas", "Dama" are not models — if
