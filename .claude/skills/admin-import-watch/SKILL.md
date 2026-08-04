@@ -52,6 +52,14 @@ POST_ID=<id> CONFIRM=1 OVERRIDES='{…}' browser-use < .../import-post.py   # pa
 DB enum value, the rules that exist because they were broken before, and the post text. **Read
 it and answer it** — fill the JSON, pass it as `OVERRIDES`, re-run with `CONFIRM=1`.
 
+**A filled contract is authoritative about silence too.** Any contract field you leave out is
+**cleared**, not left to the regex guess — the Tissot listing never stated a case material and
+the regex still proposed `steel`. So answer the contract in full: a field you omit is you saying
+the post does not state it. `price`, `brand`, and `model` are hard requirements, so omitting
+those fails the run rather than importing something half-empty. A **targeted** `OVERRIDES` fix
+(one without `is_wristwatch`) still merges over the baseline the old way — that is the signal
+that distinguishes the two, since the contract requires `is_wristwatch` and never allows null.
+
 Two contract-only fields never reach the form: `is_wristwatch: false` and `is_bulk_lot: true`
 each stop the import (`CONFIRM=1` overrides). `OVERRIDES` are validated against the enums first,
 so an illegal value (`movement: "mecanic"`, a decade in `year`) fails loudly instead of being

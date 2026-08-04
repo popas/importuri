@@ -379,12 +379,24 @@ data["fbListingId"] = POST_ID
 if VIDEO_URL: data["videoUrl"] = VIDEO_URL
 if info.get("authorId"):   data["fbAuthorId"]   = info["authorId"]
 if info.get("authorName"): data["fbAuthorName"] = info["authorName"]
+# A filled contract is AUTHORITATIVE, including about what the post does NOT say: a
+# contract field the answer left out is cleared, instead of keeping the regex guess.
+# That guess is not harmless — the Tissot listing (1038189799074673) never states a
+# case material and the regex still proposed `steel`.
+# `is_wristwatch` is required by the contract and never null, so its presence is what
+# distinguishes a full answer from a targeted OVERRIDES fix, which still merges.
+IS_CONTRACT = "is_wristwatch" in OVERRIDES
+if IS_CONTRACT:
+    for _f in infer_fields.SCHEMA_FIELDS:
+        if _f not in OVERRIDES:
+            data.pop(_f, None)
 data.update({k: v for k, v in OVERRIDES.items() if k != "force"})   # overrides win
 # An override-supplied brand (every NEW brand comes this way) wasn't known when the brand
 # line was located above, so BOTH the model and the description were derived from the wrong
 # offset — the model not at all, and the scrambled author/timestamp preamble leaking into the
 # description. Redo both against the final brand, without overwriting anything the caller set.
-if data.get("brand"):
+# Skipped for a contract answer: re-deriving would put back exactly what it just cleared.
+if data.get("brand") and not IS_CONTRACT:
     _bs, _mdl = derive_from_brand(data["brand"])
     if _mdl and "model" not in OVERRIDES and not data.get("model"):
         data["model"] = _mdl

@@ -188,8 +188,13 @@ check("`reference`" in prompt and "T125.617.17.051.03" in prompt, "J: reference 
 check("one of automatic | manual | quartz | smart" in prompt, "J: movement enum missing from the contract")
 
 # --- K. filled contract imports in the second pass; OVERRIDES are the values used
+# A contract answer is complete: authoritative-about-silence means anything left
+# out is cleared, so price/description must be in it or the import dies on the
+# hard requirements — which is the point.
 FILLED = {"brand": "Doxa", "model": "Sub 300T", "reference": "T125.617.17.051.03",
-          "movement": "automatic", "is_wristwatch": True, "is_bulk_lot": False}
+          "movement": "automatic", "price": 1200, "currency": "RON",
+          "description": "Doxa Sub 300T, stare excelenta, functioneaza perfect, tinut in cutie.\nCurea de piele originala, sticla safir.",
+          "is_wristwatch": True, "is_bulk_lot": False}
 m, st = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED)})
 check(m["INFER"]["model"] == "Sub 300T", "K: model %r" % m["INFER"].get("model"))
 check(m["INFER"]["reference"] == "T125.617.17.051.03", "K: reference %r" % m["INFER"].get("reference"))
@@ -210,6 +215,23 @@ m, _ = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(dict(FILLED, movem
 check("ERROR" in m and "not one of" in json.dumps(m["ERROR"]), "M: bad enum not rejected: %s" % m.get("ERROR"))
 m, _ = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(dict(FILLED, year="1970-1980"))})
 check("ERROR" in m, "M: a decade range in `year` must be rejected, not silently dropped")
+
+# --- N. a filled contract is authoritative about silence too
+# caseMat is omitted from the answer, and the post never states one -> the regex
+# guess ("steel") must NOT survive.
+m, st = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED)})
+check(m["INFER"].get("caseMat") is None, "N: omitted contract field kept the regex guess: %r" % m["INFER"].get("caseMat"))
+check(m["INFER"].get("phone") is None, "N: omitted phone kept the regex guess: %r" % m["INFER"].get("phone"))
+check(m["INFER"]["model"] == "Sub 300T", "N: supplied fields must survive the clear")
+check(m["INFER"]["sourceUrl"].endswith("/777/"), "N: non-contract fields must NOT be cleared")
+check(m["INFER"]["fbListingId"] == "777", "N: fbListingId must survive")
+check(m["INFER"]["fbAuthorId"] == "100055", "N: author capture must survive")
+check(m.get("RESULT", {}).get("ok") is True, "N: should still import")
+
+# --- O. a targeted OVERRIDES fix (no is_wristwatch) still merges, as before
+m, _ = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps({"model": "Just This"})})
+check(m["INFER"]["model"] == "Just This", "O: targeted override not applied")
+check(m["INFER"].get("caseMat") == "steel", "O: targeted override must not clear the rest")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
