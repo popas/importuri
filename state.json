@@ -2,8 +2,8 @@
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
   "session_date": "2026-08-04",
   "target": 5,
-  "session_imported": 5,
+  "session_imported": 6,
   "session_skipped": 4,
   "status": "idle",
-  "note": "2026-08-04: target of 5 reached (Oris, Edox, Tissot, Citizen, Poljot). Mid-session the schema gained Watch.video_url (migration 0011, deployed) so video-first posts are imported instead of dropped. Unimported candidates remain in .candidates.json."
+  "note": "2026-08-04: 6 imported (Oris, Edox, Tissot Supersport, Citizen, Poljot, Tissot Automatic 34mm). Mid-session: Watch.video_url added; extraction contract replaces ad-hoc post-import fixes."
 }
