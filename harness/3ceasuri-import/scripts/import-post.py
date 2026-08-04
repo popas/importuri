@@ -430,8 +430,12 @@ emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
 # call per watch, which the carousel needs anyway (FB image URLs expire in-session).
 # SKIP_PROMPT=1 imports on the regex baseline when the post is trivially simple.
 if not OVERRIDES and not SKIP_PROMPT and not DRY_RUN:
+    # The photos ship with the contract: `model`, `gender`, materials and dial colour
+    # are visible far more often than they are written, and the ad naming no model at
+    # all is the normal case, not the exception.
     emit("EXTRACT_PROMPT", {"post_id": POST_ID,
                             "prompt": infer_fields.build_prompt(text, brand_ids.keys()),
+                            "images": images,
                             "rerun": "POST_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../import-post.py" % POST_ID})
     raise SystemExit(0)
 

@@ -186,6 +186,10 @@ prompt = m["EXTRACT_PROMPT"]["prompt"]
 check("Doxa Mecanic Vintage" in prompt, "J: post text missing from the prompt")
 check("`reference`" in prompt and "T125.617.17.051.03" in prompt, "J: reference rule missing")
 check("one of automatic | manual | quartz | smart" in prompt, "J: movement enum missing from the contract")
+check("LOOK AT THE PHOTOS" in prompt, "J: photo-identification rule missing")
+check("Never a filler noun" in prompt, "J: filler-model ban missing")
+check("Never derive a reference from the design" in prompt, "J: reference guard missing")
+check(len(m["EXTRACT_PROMPT"]["images"]) == 5, "J: photos must ship with the contract, got %r" % len(m["EXTRACT_PROMPT"].get("images", [])))
 
 # --- K. filled contract imports in the second pass; OVERRIDES are the values used
 # A contract answer is complete: authoritative-about-silence means anything left

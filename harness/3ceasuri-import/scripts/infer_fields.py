@@ -63,13 +63,29 @@ movement, material, or year because it is "usually" that.
 
 - `model` — the model NAME only. Short. No brand, never a sentence.
   "Vand Oris Divers Sixty-Five Date 40mm, stare buna" -> "Divers Sixty-Five Date".
-  No model name in the post? Use the defining trait, still short:
+  **The ad often does not name the model — LOOK AT THE PHOTOS.** Dial layout, bezel,
+  handset, bracelet and caseback identify most watches: a Fossil ladies' watch with a
+  crystal bezel, Roman numerals and a 4:30 date is a "Jacqueline". Read the caseback
+  if a photo shows it — that is where the reference lives.
+  Still nothing identifiable? Use the defining trait, short and factual:
   "Automatic 21 Jewels", "Vintage anii 1970-1980".
+  **Never a filler noun.** "Original", "Clasic", "Ceas", "Dama" are not models — if
+  that is all you have, stop and say so instead of inventing one.
 - `reference` — the COMPLETE reference, dots and dashes included
-  (T125.617.17.051.03, never T125).
-- `movement` — null if the post does not state it. The DB requires a value and the
-  harness fills the gap with `quartz`, which mislabelled a 1970s Poljot; a null here
-  stops for review instead.
+  (T125.617.17.051.03, never T125). Only from text you can actually READ — the ad, or a
+  legible caseback/papers photo. **Never derive a reference from the design**: a dial
+  match identifies a model family, not the exact variant, and a wrong reference on a
+  public listing is worse than an empty field.
+- A model identified from photos rather than the ad is OUR classification, not the
+  seller's claim. Put it in `model`, say so in `notes`, and leave `description` as the
+  seller wrote it — do not add the model name into their text.
+- `movement` — infer it, don't just copy it. The ad states it only half the time, but
+  the model usually settles it (a Fossil Jacqueline is quartz; a Poljot from the '70s
+  is hand-wound), and so does the dial (a running-seconds subdial, a smooth sweep in a
+  video, "21 jewels" on the dial). Say in `notes` when you inferred rather than read
+  it. Only null when brand, model, era and photos genuinely leave it open — that stops
+  for review, which beats the harness silently defaulting to `quartz` (it mislabelled a
+  1970s Poljot that way).
 - `description` — the seller's text, cleaned: no FB header, no author name or
   timestamp, no "See more"/"See translation", no comments, no obfuscated timestamp
   characters. Keep the seller's line breaks.
