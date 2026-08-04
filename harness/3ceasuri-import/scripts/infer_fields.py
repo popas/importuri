@@ -1,151 +1,143 @@
 #!/usr/bin/env python3
-"""ONE structured LLM call that fills the whole Watch record from a post body.
+"""The extraction contract: the DB structure, the prompt, and a validator.
 
-Why this exists: the regex inference in import-post.py gets the easy fields right
-and the hard ones wrong in the same way every time — `model` came back as the
-post's entire first sentence on 4 of 5 imports on 2026-08-04, `reference` was
-truncated at the first dot ("T125" for "T125.617.17.051.03"), and `description`
-carried FB comment junk. Each of those cost a hand-fix after the import.
+There is NO API call here and there must never be one. The model doing the
+inference is the agent already driving the session — it reads the post text and
+fills the structure in its own context. This module exists so that inference
+stops being improvised.
 
-The fix is not more regexes. The post text is prose; the target is a Django model
-with a fixed set of enums. So: hand the model the post and the DB structure, and
-let it populate the structure in a single call. `SCHEMA` below mirrors
-`watches/models.py` exactly — when a TextChoices class there changes, change it
-here too (there is no import-time coupling; the Django app is a separate repo).
+Before this, extraction was in two halves and neither was reproducible in the way
+that mattered: the regexes in import-post.py were deterministic but reliably
+wrong on the same fields every time (`model` = the whole first sentence,
+`reference` truncated at the first dot, `movement` defaulted to quartz), and the
+after-the-fact fixes were the agent deciding on the spot with no written rules —
+on 2026-08-04 the same class of decision was made four times with nothing
+guaranteeing tomorrow's answer would match today's.
 
-The call is deliberately ONE round trip per post. Splitting it per field, or
-looping to "refine", is the token waste this replaces.
+So: `SCHEMA` mirrors watches/models.py TextChoices exactly, `build_prompt()`
+renders the fixed instructions plus the post, and `validate()` checks a filled
+payload against the enums. The prompt makes the decision repeatable; the
+validator makes a wrong one loud instead of letting the admin form drop it.
 
-Falls back to `None` on any problem (no credentials, API error, refusal, bad
-JSON) — import-post.py then keeps its regex inference, so a missing API key
-degrades quality without breaking the import.
+Flow per watch:
+    import-post.py emits EXTRACT_PROMPT: with the post text and this contract
+      -> the agent fills it and re-runs with OVERRIDES='{...}'
+      -> validate() rejects anything that isn't a legal DB value
 """
-import json
-import os
 
-MODEL = os.environ.get("INFER_MODEL", "claude-opus-5")
-# Extraction, not reasoning: `low` keeps thinking (on by default on Opus 5) short.
-EFFORT = os.environ.get("INFER_EFFORT", "low")
-MAX_TOKENS = int(os.environ.get("INFER_MAX_TOKENS", "8000"))
-
-
-def _n(schema):
-    """Make a field nullable — the model must be able to say 'not stated'."""
-    return {"anyOf": [schema, {"type": "null"}]}
-
-
-_STR = {"type": "string"}
-
-
-def _enum(*values):
-    return {"type": "string", "enum": list(values)}
-
-
-# Mirrors watches/models.py TextChoices. Keep in sync by hand.
-FIELDS = {
-    "brand":        _n(_STR),
-    "model":        _n(_STR),
-    "reference":    _n(_STR),
-    "price":        _n({"type": "number"}),
-    "currency":     _n(_enum("RON", "EUR")),
-    "priceNote":    _n(_STR),
-    "condition":    _n(_enum("new", "excellent", "good", "fair", "broken")),
-    "movement":     _n(_enum("automatic", "manual", "quartz", "smart")),
-    "gender":       _n(_enum("women", "men", "unisex", "kids")),
-    "style":        _n(_enum("sport", "dress", "diver", "chronograph", "smart")),
-    "caseMat":      _n(_enum("titanium", "carbon", "aluminium", "steel", "gold",
-                             "silver", "plastic", "ceramic", "other")),
-    "braceletMat":  _n(_enum("titanium", "carbon", "aluminium", "steel", "gold",
-                             "silver", "plastic", "rubber", "leather", "nylon", "other")),
-    "displayMat":   _n(_enum("sapphire", "mineral", "acrylic", "plastic", "other")),
-    "displayColor": _n(_enum("black", "white", "silver", "gold", "other")),
-    "displayType":  _n(_enum("digital", "analog", "analog_digital", "smart", "none")),
-    "displaySize":  _n(_enum("small", "medium", "large")),
-    "waterRes":     _n(_enum("water_resistant_yes", "water_resistant_no")),
-    "diameter":     _n({"type": "number"}),
-    "year":         _n({"type": "integer"}),
-    "phone":        _n(_STR),
-    "location":     _n(_STR),
-    "seller":       _n(_STR),
-    "description":  _n(_STR),
-    # Judgement calls the regex filters get wrong: wall clocks that dodge the
-    # keyword list, and "both for 400 lei" bundles. Both cost imports on 2026-08-03/04.
-    "is_wristwatch": {"type": "boolean"},
-    "is_bulk_lot":   {"type": "boolean"},
-    "notes":        _n(_STR),
+# ---------------------------------------------------------------------------
+# The structure. Mirrors watches/models.py TextChoices — keep in sync by hand
+# (the Django app is a separate repo, so there is no import-time coupling).
+# ---------------------------------------------------------------------------
+ENUMS = {
+    "currency":     ["RON", "EUR"],
+    "condition":    ["new", "excellent", "good", "fair", "broken"],
+    "movement":     ["automatic", "manual", "quartz", "smart"],
+    "gender":       ["women", "men", "unisex", "kids"],
+    "style":        ["sport", "dress", "diver", "chronograph", "smart"],
+    "caseMat":      ["titanium", "carbon", "aluminium", "steel", "gold", "silver",
+                     "plastic", "ceramic", "other"],
+    "braceletMat":  ["titanium", "carbon", "aluminium", "steel", "gold", "silver",
+                     "plastic", "rubber", "leather", "nylon", "other"],
+    "displayMat":   ["sapphire", "mineral", "acrylic", "plastic", "other"],
+    "displayColor": ["black", "white", "silver", "gold", "other"],
+    "displayType":  ["digital", "analog", "analog_digital", "smart", "none"],
+    "displaySize":  ["small", "medium", "large"],
+    "waterRes":     ["water_resistant_yes", "water_resistant_no"],
 }
 
-SCHEMA = {
-    "type": "object",
-    "properties": FIELDS,
-    "required": list(FIELDS),
-    "additionalProperties": False,
-}
+NUMERIC = {"price": float, "diameter": float, "year": int}
+TEXT = ["brand", "model", "reference", "priceNote", "phone", "location", "seller",
+        "description"]
+FLAGS = ["is_wristwatch", "is_bulk_lot"]
 
-PROMPT = """Acesta este textul unui anunț de vânzare de ceasuri de pe Facebook (română, uneori engleză).
-Populează structura bazei noastre de date pe baza lui.
+SCHEMA_FIELDS = TEXT + list(NUMERIC) + list(ENUMS) + FLAGS + ["notes"]
 
-Reguli:
-- Deduce fiecare câmp DOAR din text. Ce nu e afirmat sau clar implicat rămâne null.
-  Nu ghici mecanismul, materialul sau anul „pentru că așa e de obicei".
-- `model`: DOAR numele modelului, scurt, fără brand și fără propoziții.
-  „Vând Oris Divers Sixty-Five Date 40mm, stare buna" -> „Divers Sixty-Five Date".
-  Dacă anunțul nu dă un nume de model, folosește caracteristica definitorie
-  („Automatic 21 Jewels", „Vintage anii 1970-1980"), tot scurt.
-- `reference`: numărul de referință COMPLET, cu tot cu puncte/liniuțe (ex. T125.617.17.051.03).
-- `description`: textul anunțului curățat — fără antetul Facebook, fără numele
-  autorului și timestamp, fără „See more"/„See translation", fără comentarii,
-  fără caractere de timestamp ofuscat. Păstrează formatarea pe linii a vânzătorului.
-- `price`: prețul cerut pentru ACEST ceas. `priceNote` = „negociabil", „fix", etc.
-- `year`: un singur an ca număr întreg. Dacă anunțul dă doar un deceniu, lasă null.
-- `is_wristwatch`: false pentru ceas de perete/șemineu/pendulă/deșteptător sau orice
-  nu se poartă pe mână.
-- `is_bulk_lot`: true dacă un singur preț acoperă mai multe ceasuri.
-- `notes`: o propoziție scurtă doar dacă e ceva ce operatorul trebuie să știe
-  (replică suspectată, preț contradictoriu, anunț neclar). Altfel null.
+PROMPT = """# Extraction contract — fill this from the post text below
 
-Branduri deja existente în baza de date — folosește exact aceste nume când se potrivesc,
-altfel scrie numele brandului așa cum apare în anunț:
+Populate the 3ceasuri DB record. Answer with ONE JSON object and nothing else.
+Everything not stated or clearly implied in the text stays `null`. Do NOT guess a
+movement, material, or year because it is "usually" that.
+
+## Rules that exist because they were broken before
+
+- `model` — the model NAME only. Short. No brand, never a sentence.
+  "Vand Oris Divers Sixty-Five Date 40mm, stare buna" -> "Divers Sixty-Five Date".
+  No model name in the post? Use the defining trait, still short:
+  "Automatic 21 Jewels", "Vintage anii 1970-1980".
+- `reference` — the COMPLETE reference, dots and dashes included
+  (T125.617.17.051.03, never T125).
+- `movement` — null if the post does not state it. The DB requires a value and the
+  harness fills the gap with `quartz`, which mislabelled a 1970s Poljot; a null here
+  stops for review instead.
+- `description` — the seller's text, cleaned: no FB header, no author name or
+  timestamp, no "See more"/"See translation", no comments, no obfuscated timestamp
+  characters. Keep the seller's line breaks.
+- `year` — ONE year as an integer. `id_year` is a numeric input, so a decade range
+  is silently dropped: if the post only says "anii '70", leave this null and put the
+  decade in `model` instead.
+- `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
+- `is_wristwatch` — false for wall/mantel/pendulum/alarm clocks or anything not worn
+  on the wrist.
+- `is_bulk_lot` — true when one price covers several watches.
+- `notes` — one short sentence ONLY if the operator must know something (suspected
+  replica, contradictory price, unclear post). Otherwise null.
+
+## Fields
+
+{fields}
+
+## Known brands — use these exact spellings when they match, otherwise write the
+brand as the post spells it
+
 {brands}
 
-Textul anunțului:
----
+## Post text
+
 {text}
----"""
+"""
 
 
-def infer(text, brands=(), client=None):
-    """Return a dict of inferred fields, or None if inference is unavailable.
+def _field_lines():
+    out = []
+    for f in TEXT:
+        out.append("- `%s`: text or null" % f)
+    for f, t in NUMERIC.items():
+        out.append("- `%s`: %s or null" % (f, "integer" if t is int else "number"))
+    for f, vals in ENUMS.items():
+        out.append("- `%s`: one of %s, or null" % (f, " | ".join(vals)))
+    for f in FLAGS:
+        out.append("- `%s`: true or false (never null)" % f)
+    out.append("- `notes`: text or null")
+    return "\n".join(out)
 
-    `client` is injectable so the offline tests can exercise this without network.
+
+def build_prompt(text, brands=()):
+    return PROMPT.format(fields=_field_lines(),
+                         brands=", ".join(sorted(brands)) or "(none)",
+                         text=(text or "").strip())
+
+
+def validate(payload):
+    """Return a list of problems with a filled payload. Empty list = usable.
+
+    This is the deterministic half: whatever the inference decided, an illegal
+    enum value or a decade in `year` is caught here rather than being silently
+    dropped by the admin form (which is how the Poljot year went missing).
     """
-    if os.environ.get("NO_LLM") == "1":
-        return None
-    try:
-        if client is None:
-            import anthropic
-            client = anthropic.Anthropic()
-        prompt = PROMPT.format(brands=", ".join(sorted(brands)) or "(niciunul)",
-                               text=(text or "").strip())
-        resp = client.messages.create(
-            model=MODEL,
-            max_tokens=MAX_TOKENS,
-            messages=[{"role": "user", "content": prompt}],
-            # SDK 0.76 in the browser-use env has no typed `output_config`; the
-            # server does. extra_body forwards it unchanged.
-            extra_body={"output_config": {
-                "effort": EFFORT,
-                "format": {"type": "json_schema", "schema": SCHEMA},
-            }},
-        )
-        # A refusal returns HTTP 200 with empty/partial content — check before reading.
-        if getattr(resp, "stop_reason", None) == "refusal":
-            return None
-        raw = next((b.text for b in resp.content if getattr(b, "type", None) == "text"), None)
-        if not raw:
-            return None
-        data = json.loads(raw)
-    except Exception:
-        return None
-    # Drop nulls so the caller can merge over its regex baseline without erasing it.
-    return {k: v for k, v in data.items() if v is not None}
+    problems = []
+    for key, value in (payload or {}).items():
+        if value is None:
+            continue
+        if key in ENUMS and value not in ENUMS[key]:
+            problems.append("%s=%r is not one of %s" % (key, value, "|".join(ENUMS[key])))
+        elif key in NUMERIC:
+            try:
+                NUMERIC[key](value)
+            except (TypeError, ValueError):
+                problems.append("%s=%r is not a %s" % (key, value, NUMERIC[key].__name__))
+        elif key in FLAGS and not isinstance(value, bool):
+            problems.append("%s=%r is not a boolean" % (key, value))
+        elif key not in SCHEMA_FIELDS and key not in ("force",):
+            problems.append("%s is not a field in the contract" % key)
+    return problems

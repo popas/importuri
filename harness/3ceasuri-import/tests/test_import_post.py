@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline harness for import-post.py: stubs browser-use and a canned FB post so
 the REVIEW gate and the RO->enum field inference can be tested without Chrome."""
-import json, os, re, sys, io, contextlib, time, types
+import json, os, re, sys, io, contextlib, time
 
 time.sleep = lambda *a, **k: None      # the script's paced waits are irrelevant offline
 
@@ -9,19 +9,10 @@ ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
 SRC = os.path.join(ROOT, "harness/3ceasuri-import/scripts/import-post.py")
 
 
-def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None, llm=None):
-    """Execute import-post.py against a canned post; return (markers, trace).
-
-    `llm` stubs the structured inference call: pass a dict to simulate a
-    successful pass, or leave None for the no-credentials path. The real module
-    is never imported here, so the tests never touch the network.
-    """
+def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None):
+    """Execute import-post.py against a canned post; return (markers, trace)."""
     state = {"url": "", "img": 0, "brand_tab_opened": False, "imported": None}
     admin_rows_for = admin_rows_for or (lambda q: [])
-
-    stub = types.ModuleType("infer_fields")
-    stub.infer = lambda text, brands=(), client=None: (dict(llm) if llm else None)
-    sys.modules["infer_fields"] = stub
 
     def js(e):
         # NOTE: order matters. The harness-injection and importWatch payloads embed
@@ -82,7 +73,8 @@ def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None, llm=No
              {"targetId": "F", "url": "https://www.facebook.com/photo/", "title": "fb"}]}
 
     os.environ.clear()
-    os.environ.update({"PROJECT_ROOT": ROOT, "POST_ID": "777", "PATH": "/usr/bin:/bin"})
+    os.environ.update({"PROJECT_ROOT": ROOT, "POST_ID": "777", "PATH": "/usr/bin:/bin",
+                       "SKIP_PROMPT": "1"})
     os.environ.update(env or {})
 
     buf = io.StringIO()
@@ -186,32 +178,38 @@ check(st["imported"] is None, "I: must not import a movement-guessed watch")
 m, st = run(NOMV, env={"CONFIRM": "1", "OVERRIDES": '{"movement":"manual"}'})
 check(m.get("RESULT", {}).get("ok") is True, "I: CONFIRM + movement override should import")
 
-# --- J. structured inference wins over the regex baseline, OVERRIDES still win over it
-CLEAN = {"brand": "Doxa", "model": "Sub 300T", "reference": "T125.617.17.051.03",
-         "condition": "excellent", "movement": "automatic", "price": 1200, "currency": "RON",
-         "description": "Doxa Sub 300T, stare excelenta, functioneaza perfect, tinut in cutie.\nCurea de piele originala, sticla safir.",
-         "is_wristwatch": True, "is_bulk_lot": False}
-m, st = run(GOOD, llm=CLEAN)
-check(m["INFER"]["model"] == "Sub 300T", "J: LLM model must beat the regex sentence, got %r" % m["INFER"].get("model"))
-check(m["INFER"]["reference"] == "T125.617.17.051.03", "J: full reference not kept: %r" % m["INFER"].get("reference"))
-check(m.get("INFER_LLM", {}).get("is_wristwatch") is True, "J: INFER_LLM marker missing: %s" % m.get("INFER_LLM"))
-check(m.get("RESULT", {}).get("ok") is True, "J: should import")
-m, _ = run(GOOD, llm=CLEAN, env={"OVERRIDES": json.dumps({"model": "Hand Fix"})})
-check(m["INFER"]["model"] == "Hand Fix", "J: OVERRIDES must beat the LLM, got %r" % m["INFER"].get("model"))
+# --- J. first pass hands out the contract and writes nothing
+m, st = run(GOOD, env={"SKIP_PROMPT": ""})
+check("EXTRACT_PROMPT" in m, "J: first pass must emit the contract")
+check(st["imported"] is None, "J: first pass must not import")
+prompt = m["EXTRACT_PROMPT"]["prompt"]
+check("Doxa Mecanic Vintage" in prompt, "J: post text missing from the prompt")
+check("`reference`" in prompt and "T125.617.17.051.03" in prompt, "J: reference rule missing")
+check("one of automatic | manual | quartz | smart" in prompt, "J: movement enum missing from the contract")
 
-# --- K. the two judgement calls the regex filters keep missing
-m, st = run(GOOD, llm=dict(CLEAN, is_wristwatch=False))
-check(m.get("SKIP", {}).get("reason", "").startswith("not a wristwatch"), "K: wall clock not skipped: %s" % m.get("SKIP"))
-check(st["imported"] is None, "K: must not import a non-wristwatch")
-m, st = run(GOOD, llm=dict(CLEAN, is_bulk_lot=True))
-check(m.get("SKIP", {}).get("reason", "").startswith("bulk lot"), "K: bulk lot not skipped: %s" % m.get("SKIP"))
-m, st = run(GOOD, llm=dict(CLEAN, is_wristwatch=False), env={"CONFIRM": "1"})
-check("SKIP" not in m, "K: CONFIRM=1 must override the LLM verdict, got %s" % m.get("SKIP"))
+# --- K. filled contract imports in the second pass; OVERRIDES are the values used
+FILLED = {"brand": "Doxa", "model": "Sub 300T", "reference": "T125.617.17.051.03",
+          "movement": "automatic", "is_wristwatch": True, "is_bulk_lot": False}
+m, st = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED)})
+check(m["INFER"]["model"] == "Sub 300T", "K: model %r" % m["INFER"].get("model"))
+check(m["INFER"]["reference"] == "T125.617.17.051.03", "K: reference %r" % m["INFER"].get("reference"))
+check("is_wristwatch" not in m["INFER"], "K: contract-only flags must not reach the form")
+check(m.get("RESULT", {}).get("ok") is True, "K: should import")
 
-# --- L. no credentials: regex baseline stands, import still happens
-m, st = run(GOOD, llm=None)
-check(m.get("INFER_LLM", {}).get("used") is False, "L: should report the LLM pass was skipped")
-check(m.get("RESULT", {}).get("ok") is True, "L: must still import without credentials")
+# --- L. the two judgement calls, and CONFIRM overriding them
+m, st = run(GOOD, env={"OVERRIDES": json.dumps(dict(FILLED, is_wristwatch=False))})
+check(m.get("SKIP", {}).get("reason", "").startswith("not a wristwatch"), "L: wall clock not skipped: %s" % m.get("SKIP"))
+check(st["imported"] is None, "L: must not import a non-wristwatch")
+m, _ = run(GOOD, env={"OVERRIDES": json.dumps(dict(FILLED, is_bulk_lot=True))})
+check(m.get("SKIP", {}).get("reason", "").startswith("bulk lot"), "L: bulk lot not skipped: %s" % m.get("SKIP"))
+m, _ = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(dict(FILLED, is_wristwatch=False))})
+check("SKIP" not in m, "L: CONFIRM=1 must override the verdict, got %s" % m.get("SKIP"))
+
+# --- M. an illegal DB value dies loudly instead of being dropped by the form
+m, _ = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(dict(FILLED, movement="mecanic"))})
+check("ERROR" in m and "not one of" in json.dumps(m["ERROR"]), "M: bad enum not rejected: %s" % m.get("ERROR"))
+m, _ = run(GOOD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(dict(FILLED, year="1970-1980"))})
+check("ERROR" in m, "M: a decade range in `year` must be rejected, not silently dropped")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

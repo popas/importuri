@@ -36,18 +36,31 @@ POST_ID=<id> CONFIRM=1 OVERRIDES='{"brand":"Westbury","model":"Chronograph Valjo
 `CONFIRM=1` passes the review gate; it cannot wave through a missing brand/model/price — the
 form would reject those. `DRY_RUN=1` still exists for deliberate inspection.
 
-**Field inference is ONE structured LLM call** (`scripts/infer_fields.py`): the post text plus
-the DB structure go up together, and the filled record comes back in a single round trip — that
-is what keeps `model` a short model name instead of the post's first sentence, and `reference`
-complete instead of truncated at the first dot. It also returns `is_wristwatch` / `is_bulk_lot`,
-so wall clocks and "both for 400 lei" bundles are skipped before any DB write (`CONFIRM=1`
-overrides either verdict). Precedence: regex baseline → LLM → your `OVERRIDES`.
+## The extraction contract — YOU do the inference
 
-It needs `ANTHROPIC_API_KEY` exported in the shell that runs the script. Without it the call is
-skipped, `INFER_LLM: {"used": false}` is emitted, and the weaker regex inference stands — the
-import still works, it just goes back to needing hand-fixes. `NO_LLM=1` skips it deliberately.
+**There is no API call anywhere in this pipeline.** The script's regexes are a baseline that is
+reliably wrong on the same fields (`model` = the post's whole first sentence, `reference` cut at
+the first dot, `movement` defaulted to `quartz`). You are the model in the loop, so the first
+pass hands you the contract instead of importing on that baseline:
 
-Marker lines: `EXTRACT: SKIP: INFER_LLM: INFER: REVIEW: NEW_BRAND: RESULT: ERROR:`. After a `NEW_BRAND:`
+```
+POST_ID=<id> browser-use < .../import-post.py     # pass 1: emits EXTRACT_PROMPT, writes nothing
+POST_ID=<id> CONFIRM=1 OVERRIDES='{…}' browser-use < .../import-post.py   # pass 2: imports
+```
+
+`EXTRACT_PROMPT.prompt` (from `scripts/infer_fields.py`) carries the field list with every legal
+DB enum value, the rules that exist because they were broken before, and the post text. **Read
+it and answer it** — fill the JSON, pass it as `OVERRIDES`, re-run with `CONFIRM=1`.
+
+Two contract-only fields never reach the form: `is_wristwatch: false` and `is_bulk_lot: true`
+each stop the import (`CONFIRM=1` overrides). `OVERRIDES` are validated against the enums first,
+so an illegal value (`movement: "mecanic"`, a decade in `year`) fails loudly instead of being
+dropped silently by the admin form.
+
+`SKIP_PROMPT=1` imports on the regex baseline without the contract pass — only for posts where
+the baseline is obviously right, and expect to hand-fix `model`.
+
+Marker lines: `EXTRACT: SKIP: INFER: EXTRACT_PROMPT: REVIEW: NEW_BRAND: RESULT: ERROR:`. After a `NEW_BRAND:`
 line update `BRAND_IDS` + `references/brand-ids.md` and commit. Parse `RESULT:` to append to
 `history.jsonl` (see `import-verify-state`). Fall back to the manual steps below only when the
 post needs hand-holding.

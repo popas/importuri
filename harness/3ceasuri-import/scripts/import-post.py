@@ -60,6 +60,7 @@ if IS_LISTING:
 OVERRIDES = json.loads(os.environ.get("OVERRIDES", "{}"))
 DRY_RUN   = os.environ.get("DRY_RUN", "") == "1"
 CONFIRM   = os.environ.get("CONFIRM", "") == "1"   # proceed past the REVIEW gate
+SKIP_PROMPT = os.environ.get("SKIP_PROMPT", "") == "1"  # import on the regex baseline
 HARNESS   = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
 SOURCE_URL = (("https://www.facebook.com/commerce/listing/%s/" % POST_ID) if IS_LISTING
               else ("https://www.facebook.com/groups/vanzareceasuri/posts/%s/" % POST_ID))
@@ -390,36 +391,37 @@ if data.get("brand"):
     if "description" not in OVERRIDES and _bs > body_start:
         data["description"] = _build_desc(_bs) or data["description"]
 
-# --- 3b. ONE structured LLM pass over the whole record ----------------------
-# The regex work above is the baseline; this reads the same post against the DB
-# structure and fills it properly. It is what stops `model` coming back as the
-# post's first sentence and `reference` truncated at the first dot. Everything it
-# returns wins over the regex baseline, and OVERRIDES are re-applied after so a
-# human decision still beats both. No credentials / any API failure -> None, and
-# the regex baseline stands.
-llm = infer_fields.infer(text, brands=brand_ids.keys())
-if llm:
-    verdict = {"is_wristwatch": llm.pop("is_wristwatch", True),
-               "is_bulk_lot": llm.pop("is_bulk_lot", False),
-               "notes": llm.pop("notes", None)}
-    data.update(llm)
-    data.update({k: v for k, v in OVERRIDES.items() if k != "force"})
-    emit("INFER_LLM", dict(verdict, fields=sorted(llm)))
-    # Judgement calls the objective filters keep missing: pendulum clocks that carry
-    # no clock keyword, and "400 lei amândouă" bundles. CONFIRM=1 overrides both.
-    if not CONFIRM:
-        if verdict["is_wristwatch"] is False:
-            emit("SKIP", {"post_id": POST_ID, "reason": "not a wristwatch (LLM); pass CONFIRM=1 to import anyway",
-                          "notes": verdict["notes"]})
-            raise SystemExit(0)
-        if verdict["is_bulk_lot"] is True:
-            emit("SKIP", {"post_id": POST_ID, "reason": "bulk lot - one price, several watches (LLM); pass CONFIRM=1 to import anyway",
-                          "notes": verdict["notes"]})
-            raise SystemExit(0)
-else:
-    emit("INFER_LLM", {"used": False, "reason": "no credentials or call failed; regex baseline stands"})
+# --- 3b. the extraction contract --------------------------------------------
+# The regexes above are the baseline and they are reliably wrong on the same
+# fields (model, reference, movement). The agent driving the session does the real
+# inference, so emit the contract for it to fill and validate what comes back.
+# `is_wristwatch` / `is_bulk_lot` are the judgement calls the objective filters
+# keep missing (pendulum clocks with no clock keyword, "400 lei amandoua" bundles).
+problems = infer_fields.validate(OVERRIDES)
+if problems:
+    die("OVERRIDES are not valid DB values: " + "; ".join(problems))
+
+if OVERRIDES.get("is_wristwatch") is False and not CONFIRM:
+    emit("SKIP", {"post_id": POST_ID, "reason": "not a wristwatch; pass CONFIRM=1 to import anyway"})
+    raise SystemExit(0)
+if OVERRIDES.get("is_bulk_lot") is True and not CONFIRM:
+    emit("SKIP", {"post_id": POST_ID, "reason": "bulk lot - one price, several watches; pass CONFIRM=1 to import anyway"})
+    raise SystemExit(0)
+for _k in ("is_wristwatch", "is_bulk_lot", "notes"):   # contract-only, not form fields
+    data.pop(_k, None)
 
 emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
+
+# First pass with no OVERRIDES: stop here and hand the contract out to be filled.
+# The regex baseline below it is only a starting point — importing on it is what
+# produced four hand-fixed records on 2026-08-04. This costs a second browser-use
+# call per watch, which the carousel needs anyway (FB image URLs expire in-session).
+# SKIP_PROMPT=1 imports on the regex baseline when the post is trivially simple.
+if not OVERRIDES and not SKIP_PROMPT and not DRY_RUN:
+    emit("EXTRACT_PROMPT", {"post_id": POST_ID,
+                            "prompt": infer_fields.build_prompt(text, brand_ids.keys()),
+                            "rerun": "POST_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../import-post.py" % POST_ID})
+    raise SystemExit(0)
 
 # --- 4a. confidence gate: halt for review ONLY when inference is weak --------
 # Replaces the old "always DRY_RUN first, then import" double pass, which paid
