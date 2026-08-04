@@ -44,6 +44,8 @@ harness/                           ← shared assets (NOT skills — no SKILL.md
     scripts/import-watch.js        ← THE HARNESS (authoritative, v5) — injected into admin
     scripts/find-posts.py          ← whole-feed discovery in ONE browser-use call
     scripts/import-post.py         ← whole per-watch flow in ONE browser-use call
+    scripts/infer_fields.py        ← ONE structured LLM call: post text + DB schema → filled record
+                                     (needs ANTHROPIC_API_KEY; falls back to regex without it)
     .candidates.json               ← discovery output; lets a /clear'd context resume
     references/brand-ids.md        ← brand→ID mapping source of truth
     references/feed-dom.md         ← discovery DOM lore — read ONLY when find fails

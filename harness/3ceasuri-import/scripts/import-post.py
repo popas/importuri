@@ -42,9 +42,13 @@
 # (BRAND_IDS in import-watch.js + references/brand-ids.md) must still be updated
 # by hand afterwards — watch for the NEW_BRAND: line and sync + commit.
 # =============================================================================
-import os, re, json, time, random
+import os, re, json, time, random, sys
 
 PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+# This file is piped to browser-use on stdin, so there is no __file__ to hang a
+# relative import off — locate the sibling module through PROJECT_ROOT instead.
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
+import infer_fields
 POST_ID    = os.environ.get("POST_ID", "").strip()
 LISTING_ID = os.environ.get("LISTING_ID", "").strip()
 # find-posts.py emits kind:"listing" for commerce listings, which have no pcb photo set and
@@ -385,6 +389,36 @@ if data.get("brand"):
         data["model"] = _mdl
     if "description" not in OVERRIDES and _bs > body_start:
         data["description"] = _build_desc(_bs) or data["description"]
+
+# --- 3b. ONE structured LLM pass over the whole record ----------------------
+# The regex work above is the baseline; this reads the same post against the DB
+# structure and fills it properly. It is what stops `model` coming back as the
+# post's first sentence and `reference` truncated at the first dot. Everything it
+# returns wins over the regex baseline, and OVERRIDES are re-applied after so a
+# human decision still beats both. No credentials / any API failure -> None, and
+# the regex baseline stands.
+llm = infer_fields.infer(text, brands=brand_ids.keys())
+if llm:
+    verdict = {"is_wristwatch": llm.pop("is_wristwatch", True),
+               "is_bulk_lot": llm.pop("is_bulk_lot", False),
+               "notes": llm.pop("notes", None)}
+    data.update(llm)
+    data.update({k: v for k, v in OVERRIDES.items() if k != "force"})
+    emit("INFER_LLM", dict(verdict, fields=sorted(llm)))
+    # Judgement calls the objective filters keep missing: pendulum clocks that carry
+    # no clock keyword, and "400 lei amândouă" bundles. CONFIRM=1 overrides both.
+    if not CONFIRM:
+        if verdict["is_wristwatch"] is False:
+            emit("SKIP", {"post_id": POST_ID, "reason": "not a wristwatch (LLM); pass CONFIRM=1 to import anyway",
+                          "notes": verdict["notes"]})
+            raise SystemExit(0)
+        if verdict["is_bulk_lot"] is True:
+            emit("SKIP", {"post_id": POST_ID, "reason": "bulk lot - one price, several watches (LLM); pass CONFIRM=1 to import anyway",
+                          "notes": verdict["notes"]})
+            raise SystemExit(0)
+else:
+    emit("INFER_LLM", {"used": False, "reason": "no credentials or call failed; regex baseline stands"})
+
 emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
 
 # --- 4a. confidence gate: halt for review ONLY when inference is weak --------

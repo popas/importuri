@@ -36,7 +36,18 @@ POST_ID=<id> CONFIRM=1 OVERRIDES='{"brand":"Westbury","model":"Chronograph Valjo
 `CONFIRM=1` passes the review gate; it cannot wave through a missing brand/model/price — the
 form would reject those. `DRY_RUN=1` still exists for deliberate inspection.
 
-Marker lines: `EXTRACT: SKIP: INFER: REVIEW: NEW_BRAND: RESULT: ERROR:`. After a `NEW_BRAND:`
+**Field inference is ONE structured LLM call** (`scripts/infer_fields.py`): the post text plus
+the DB structure go up together, and the filled record comes back in a single round trip — that
+is what keeps `model` a short model name instead of the post's first sentence, and `reference`
+complete instead of truncated at the first dot. It also returns `is_wristwatch` / `is_bulk_lot`,
+so wall clocks and "both for 400 lei" bundles are skipped before any DB write (`CONFIRM=1`
+overrides either verdict). Precedence: regex baseline → LLM → your `OVERRIDES`.
+
+It needs `ANTHROPIC_API_KEY` exported in the shell that runs the script. Without it the call is
+skipped, `INFER_LLM: {"used": false}` is emitted, and the weaker regex inference stands — the
+import still works, it just goes back to needing hand-fixes. `NO_LLM=1` skips it deliberately.
+
+Marker lines: `EXTRACT: SKIP: INFER_LLM: INFER: REVIEW: NEW_BRAND: RESULT: ERROR:`. After a `NEW_BRAND:`
 line update `BRAND_IDS` + `references/brand-ids.md` and commit. Parse `RESULT:` to append to
 `history.jsonl` (see `import-verify-state`). Fall back to the manual steps below only when the
 post needs hand-holding.
