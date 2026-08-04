@@ -210,7 +210,8 @@ A payload of ~200 chars containing `QmFkIFVSTCBoYXNo` means ALL images failed wi
 | Movement | id_movement | automatic, manual, quartz, smart |
 | Case material | id_case_material | titanium, carbon, aluminium, steel, gold, silver, plastic, ceramic, other |
 | Bracelet | id_bracelet_material | titanium, carbon, aluminium, steel, gold, silver, plastic, rubber, leather, nylon, other |
-| Type | id_type | women, men, unisex, kids, sports, smart, other |
+| Gender | id_gender | women, men, unisex, kids |
+| Style | id_style | sport, dress, diver, chronograph, smart |
 | Water resistance | id_water_resistance | water_resistant_yes, water_resistant_no |
 | Display material | id_display_material | sapphire, mineral, acrylic, plastic, other |
 | Display color | id_display_color | black, white, silver, gold, other |

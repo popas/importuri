@@ -273,8 +273,16 @@ else:                                                          data["caseMat"] =
 bm = first([(r"piele|leather", "leather"), (r"cauciuc|rubber", "rubber"),
             (r"nylon|textil", "nylon"), (r"brățar|bratar|metal|otel|inox", "steel")])
 if bm: data["braceletMat"] = bm
-data["type"] = first([(r"dama|femei|lady|women", "women"), (r"unisex", "unisex"),
-                      (r"copii|kids", "kids"), (r"bărbat|barbat|bărbăt|barbat|\bmen\b", "men")], "men")
+# No default: an unstated gender used to fall through to "men", which
+# invented data for every listing that simply did not mention it.
+data["gender"] = first([(r"dama|femei|lady|women", "women"), (r"unisex", "unisex"),
+                        (r"copii|kids", "kids"), (r"bărbat|barbat|bărbăt|barbat|\bmen\b", "men")])
+# Style is independent of gender — a men's diver is both.
+data["style"] = first([(r"smartwatch|smart watch|\bsmart\b", "smart"),
+                       (r"diver|scafandru|scufundar|\bsub\b\s*\d{3}", "diver"),
+                       (r"cronograf|chronograph|chrono", "chronograph"),
+                       (r"sport|sportiv", "sport"),
+                       (r"elegant|dress|clasic", "dress")])
 dm = first([(r"safir|sapphire", "sapphire"), (r"cristal mineral|mineral", "mineral"),
             (r"acrilic|plexi|acrylic", "acrylic")])
 if dm: data["displayMat"] = dm
