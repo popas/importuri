@@ -397,6 +397,10 @@ if not data.get("brand"):                   review.append("brand not inferred")
 elif data["brand"] not in brand_ids:        review.append("NEW brand '%s' — will be created in the DB" % data["brand"])
 if not data.get("model"):                   review.append("model not inferred")
 if data.get("price") is None:               review.append("price not inferred")
+# movement is NOT optional in the DB, so the harness fills the gap with 'quartz'. That
+# guess silently mislabelled a 1970s Poljot on 2026-08-04 — a post that never states its
+# movement must be judged, not defaulted.
+if not data.get("movement"):                review.append("movement not stated in the post (harness would default it to quartz)")
 if len(images) < 2:                         review.append("only %d image(s) collected" % len(images))
 if len((data.get("description") or "").strip()) < 40:
                                             review.append("description looks thin (%d chars)" % len((data.get("description") or "").strip()))

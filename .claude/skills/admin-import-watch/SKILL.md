@@ -145,7 +145,7 @@ await importWatch({
   diameter: 40,
   caseMat: "steel",
   braceletMat: "leather",
-  year: "1960-1970",
+  year: 1965,                       // id_year is <input type="number"> — ONE year, never a range
   waterRes: "water_resistant_yes",
   displayMat: "sapphire",
   reference: "ABC-1234",
@@ -162,7 +162,7 @@ await importWatch({
 });
 ```
 
-**Field notes:** `description` is raw FB text (harness formats it); `currency` auto-detected if omitted (`$`→USD, `€`→EUR, `lei`→RON); `phone` stripped of spaces/dots; `location` = "City, County"; `seller` = full name; `fbAuthorId`/`fbAuthorName` = the FB poster's numeric id + display name (from `fb-extract-post`; `fbAuthorId` is the Stage-2 dedup key — stored in `facebook_author_id`); `year` = single or range ("1960-1970"); `reference` from "ref. ABC-1234"; `priceNote` = free text ("negociabil"). See the field-value table for `waterRes`/`displayMat` and all other enums.
+**Field notes:** `description` is raw FB text (harness formats it); `currency` auto-detected if omitted (`$`→USD, `€`→EUR, `lei`→RON); `phone` stripped of spaces/dots; `location` = "City, County"; `seller` = full name; `fbAuthorId`/`fbAuthorName` = the FB poster's numeric id + display name (from `fb-extract-post`; `fbAuthorId` is the Stage-2 dedup key — stored in `facebook_author_id`); `year` = a SINGLE year (`id_year` is `<input type="number">`; a range like "1970-1980" is silently dropped — verified 2026-08-04, leave it empty when the post only gives a decade); `movement` is required by the DB and the harness defaults it to `quartz`, so `import-post.py` now stops for REVIEW when the post never states one — pass `OVERRIDES {"movement":"manual"}` rather than letting a vintage mechanical be labelled quartz; `reference` from "ref. ABC-1234"; `priceNote` = free text ("negociabil"). See the field-value table for `waterRes`/`displayMat` and all other enums.
 
 **NEVER modify image URLs.** No regex upgrades, no param stripping. The harness fetches them as-is with automatic retry (3 attempts).
 

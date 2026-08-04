@@ -167,6 +167,16 @@ check(VURL in (st["imported"] or ""), "H: videoUrl not passed to importWatch")
 check(m.get("RESULT", {}).get("ok") is True, "H: video post should import ok")
 check(m["RESULT"]["state_entry"].get("video_url") == VURL, "H: state_entry must carry video_url")
 
+# --- I. a post that never states its movement must be judged, not defaulted to quartz
+NOMV = ("Ion Popescu\n2 h\nDoxa Vintage 34 mm\n"
+        "Stare buna, functioneaza corect, carcasa de otel.\nPret 300 lei")
+m, st = run(NOMV)
+check("REVIEW" in m and any("movement" in r for r in m["REVIEW"]["reasons"]),
+      "I: unstated movement must stop for review, got %s" % m.get("REVIEW"))
+check(st["imported"] is None, "I: must not import a movement-guessed watch")
+m, st = run(NOMV, env={"CONFIRM": "1", "OVERRIDES": '{"movement":"manual"}'})
+check(m.get("RESULT", {}).get("ok") is True, "I: CONFIRM + movement override should import")
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)
