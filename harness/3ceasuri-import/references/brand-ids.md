@@ -54,9 +54,14 @@ Timex:49
 Seksy:50
 Edox:51
 Mido:52
+Buchner & Bovalier:53
 ```
 
-Last updated: 2026-07-30. Added `Timex`(49), `Seksy`(50), `Edox`(51), `Mido`(52). Added `Ralmor`(48). Added `Westbury`(47), `Tressa Lux`(46), `NET`(45). Added `Jovial`(44), `Gruppo Gamma`(43), `Junghans`(42), `Chaika`(41). Added `Slava`(39), `Fresard`(40) on 2026-07-24. Brand 8 renamed `Racheta` → `Raketa` (2026-07-22).
+Last updated: 2026-08-08. Added `Buchner & Bovalier`(53) — note the script's own
+brand-creation step created it but then failed to find it again, because it looks the new
+brand up by *slug* (`?q=buchner-bovalier`) while the changelist searches the *name*; any
+brand whose slug differs from its name (spaces, `&`) will need this manual step.
+Earlier: 2026-07-30 added `Timex`(49), `Seksy`(50), `Edox`(51), `Mido`(52). Added `Ralmor`(48). Added `Westbury`(47), `Tressa Lux`(46), `NET`(45). Added `Jovial`(44), `Gruppo Gamma`(43), `Junghans`(42), `Chaika`(41). Added `Slava`(39), `Fresard`(40) on 2026-07-24. Brand 8 renamed `Racheta` → `Raketa` (2026-07-22).
 
 **Alias:** the harness's `window.BRAND_IDS` also keeps `"Racheta": 8` so a post using the
 old Romanian spelling still resolves to brand 8. Without it the lookup misses, falls back to

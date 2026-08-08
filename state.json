@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-08-04",
+  "session_date": "2026-08-08",
   "target": 5,
-  "session_imported": 8,
-  "session_skipped": 4,
+  "session_imported": 4,
+  "session_skipped": 1,
   "status": "idle",
-  "note": "2026-08-04: 8 imported. Mid-session: Watch.video_url added; extraction contract (two passes, authoritative about silence, photos saved locally) replaces ad-hoc post-import fixes."
+  "note": "2026-08-08: 4 of 5 imported (Citizen #115, Vostok #116, Tissot #117, Buchner & Bovalier #118), stopped one short by the user's call - FB feed throttled and no candidate ids left. Skipped 1779545556372714 (Polizia di Stato: no maker on dial or caseback, brand is a hard DB requirement) - it is still live and importable if a brand is ever agreed. New brand Buchner & Bovalier = 53. Two script issues hit: the brand-creation step looks the new brand up by slug while the changelist searches the name, so any brand with spaces/& dies with 'failed to create/find brand' after actually creating it; and commerce listing pages expose no /user/ link, so author ids came back null and were patched by hand from the feed candidates."
 }
