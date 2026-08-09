@@ -24,6 +24,8 @@
 #   NO_DEDUP=1      skip the admin Stage-1 dedup pass
 #   DEBUG_DROPS=1   also emit DROPPED: [{id,why,snip}] — use when a sweep returns
 #                   0 candidates, to check the filters aren't eating good watches
+#   ALLOW_WALL=1    keep wall/mantel clocks as candidates (flagged "wall": true)
+#                   instead of dropping them; import them with category="wall"
 #   OUT             candidates file (default harness/3ceasuri-import/.candidates.json)
 #
 # Emits marker lines the operator/parent can parse:
@@ -51,6 +53,9 @@ MIN_EUR        = int(os.environ.get("MIN_EUR", "20"))
 SNIPPET        = int(os.environ.get("SNIPPET", "180"))
 NO_DEDUP       = os.environ.get("NO_DEDUP", "") == "1"
 DEBUG_DROPS    = os.environ.get("DEBUG_DROPS", "") == "1"   # also emit WHAT was rejected
+# wall clocks are listed on the site since 2026-08-09 (Watch.category), but they are
+# still off by default: a sweep aimed at wristwatches should not surface pendulums.
+ALLOW_WALL     = os.environ.get("ALLOW_WALL", "") == "1"     # keep them, flagged "wall": true
 HARNESS        = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
 OUT            = os.environ.get("OUT", os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/.candidates.json"))
 
@@ -238,7 +243,8 @@ def consider(it):
         drop("blocklisted_seller", it); return
     if REPLICA.search(txt):
         drop("replica", it); return
-    if WALLCLK.search(txt) or is_furniture(txt):
+    wall = bool(WALLCLK.search(txt) or is_furniture(txt))
+    if wall and not ALLOW_WALL:
         drop("not_wristwatch", it); return
     if BULK.search(txt):
         drop("bulk_or_price_range", it); return
@@ -252,6 +258,7 @@ def consider(it):
                        "kind": "post" if it.get("id") else "listing",
                        "price": amt, "cur": cur, "brand": b,
                        "new_brand": b is None, "video": bool(it.get("vf")),
+                       "wall": wall,
                        "author": it.get("au"), "text": txt}
 
 def sweep(pr):
@@ -317,8 +324,12 @@ if candidates and not NO_DEDUP:
     def count_for(url):
         goto_url(url); time.sleep(2.5)
         try:
-            m = re.search(r"\d[\d,.]*", js(PAG) or "")
-            return int(re.sub(r"[,.]", "", m.group(0))) if m else None
+            # Over 100 rows the paginator also renders page LINKS ("1 2\n107 watchs"),
+            # so the first number is a page number, not a count — read the one that
+            # sits right before "watch", and fall back to the last number in the text.
+            txt = js(PAG) or ""
+            m = re.search(r"(\d[\d,.]*)\s*watch", txt, re.I) or re.search(r"(\d[\d,.]*)(?!.*\d)", txt, re.S)
+            return int(re.sub(r"[,.]", "", m.group(1))) if m else None
         except Exception:
             return None
     admin_total = count_for("https://3ceasuri.ro/admin/watches/watch/")

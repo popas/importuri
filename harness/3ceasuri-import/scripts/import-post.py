@@ -103,7 +103,16 @@ def find_tab(pred):
 
 ADMIN_TAB = os.environ.get("ADMIN_TAB") or find_tab(lambda u, t: "/watches/watch/add" in u)
 if not ADMIN_TAB:
-    die("no admin add-watch tab found; open https://3ceasuri.ro/admin/watches/watch/add/ or pass ADMIN_TAB")
+    # The previous run's readback leaves this tab on the saved record's change page, so
+    # after every import there is an admin tab but no *add* tab. Steer it back instead
+    # of dying and making the operator re-open it by hand each watch.
+    ADMIN_TAB = find_tab(lambda u, t: "3ceasuri.ro/admin" in u)
+    if ADMIN_TAB:
+        switch_tab(ADMIN_TAB)
+        goto_url("https://3ceasuri.ro/admin/watches/watch/add/")
+        time.sleep(4)
+if not ADMIN_TAB:
+    die("no admin tab found; open https://3ceasuri.ro/admin/watches/watch/add/ or pass ADMIN_TAB")
 PHOTO_TAB = os.environ.get("PHOTO_TAB") or find_tab(lambda u, t: "facebook.com" in u and "/groups/" not in u)
 if not PHOTO_TAB:
     PHOTO_TAB = new_tab("https://www.facebook.com/")["targetId"] if isinstance(new_tab("https://www.facebook.com/"), dict) else None
@@ -544,25 +553,52 @@ for row, via in hits:
 # --- 5. ensure brand exists (create + flag if new) --------------------------
 new_brand_id = None
 if data["brand"] not in brand_ids:
-    bt = new_tab("https://3ceasuri.ro/admin/watches/brand/add/")
+    import urllib.parse
+
+    def _lookup_brand(name):
+        """Find a brand by NAME on the changelist. The admin's search box covers the
+        name, NOT the slug — looking a freshly created brand up by its slug is what
+        made 'Buchner & Bovalier' (2026-08-08) and 'Fără marcă' (2026-08-09) die with
+        'failed to create/find brand' after the row had already been written."""
+        goto_url("https://3ceasuri.ro/admin/watches/brand/?q=" + urllib.parse.quote(name))
+        time.sleep(3)
+        rows = json.loads(js('(() => JSON.stringify([...document.querySelectorAll('
+                             '\'#result_list tbody tr a[href*="/change/"]\')].map(a=>('
+                             '{name:(a.innerText||"").trim(),'
+                             'id:(a.href.match(/brand\\/(\\d+)\\/change/)||[])[1]}))))()'))
+        for r in rows:
+            if r.get("id") and _norm(r["name"]) == _norm(name):
+                return int(r["id"])
+        return None
+
+    bt = new_tab("https://3ceasuri.ro/admin/watches/brand/")
     bt = bt["targetId"] if isinstance(bt, dict) else bt
-    time.sleep(4)
-    slug = re.sub(r"[^a-z0-9]+", "-", data["brand"].lower()).strip("-")
-    js('(() => {const n=document.getElementById("id_name"),s=document.getElementById("id_slug");'
-       'n.value=%s;n.dispatchEvent(new Event("input",{bubbles:true}));'
-       'if(s){s.value=%s;s.dispatchEvent(new Event("input",{bubbles:true}));}'
-       'const b=document.querySelector("input[name=_save]");b?b.click():document.querySelector("form").submit();'
-       'return "ok";})()' % (json.dumps(data["brand"]), json.dumps(slug)))
-    time.sleep(4)
-    goto_url("https://3ceasuri.ro/admin/watches/brand/?q=" + slug)
     time.sleep(3)
-    row = json.loads(js('(() => {const a=document.querySelector(\'#result_list tbody tr a[href*="/change/"]\');'
-                        'const m=a&&a.href.match(/brand\\/(\\d+)\\/change/);return JSON.stringify({id:m?m[1]:null});})()'))
+    # A brand missing from BRAND_IDS is not necessarily missing from the DB — the map
+    # is a local cache and drifts. Look before creating, or you get a second row with
+    # a mangled slug ('f-r-marc' next to 'fara-marca').
+    existing_id = _lookup_brand(data["brand"])
+    if existing_id:
+        new_brand_id = existing_id
+        emit("NEW_BRAND", {"name": data["brand"], "id": new_brand_id, "created": False,
+                           "action": "already on the site but MISSING from BRAND_IDS — add it to "
+                                     "import-watch.js AND references/brand-ids.md, then commit"})
+    else:
+        goto_url("https://3ceasuri.ro/admin/watches/brand/add/")
+        time.sleep(4)
+        slug = re.sub(r"[^a-z0-9]+", "-", _norm(data["brand"])).strip("-")
+        js('(() => {const n=document.getElementById("id_name"),s=document.getElementById("id_slug");'
+           'n.value=%s;n.dispatchEvent(new Event("input",{bubbles:true}));'
+           'if(s){s.value=%s;s.dispatchEvent(new Event("input",{bubbles:true}));}'
+           'const b=document.querySelector("input[name=_save]");b?b.click():document.querySelector("form").submit();'
+           'return "ok";})()' % (json.dumps(data["brand"]), json.dumps(slug)))
+        time.sleep(4)
+        new_brand_id = _lookup_brand(data["brand"])
+        if not new_brand_id:
+            close_tab(bt); die("failed to create/find brand %s" % data["brand"])
+        emit("NEW_BRAND", {"name": data["brand"], "id": new_brand_id, "created": True,
+                           "action": "ADD to BRAND_IDS in import-watch.js AND references/brand-ids.md, then commit"})
     close_tab(bt)
-    if not row["id"]: die("failed to create/find brand %s" % data["brand"])
-    new_brand_id = int(row["id"])
-    emit("NEW_BRAND", {"name": data["brand"], "id": new_brand_id,
-                       "action": "ADD to BRAND_IDS in import-watch.js AND references/brand-ids.md, then commit"})
 
 # --- 6. inject harness (+ runtime brand id if new) --------------------------
 switch_tab(ADMIN_TAB)

@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-08-08",
+  "session_date": "2026-08-09",
   "target": 5,
-  "session_imported": 4,
-  "session_skipped": 1,
+  "session_imported": 5,
+  "session_skipped": 2,
   "status": "idle",
-  "note": "2026-08-08: 4 of 5 imported (Citizen #115, Vostok #116, Tissot #117, Buchner & Bovalier #118), stopped one short by the user's call - FB feed throttled and no candidate ids left. Skipped 1779545556372714 (Polizia di Stato: no maker on dial or caseback, brand is a hard DB requirement) - it is still live and importable if a brand is ever agreed. New brand Buchner & Bovalier = 53. Two script issues hit: the brand-creation step looks the new brand up by slug while the changelist searches the name, so any brand with spaces/& dies with 'failed to create/find brand' after actually creating it; and commerce listing pages expose no /user/ link, so author ids came back null and were patched by hand from the feed candidates."
+  "note": "2026-08-09: TARGET MET 5/5. Atlantic Worldmaster Original + 4 wall clocks (Pendulă Secession, Predom Metron, Pendulă stejar, Junghans Württemberg W202) — first category=wall imports. Skipped: Helfer Quadrix (repost), Mido Ocean Star (suspected scam). Harness changes this session: ALLOW_WALL=1 flag in find-posts.py, paginator count fix, brand lookup by name (no more duplicate brands), admin add-tab self-heal. LEFTOVER: duplicate brand id 55 'Fără marcă' (slug f-r-marc) for the user to delete."
 }

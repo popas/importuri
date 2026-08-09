@@ -9,9 +9,12 @@ ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
 SRC = os.path.join(ROOT, "harness/3ceasuri-import/scripts/import-post.py")
 
 
-def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None):
-    """Execute import-post.py against a canned post; return (markers, trace)."""
-    state = {"url": "", "img": 0, "brand_tab_opened": False, "imported": None}
+def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None, brand_on_site=None):
+    """Execute import-post.py against a canned post; return (markers, trace).
+
+    `brand_on_site` names a brand the admin already holds (id 77) even though it is
+    absent from BRAND_IDS — the case that used to create a duplicate row."""
+    state = {"url": "", "img": 0, "brand_tab_opened": False, "imported": None, "brand_name": ""}
     admin_rows_for = admin_rows_for or (lambda q: [])
 
     def js(e):
@@ -32,10 +35,16 @@ def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None):
         if "td.field-" in e:                                               # dedup rows
             q = re.search(r"[?&]q=([^&\"]+)", state["url"])
             return json.dumps(admin_rows_for(q.group(1) if q else ""))
-        if "brand\\/(\\d+)\\/change" in e or "brand/(\\d+)/change" in e:   # new-brand id lookup
-            return json.dumps({"id": "99"})
+        if "brand\\/(\\d+)\\/change" in e or "brand/(\\d+)/change" in e:   # brand lookup BY NAME
+            if brand_on_site:
+                return json.dumps([{"name": brand_on_site, "id": "77"}])
+            # nothing matches until the add form has actually been submitted
+            return json.dumps([{"name": state["brand_name"], "id": "99"}]
+                              if state["brand_tab_opened"] else [])
         if "id_name" in e and "id_slug" in e:                             # brand add form
             state["brand_tab_opened"] = True
+            m = re.search(r'n\.value=("(?:[^"\\]|\\.)*")', e)
+            state["brand_name"] = json.loads(m.group(1)) if m else ""
             return "ok"
         if "hit" in e and "/photo/" in e:
             return json.dumps({"hit": "https://www.facebook.com/photo/?fbid=1&set=pcb.777"})
@@ -145,6 +154,15 @@ check("REVIEW" not in m, "D: CONFIRM must pass the gate")
 check(st["brand_tab_opened"] is True, "D: brand should be created")
 check(m.get("NEW_BRAND", {}).get("id") == 99, "D: NEW_BRAND id not reported")
 check(m.get("RESULT", {}).get("ok") is True, "D: should import")
+
+# --- D2. brand already on the site but missing from BRAND_IDS -> REUSE, never re-create
+#         (creating it again produced a duplicate 'Fără marcă' with a mangled slug)
+m, st = run(NEWB, env={"CONFIRM": "1", "OVERRIDES": json.dumps({"brand": "Zxcvbnwatch"})},
+            brand_on_site="Zxcvbnwatch")
+check(st["brand_tab_opened"] is False, "D2: must NOT open the add form for an existing brand")
+check(m.get("NEW_BRAND", {}).get("id") == 77, "D2: should reuse the existing brand id")
+check(m.get("NEW_BRAND", {}).get("created") is False, "D2: NEW_BRAND must say created:false")
+check(m.get("RESULT", {}).get("ok") is True, "D2: should import")
 
 # --- E. thin media (1 image) -> REVIEW even though everything else inferred
 m, st = run(GOOD, n_images=1)

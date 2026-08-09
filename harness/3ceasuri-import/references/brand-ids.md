@@ -55,12 +55,18 @@ Seksy:50
 Edox:51
 Mido:52
 Buchner & Bovalier:53
+Fără marcă:54
+Predom Metron:56
 ```
 
-Last updated: 2026-08-08. Added `Buchner & Bovalier`(53) — note the script's own
-brand-creation step created it but then failed to find it again, because it looks the new
-brand up by *slug* (`?q=buchner-bovalier`) while the changelist searches the *name*; any
-brand whose slug differs from its name (spaces, `&`) will need this manual step.
+Last updated: 2026-08-09. Added `Predom Metron`(56), the Polish wall-clock maker, created
+by the script itself now that the lookup works. Added `Fără marcă`(54) — the brand wall clocks and other
+unsigned pieces get; never invent a maker for them. That slug-vs-name lookup bug is now
+FIXED in `import-post.py`: it searches the changelist by *name* and reuses an existing
+row instead of creating a second one (a stale `BRAND_IDS` had produced a duplicate
+`Fără marcă` with slug `f-r-marc`, since deleted).
+Earlier: 2026-08-08 added `Buchner & Bovalier`(53), which hit that bug and needed the
+manual step.
 Earlier: 2026-07-30 added `Timex`(49), `Seksy`(50), `Edox`(51), `Mido`(52). Added `Ralmor`(48). Added `Westbury`(47), `Tressa Lux`(46), `NET`(45). Added `Jovial`(44), `Gruppo Gamma`(43), `Junghans`(42), `Chaika`(41). Added `Slava`(39), `Fresard`(40) on 2026-07-24. Brand 8 renamed `Racheta` → `Raketa` (2026-07-22).
 
 **Alias:** the harness's `window.BRAND_IDS` also keeps `"Racheta": 8` so a post using the
