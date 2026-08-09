@@ -70,13 +70,26 @@ a targeted fix without it still merges over the baseline.
 
 ## Seller phone numbers
 
-Pass 1 also reveals the seller's phone (OLX masks it and 400s its phones API, so
-the importer clicks the page's show-phone button) and reports `phone_status`.
-Private sellers require a **logged-in olx.ro session** — without one the status is
-`login_required` and `phone` stays empty, which never fails an import. When a
-number does come back it appears in the "Known from OLX" block: restate it in your
-answer like any other field. If you leave it out, pass 2 re-reveals it rather than
-clearing it, since a phone is marketplace metadata and not a claim in the ad text.
+Pass 1 reveals the seller's phone and reports `phone_status`. OLX masks the number
+in its JSON and answers `/api/v1/offers/<id>/phones/` with 400, so the importer
+clicks the page's show-phone button — the one place it reads the ad's HTML rather
+than its JSON.
+
+**Log into olx.ro before the session** (see `olx-session-setup`). Signed in, both
+private and business sellers give up their number; signed out, private ads show a
+login wall instead.
+
+| `phone_status` | meaning |
+|---|---|
+| `ok` | number captured — it appears in the "Known from OLX" block |
+| `login_required` | not signed in to olx.ro; sign in and re-run pass 1 |
+| `no_button` | the seller published no number (`contact.phone: false`), chat only — normal, not a failure |
+| `not_revealed` | the click missed; see `olx-troubleshooting` |
+
+A missing phone never fails an import. When a number does come back, restate it in
+your answer like any other contract field — and if you leave it out, pass 2
+re-reveals it rather than clearing it, since a phone is marketplace metadata and
+not a claim in the ad text.
 
 ## Review gate
 

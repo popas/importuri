@@ -40,6 +40,17 @@ What that buys us, compared with Facebook: no feed scrolling, no hydration waits
 no carousel walking, and **photo URLs that do not expire**. Ad metadata comes back
 as JSON with the seller's own structured attributes already filled in.
 
+## Log into olx.ro FIRST — it decides whether phones are captured
+
+Check the CDP Chrome is signed in before importing anything: open
+`https://www.olx.ro/myaccount/` in the OLX tab and look for the account name.
+
+Signed in, seller phone numbers are readable. Signed out they are **not**: private
+ads render a "Intra in contul tau OLX ..." wall instead of the number, and clicking
+the reveal button navigates the tab to `login.olx.ro`. Everything else (discovery,
+ad JSON, photos) works either way — only the phone is lost, and the importer
+records why in `phone_status`.
+
 ## Connect browser-use CLI
 
 ```bash

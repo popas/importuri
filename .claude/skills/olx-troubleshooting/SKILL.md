@@ -84,25 +84,29 @@ the usual cause.
 
 Pass 1 reports how the phone reveal went:
 
-- `ok` — the number was read. **Business sellers (shops, amanets) publish their
-  number** and reveal it on click without any account.
-- `login_required` — the normal case for private sellers. Their contact box reads
-  "Intră în contul tău OLX ... pentru a contacta acest vânzător" and no click
-  reveals anything, even when the page otherwise looks logged in — measured
-  2026-08-09, the my-account link was present and the click still redirected. Do
-  not gate on a "looks logged in" check; the contact-box wall text is the only
-  reliable signal. The importer deliberately checks for this wall *before* clicking: a
-  logged-out click navigates the tab to `login.olx.ro`, a different origin, and
-  every later `/api/v1/` fetch from that tab 404s with "ad did not load".
-- `not_revealed` — the button was clicked but no `tel:` link appeared. If the
-  number is plainly visible in your own browser, the click missed: OLX renders the
-  control twice (sidebar + sticky bar) and the first in DOM order has width 0, so
-  only VISIBLE controls may be clicked, with the native `.click()` — a synthetic
+- `ok` — the number was read. Works for **both private and business sellers**, as
+  long as the browser is signed in to olx.ro.
+- `login_required` — the CDP Chrome is not signed in to olx.ro. Private ads then
+  show "Intra in contul tau OLX ... pentru a contacta acest vanzator" where the
+  number would be. Sign in (see `olx-session-setup`) and re-run pass 1.
+  The importer checks for that wall *before* clicking, deliberately: on such an ad
+  the button navigates the tab to `login.olx.ro`, a different origin, and every
+  later `/api/v1/` fetch from that tab 404s with "ad did not load".
+- `no_button` — the seller published no number at all (`contact.phone: false` in
+  the ad JSON); the ad is chat-only. Normal, not a failure — roughly one ad in five.
+- `not_revealed` — a control was clicked but no `tel:` link appeared. If the number
+  is plainly visible in your own browser, the click missed: OLX renders the control
+  twice (sidebar + sticky bar) and the first in DOM order has width 0, so only
+  VISIBLE controls may be clicked, using the native `.click()` — a synthetic
   MouseEvent does not fire the handler.
-- `no_button` — the ad has no phone at all (`contact.phone: false`); chat only.
 
 A missing phone never fails an import. If the tab did get stranded on
 `login.olx.ro`, `olx_api.ensure_tab` steers it back on the next run — no manual fix.
+
+Do NOT gate the reveal on a "looks logged in" check. Measured 2026-08-09: on a
+private ad the my-account link was present while the session was not authenticated
+for contact details, and the click still redirected. The wall text is the only
+reliable signal.
 
 ## The record saved but a field is empty
 
