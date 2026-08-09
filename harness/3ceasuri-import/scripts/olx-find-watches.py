@@ -80,9 +80,26 @@ ACCESSORY = re.compile(
     r"mecanism|cadran|ace|baterii|baterie)\b"
     r"|curea\s+(?:de\s+)?schimb|set\s+curele|doar\s+(?:cutia|curea|bratara|mecanismul)|"
     r"piese\s+ceas|ceas\s+pentru\s+piese", re.I)
-# A price RANGE means more than one item is for sale — stock, not a listing.
-BULK = re.compile(r"pre[țt]uri\s+(?:cuprinse|[îi]ntre)|\blot\s+de\s+\d|\bloturi\b|"
-                  r"\d+\s*[-–]\s*\d+\s*(?:ron|lei|eur|euro|€)", re.I)
+# Stock / multi-watch ads. Every signal here has to be about WATCHES specifically —
+# the loose version of this rule dropped a Rolex Datejust on 2026-08-09 because the
+# seller accepted "loturi de telefoane" in trade, and a bare numeric range would kill
+# any ad whose reference happens to precede its price ("referință 1601 - 2500 lei").
+BULK_TITLE = re.compile(r"^\s*ceasuri\b", re.I)          # plural title = clearing stock
+BULK = re.compile(r"pre[țt]uri\s+(?:cuprinse|[îi]ntre)|"
+                  r"\blot(?:uri)?\s+(?:de\s+)?ceas|"
+                  r"\bam[âa]ndou[ăa]\b|\bambele\s+ceasuri\b|"
+                  r"pre[țt]\s+pe\s+bucat|\bbucata\s*[:\-]", re.I)
+# A seller listing five watches quotes five prices. Only prices that could plausibly
+# BE a watch count: shop ads pad their boilerplate with delivery and return fees, and
+# counting those dropped a legitimate Amazfit on 2026-08-09 over "35 / 50 / 99 lei".
+PRICE_MENTION = re.compile(r"\b(\d{2,6})\s*(?:lei|ron|eur|euro|€)\b", re.I)
+
+
+def is_stock_listing(title, text):
+    if BULK_TITLE.search(title) or BULK.search(text):
+        return True
+    quoted = {int(n) for n in PRICE_MENTION.findall(text)}
+    return len([n for n in quoted if n >= MIN_RON]) >= 3
 PHONE_RE = re.compile(r"(?:\+?40[\s.]?|0)7\d{2}[\s.]?\d{3}[\s.]?\d{3}")
 SMART_HINT = re.compile(r"smartwatch|smart\s*watch|apple\s*watch|galaxy\s*watch|"
                         r"\bamazfit\b|\bgarmin\b|\bfitbit\b|\bhuawei\s*watch|\bmi\s*band|"
@@ -117,8 +134,8 @@ def consider(ad):
         drop("replica", ad, snip); return
     if ACCESSORY.search(title):
         drop("accessory", ad, snip); return
-    if BULK.search(text):
-        drop("bulk_or_price_range", ad, snip); return
+    if is_stock_listing(title, text):
+        drop("bulk_or_stock", ad, snip); return
 
     mapped = olx_api.map_params(ad)
     price, cur = mapped.get("price"), mapped.get("currency", "RON")
@@ -167,22 +184,31 @@ for page in range(MAX_PAGES):
     time.sleep(1.5)
 
 # --- Stage-1 dedup ----------------------------------------------------------
+# One API page holds 40-50 ads, so checking every survivor before truncating meant
+# ~50 admin page loads for the 8 candidates actually wanted. Check in order and
+# stop at MAX_CANDIDATES confirmed survivors; the rest are never queried.
 admin_total = None
+ordered = list(candidates.values())
 if candidates and not NO_DEDUP:
     at = new_tab("https://3ceasuri.ro/admin/watches/watch/")
     at = at["targetId"] if isinstance(at, dict) else at
     time.sleep(3)
     admin_total = admin_import.admin_count(A)
-    for aid in list(candidates):
-        n = admin_import.admin_count(A, aid)
+    kept = []
+    for c in ordered:
+        if len(kept) >= MAX_CANDIDATES:
+            break
+        n = admin_import.admin_count(A, c["id"])
         if n is None:
-            candidates[aid]["dedup"] = "unverified"
+            c["dedup"] = "unverified"
         elif n > 0:
-            drop("already_imported", {"id": aid}, candidates[aid]["title"]); del candidates[aid]
+            drop("already_imported", {"id": c["id"]}, c["title"]); continue
+        kept.append(c)
+    ordered = kept
     close_tab(at)
     olx_api.ensure_tab(bu)
 
-ordered = list(candidates.values())[:MAX_CANDIDATES]
+ordered = ordered[:MAX_CANDIDATES]
 try:
     with open(OUT, "w") as f:
         json.dump({"generated": time.strftime("%Y-%m-%dT%H:%M:%S"), "source": "olx",

@@ -117,7 +117,6 @@ data.update({"movement": "smart", "style": "smart", "displayType": "smart",
 if brand:
     data["brand"] = brand
 data["description"] = description
-data["location"] = olx_api.location_str(ad)
 
 # what the params never carry: size, and a model number if the seller typed one
 m = re.search(r"(\d{2}(?:[.,]\d)?)\s*mm", text, re.I)
@@ -125,16 +124,22 @@ if m:
     data["diameter"] = float(m.group(1).replace(",", "."))
 
 known = {k: v for k, v in data.items()
-         if k in infer_fields.SCHEMA_FIELDS and k not in ("description", "location")}
+         if k in infer_fields.SCHEMA_FIELDS and k != "description"}
 
 # --- 3. pass 1: hand the contract out --------------------------------------
 if not OVERRIDES and not SKIP_PROMPT and not DRY_RUN:
     photos, failed = olx_api.download_photos(bu, images, PHOTO_DIR)
+    # The phone is masked in the JSON and only rendered on click, so it costs a page
+    # navigation — do it once here and show it with the contract. SOURCE_URL always
+    # comes from the API: a hand-built /d/oferta/ slug lands on an unrelated ad.
+    phone, phone_status = olx_api.reveal_phone(bu, SOURCE_URL)
+    if phone:
+        known["phone"] = phone
     emit("EXTRACT_PROMPT", {
         "ad_id": AD_ID,
         "prompt": infer_fields.build_prompt(text, brand_ids.keys(), profile="smart",
                                             known=known, source_noun="OLX ad"),
-        "photos": photos, "photos_failed": failed,
+        "photos": photos, "photos_failed": failed, "phone_status": phone_status,
         "rerun": "AD_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../olx-import-smartwatch.py" % AD_ID})
     raise SystemExit(0)
 
@@ -177,6 +182,14 @@ for k in ("is_wristwatch", "is_bulk_lot", "notes"):     # contract-only, not for
     data.pop(k, None)
 
 # --- 5. provenance ----------------------------------------------------------
+# The seller's city and phone are OLX metadata, not claims in the ad text — an
+# answer that omits them is silent, not authoritative, so they are restored rather
+# than cleared. The phone costs a page navigation (it is masked until clicked), so
+# it is only fetched when the contract did not already carry it.
+if not data.get("location"):
+    data["location"] = olx_api.location_str(ad)
+if not data.get("phone"):
+    data["phone"] = olx_api.reveal_phone(bu, SOURCE_URL)[0] or None
 data["images"] = images
 data["sourceUrl"] = SOURCE_URL
 data["source"] = "olx"

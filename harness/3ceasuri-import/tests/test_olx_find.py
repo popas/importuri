@@ -164,23 +164,40 @@ WATCH_FEED = [
     ad(21, "Curea de schimb piele 20mm", price=150),                     # accessory
     ad(22, "Mecanism ceas Raketa pentru piese", price=120),              # accessory
     ad(23, "Ceasuri diverse, preturi intre 100 - 900 lei", price=900),   # bulk / price range
+    ad(29, "Ceas Rolex Datejust 36, Aur 18K, referinta 1601", price=25000,
+       desc="PRET FIX. Accept schimburi cu aur, ceasuri din aur si loturi de "
+            "telefoane (sigilate). Ceasul il am de un an."),             # NOT bulk
+    ad(30, "Ceas Omega Seamaster referinta 2531 - 3500 lei", price=3500,
+       desc="Ceas in stare buna, cu cutie."),                            # NOT bulk
+    ad(31, "Ceasuri Amanet BKG", price=600, business=True,
+       desc="Amanet BKG vinde: Ceas Lee Cooper LC07717 - 200 lei; "
+            "Mark Maddox HC3024 - 350 lei; Casio MTP - 180 lei."),       # real stock ad
     ad(24, "Ceas replica Rolex Submariner", price=800),                  # replica
     ad(25, "Ceas dama Casio", price=80),                                 # below floor
     ad(26, "Apple Watch Series 8 45mm", price=1100,
        desc="Smartwatch in stare buna."),                                # smart in this category
     ad(27, "Pendula de perete cu cuc anii 70", price=700,
        desc="Ceas de perete functional, lemn masiv."),                   # wall clock
-    ad(28, "Ceasuri Hugo Boss Amanet BKG", price=600, business=True,
-       desc="Garantie 2 ani, factura fiscala."),                         # business: KEPT
+    ad(28, "Ceas Breitling Avenger Seawolf Amanet BKG", price=9000, business=True,
+       desc="Amanet BKG vinde: Ceas Breitling Avenger Seawolf E17370 in stare buna, "
+            "mecanism Automatic, 44mm. Garantie 2 ani, factura fiscala."),  # business, ONE watch: KEPT
 ]
 
 m = run(FIND_WATCH, WATCH_FEED)
 got = ids(m)
 check("20" in got, "watch: a plain Seiko must survive")
-check("28" in got, "watch: business sellers are KEPT")
+check("28" in got, "watch: a business seller offering ONE watch is KEPT "
+      "(only plural-title stock ads drop)")
 check("21" not in got and why(m, 21) == "accessory", "watch: strap not dropped (%s)" % why(m, 21))
 check("22" not in got and why(m, 22) == "accessory", "watch: parts-only ad not dropped (%s)" % why(m, 22))
-check("23" not in got and why(m, 23) == "bulk_or_price_range", "watch: price range not dropped (%s)" % why(m, 23))
+check("23" not in got and why(m, 23) == "bulk_or_stock", "watch: price range not dropped (%s)" % why(m, 23))
+# Regression, 2026-08-09: the loose bulk rule dropped a real Rolex Datejust because
+# the seller accepted "loturi de telefoane" in trade, and a bare numeric range would
+# kill any ad whose reference happens to precede its price. Both must survive.
+check("29" in got, "watch: 'loturi de telefoane' in a TRADE offer is not a bulk watch lot")
+check("30" in got, "watch: 'referinta 2531 - 3500 lei' is a reference + price, not a range")
+check("31" not in got and why(m, 31) == "bulk_or_stock",
+      "watch: a plural-titled amanet stock ad must drop (%s)" % why(m, 31))
 check("24" not in got and why(m, 24) == "replica", "watch: replica not dropped (%s)" % why(m, 24))
 check("25" not in got and why(m, 25) == "price_below_floor", "watch: floor not applied (%s)" % why(m, 25))
 check("26" in got and next(c for c in m["CANDIDATES"] if c["id"] == "26")["looks_smart"] is True,

@@ -57,9 +57,15 @@ Mido:52
 Buchner & Bovalier:53
 Fără marcă:54
 Predom Metron:56
+Apple:57
 ```
 
-Last updated: 2026-08-09. Added `Predom Metron`(56), the Polish wall-clock maker, created
+Last updated: 2026-08-09. Added `Apple`(57) — the first brand created by the OLX
+importer (`olx-import-smartwatch.py`, ad 307818256). Expect most smartwatch brands
+(Samsung, Garmin, Huawei, Amazfit, Xiaomi, Fitbit) to arrive the same way: in the
+smartwatch category a NEW_BRAND is the normal case, not the exception.
+
+Earlier that day: Added `Predom Metron`(56), the Polish wall-clock maker, created
 by the script itself now that the lookup works. Added `Fără marcă`(54) — the brand wall clocks and other
 unsigned pieces get; never invent a maker for them. That slug-vs-name lookup bug is now
 FIXED in `import-post.py`: it searches the changelist by *name* and reuses an existing

@@ -296,8 +296,12 @@ if wr: data["waterRes"] = wr
 
 m = re.search(r"(\d{2}(?:[.,]\d)?)\s*mm", low)
 if m: data["diameter"] = float(m.group(1).replace(",", "."))
-m = re.search(r"(?:ref(?:erin[țt]a)?\.?\s*[:\-]?\s*(?:este\s*)?)([A-Z0-9][A-Z0-9\-\/ ]{2,20}[A-Z0-9])", text, re.I)
-if m: data["reference"] = m.group(1).strip()
+# "referință" ends in ț+ă, so `erin[țt]a` never matched the whole word and the capture
+# started mid-word (an OLX Rolex ad yielded "erin" on 2026-08-09). A reference always
+# carries a digit; without that check the capture swallows the next ordinary word.
+m = re.search(r"(?:ref(?:erin[țt][ăa])?\.?\s*(?:nr\.?)?\s*[:\-]?\s*(?:este\s*)?)"
+              r"([A-Z0-9][A-Z0-9\-\./ ]{2,20}[A-Z0-9])", text, re.I)
+if m and any(c.isdigit() for c in m.group(1)): data["reference"] = m.group(1).strip(" .")
 m = re.search(r"(?:\+?40[\s.]?|0)7\d{2}[\s.]?\d{3}[\s.]?\d{3}", text)
 if m: data["phone"] = m.group(0)
 m = re.search(r"\b((?:19|20)\d{2})(?:\s*[-–]\s*((?:19|20)\d{2}))?\b", text)

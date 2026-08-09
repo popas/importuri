@@ -114,7 +114,6 @@ data = dict(mapped)
 if brand:
     data["brand"] = brand
 data["description"] = description
-data["location"] = olx_api.location_str(ad)
 
 # what the params never carry: size, reference, era. Baseline only — the contract
 # overrules all three, and reliably has to (a reference truncated at the first dot
@@ -122,9 +121,14 @@ data["location"] = olx_api.location_str(ad)
 m = re.search(r"(\d{2}(?:[.,]\d)?)\s*mm", text, re.I)
 if m:
     data["diameter"] = float(m.group(1).replace(",", "."))
-m = re.search(r"(?:ref(?:erin[țt]a)?\.?\s*[:\-]?\s*(?:este\s*)?)([A-Z0-9][A-Z0-9\-\/ ]{2,20}[A-Z0-9])", text, re.I)
-if m:
-    data["reference"] = m.group(1).strip()
+# "referință" ends in ț+ă, so the old `erin[țt]a` never matched the whole word and
+# the capture started mid-word — a Rolex ad yielded reference "erin" on 2026-08-09.
+# A reference also always carries a digit; without that check the capture happily
+# swallows the next ordinary word.
+m = re.search(r"(?:ref(?:erin[țt][ăa])?\.?\s*(?:nr\.?)?\s*[:\-]?\s*(?:este\s*)?)"
+              r"([A-Z0-9][A-Z0-9\-\./ ]{2,20}[A-Z0-9])", text, re.I)
+if m and any(c.isdigit() for c in m.group(1)):
+    data["reference"] = m.group(1).strip(" .")
 m = re.search(r"\b((?:19|20)\d{2})\b", text)
 if m:
     data["year"] = int(m.group(1))
@@ -140,16 +144,22 @@ if mv:
     data["movement"] = mv
 
 known = {k: v for k, v in data.items()
-         if k in infer_fields.SCHEMA_FIELDS and k not in ("description", "location")}
+         if k in infer_fields.SCHEMA_FIELDS and k != "description"}
 
 # --- 3. pass 1: hand the contract out --------------------------------------
 if not OVERRIDES and not SKIP_PROMPT and not DRY_RUN:
     photos, failed = olx_api.download_photos(bu, images, PHOTO_DIR)
+    # The phone is masked in the JSON and only rendered on click, so it costs a page
+    # navigation — do it once here and show it with the contract. SOURCE_URL always
+    # comes from the API: a hand-built /d/oferta/ slug lands on an unrelated ad.
+    phone, phone_status = olx_api.reveal_phone(bu, SOURCE_URL)
+    if phone:
+        known["phone"] = phone
     emit("EXTRACT_PROMPT", {
         "ad_id": AD_ID,
         "prompt": infer_fields.build_prompt(text, brand_ids.keys(), profile="classic",
                                             known=known, source_noun="OLX ad"),
-        "photos": photos, "photos_failed": failed,
+        "photos": photos, "photos_failed": failed, "phone_status": phone_status,
         "rerun": "AD_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../olx-import-watch.py" % AD_ID})
     raise SystemExit(0)
 
@@ -182,6 +192,14 @@ for k in ("is_wristwatch", "is_bulk_lot", "notes"):     # contract-only, not for
 data.setdefault("category", "wrist")
 
 # --- 5. provenance ----------------------------------------------------------
+# The seller's city and phone are OLX metadata, not claims in the ad text — an
+# answer that omits them is silent, not authoritative, so they are restored rather
+# than cleared. The phone costs a page navigation (it is masked until clicked), so
+# it is only fetched when the contract did not already carry it.
+if not data.get("location"):
+    data["location"] = olx_api.location_str(ad)
+if not data.get("phone"):
+    data["phone"] = olx_api.reveal_phone(bu, SOURCE_URL)[0] or None
 data["images"] = images
 data["sourceUrl"] = SOURCE_URL
 data["source"] = "olx"

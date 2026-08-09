@@ -51,18 +51,37 @@ def bind(g):
 
 
 # --- the tab ----------------------------------------------------------------
+def _is_api_origin(u):
+    """Only www.olx.ro answers the API.
+
+    `login.olx.ro` also contains "olx.ro" but is a different origin, so a relative
+    /api/v1/ fetch from there 404s. A logged-out click on the phone button lands
+    exactly there, which used to leave the tab poisoned for every later run.
+    """
+    u = (u or "").lower()
+    return "olx.ro" in u and "login.olx.ro" not in u and "//login." not in u
+
+
 def ensure_tab(bu, url=None, tabs=None):
-    """Return a tab sitting on olx.ro, creating or steering one if needed.
+    """Return a tab sitting on www.olx.ro, creating or steering one if needed.
 
     Same-origin is not cosmetic here: a fetch issued from any other origin gets
     the 403 that plain curl gets.
     """
     url = url or "https://www.olx.ro/"
     tabs = tabs if tabs is not None else bu.list_tabs()
+    stray = None
     for t in tabs:
-        if "olx.ro" in (t.get("url") or "").lower():
+        if _is_api_origin(t.get("url")):
             bu.switch_tab(t["targetId"])
             return t["targetId"]
+        if "olx.ro" in (t.get("url") or "").lower():
+            stray = t["targetId"]            # e.g. parked on login.olx.ro
+    if stray:
+        bu.switch_tab(stray)
+        bu.goto_url(url)
+        time.sleep(6)
+        return stray
     r = bu.new_tab(url)
     tab = r["targetId"] if isinstance(r, dict) else r
     time.sleep(8)
@@ -128,6 +147,82 @@ def photo_urls(ad, width=1000, height=1000):
             continue
         out.append(link.replace("{width}", str(width)).replace("{height}", str(height)))
     return out
+
+
+def reveal_phone(bu, ad_url, wait=9):
+    """The seller's phone number: (number_or_None, status).
+
+    OLX renders it masked (`xxx xxx xxx`) behind a `data-testid="show-phone"`
+    button and only fills it in on click — so this is the one place the importer
+    touches the ad's HTML instead of its JSON. `/api/v1/offers/<id>/phones/`
+    exists but answers 400 "Disallowed for this user", and ads carry
+    `protect_phone: true`.
+
+    **Private sellers require a logged-in OLX session**: their contact box reads
+    "Intră în contul tău OLX ... pentru a contacta acest vânzător" and no click
+    reveals anything. That returns status "login_required" rather than an error —
+    a missing phone must never fail an import.
+
+    `ad_url` MUST be the `url` the API returned. A hand-built /d/oferta/ slug
+    lands on an unrelated ad (verified the hard way on 2026-08-09: an invented
+    id token resolved to a car-parts listing).
+
+    status: "ok" | "login_required" | "no_button" | "not_revealed" | "no_url"
+    """
+    if not ad_url:
+        return None, "no_url"
+    bu.goto_url(ad_url)
+    time.sleep(wait)
+
+    # Check for the login wall BEFORE clicking. Logged out, the button navigates the
+    # tab to login.olx.ro — a different origin — and every later /api/v1/ fetch from
+    # that tab 404s. Verified on 2026-08-09: three ads in a row failed to load until
+    # the tab was steered back.
+    if bu.js('(() => /Intr[ăa] [îi]n contul t[ăa]u OLX|creeaz[ăa] un cont nou pentru a contacta/i'
+             '.test(document.body.innerText||"") ? "wall" : "")()') == "wall":
+        return None, "login_required"
+
+    clicked = bu.js(
+        '(() => {'
+        ' const b=document.querySelector(\'button[data-testid="show-phone"]\')'
+        '   || [...document.querySelectorAll("button,[role=\\"button\\"]")].find(e =>'
+        '        /^(arat[ăa]|afi[șs]eaz[ăa]|show)$/i.test((e.innerText||"").trim()));'
+        ' if(!b) return "no-button";'
+        ' b.scrollIntoView({block:"center"});'
+        ' ["mousedown","mouseup","click"].forEach(ev =>'
+        '   b.dispatchEvent(new MouseEvent(ev,{bubbles:true,cancelable:true,view:window})));'
+        ' return "clicked";})()')
+    time.sleep(6)
+
+    try:
+        found = json.loads(bu.js(
+            '(() => {const tel=[...document.querySelectorAll(\'a[href^="tel:"]\')]'
+            '.map(a=>(a.getAttribute("href")||"").replace("tel:","").trim()).filter(Boolean);'
+            ' const t=document.body.innerText||"";'
+            ' const m=t.match(/(?:\\+?40[\\s.]?|0)7\\d{2}[\\s.]?\\d{3}[\\s.]?\\d{3}/g);'
+            ' return JSON.stringify({tel:tel, txt:m||[], href:location.href,'
+            '  login:/Intr[ăa] [îi]n contul t[ăa]u OLX|creeaz[ăa] un cont nou pentru a contacta/i.test(t),'
+            '  masked:/xxx\\s*xxx\\s*xxx/i.test(t)});})()'))
+    except Exception:
+        found = {}
+
+    # A click that redirected off www.olx.ro poisons the tab for the API — steer back
+    # before returning, whatever the outcome.
+    redirected = not _is_api_origin(found.get("href") or ad_url)
+    if redirected:
+        bu.goto_url(ad_url)
+        time.sleep(5)
+        return None, "login_required"
+
+    for candidate in (found.get("tel") or []) + (found.get("txt") or []):
+        digits = re.sub(r"[^\d+]", "", candidate)
+        if len(re.sub(r"\D", "", digits)) >= 9:
+            return digits, "ok"
+    if found.get("login"):
+        return None, "login_required"
+    if clicked == "no-button":
+        return None, "no_button"
+    return None, "not_revealed"
 
 
 def download_photos(bu, urls, dest_dir):

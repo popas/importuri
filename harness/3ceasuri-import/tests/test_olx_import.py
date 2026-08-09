@@ -299,6 +299,48 @@ m, _ = run(SMART, SMART_AD, env={"CONFIRM": "1",
                                  "OVERRIDES": json.dumps(dict(FILLED_SMART, connectivity="LTE"))})
 check("ERROR" in m and "not one of" in json.dumps(m["ERROR"]), "15: bad enum not rejected: %s" % m.get("ERROR"))
 
+# --- 15b. Romanian "referință" must not yield a mid-word capture ----------
+# Regression 2026-08-09: `erin[țt]a` never matched "referință" (it ends ț+ă), so the
+# capture started mid-word and a Rolex ad proposed reference "erin".
+ROLEX_AD = dict(CLASSIC_AD, id=307626402,
+                title="Ceas Rolex Datejust 36, Aur 18K+Otel, referință 1601",
+                description="Ceas Rolex Datejust 36, referință 1601, automat (calibru 1570).")
+m, _ = run(CLASSIC, ROLEX_AD)
+known = m["EXTRACT_PROMPT"]["prompt"]
+check("`reference`: \"erin\"" not in known, "15b: mid-word reference capture is back")
+check('`reference`: "1601"' in known, "15b: 'referință 1601' must yield 1601, prompt said: %s"
+      % [l for l in known.splitlines() if "reference" in l][:2])
+
+# --- 15c. the login redirect must never poison the OLX tab ----------------
+# Regression 2026-08-09: logged out, clicking the phone button navigates the tab to
+# login.olx.ro — a different origin — and every later /api/v1/ fetch from that tab
+# 404s. Three ads in a row failed to load before the tab was steered back.
+check(olx_api._is_api_origin("https://www.olx.ro/d/oferta/x.html") is True,
+      "15c: www.olx.ro must count as the API origin")
+check(olx_api._is_api_origin("https://login.olx.ro/?cc=abc") is False,
+      "15c: login.olx.ro must NOT count as the API origin")
+
+class _Bu:
+    """A tab parked on login.olx.ro, as a poisoned session leaves it."""
+    def __init__(self):
+        self.url = "https://login.olx.ro/?cc=abc"
+        self.went = []
+    def list_tabs(self):
+        return [{"targetId": "T", "url": self.url}]
+    def switch_tab(self, t): pass
+    def goto_url(self, u):
+        self.url = u; self.went.append(u)
+    def new_tab(self, u):
+        self.went.append("NEW:" + u); return {"targetId": "NEW"}
+
+_b = _Bu()
+_tab = olx_api.ensure_tab(_b, "https://www.olx.ro/moda-frumusete/ceasuri/")
+check(_tab == "T", "15c: the existing tab must be reused, not abandoned")
+check(any("www.olx.ro" in u for u in _b.went),
+      "15c: a tab parked on login.olx.ro must be steered back to www.olx.ro, got %r" % _b.went)
+check(not any(u.startswith("NEW:") for u in _b.went),
+      "15c: must not leak a new tab when one is merely on the wrong olx host")
+
 # --- 16. an inactive ad is skipped, not imported --------------------------
 m, _ = run(SMART, dict(SMART_AD, status="removed_by_user"))
 check(m.get("SKIP", {}).get("reason", "").startswith("ad is not active"), "16: inactive ad: %s" % m.get("SKIP"))
