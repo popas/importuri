@@ -60,6 +60,8 @@ Predom Metron:56
 Apple:57
 Garmin:58
 Samsung:59
+Christophe Duchamp:60
+Breitling:61
 ```
 
 Last updated: 2026-08-09. Added `Apple`(57) — the first brand created by the OLX

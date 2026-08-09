@@ -24,6 +24,7 @@ helpers through `bind(globals())`.
 import json
 import re
 import time
+import urllib.parse
 
 # The two categories we import from.
 CATEGORY_SMARTWATCH = 1943   # /electronice-si-electrocasnice/.../smartwatch-uri/
@@ -173,6 +174,23 @@ def reveal_phone(bu, ad_url, wait=9):
         return None, "no_url"
     bu.goto_url(ad_url)
     time.sleep(wait)
+
+    # Confirm the browser is REALLY on this ad before reading anything off it.
+    # goto_url returns before the navigation settles, and the previous ad is left in
+    # the DOM with its number already revealed — so a slow load silently returns the
+    # PREVIOUS seller's phone. Caught 2026-08-09: a private seller in Berceni was
+    # about to be saved with an amanet's number from the ad imported just before.
+    try:
+        want = urllib.parse.urlparse(ad_url).path
+    except Exception:
+        want = ad_url
+    for _ in range(6):
+        here = bu.js('(() => location.pathname)()') or ""
+        if here == want:
+            break
+        time.sleep(3)
+    else:
+        return None, "wrong_page"
 
     # The contact-box wall text is the ONE reliable signal, and it must be checked
     # before clicking: on such an ad the button navigates the tab to login.olx.ro — a

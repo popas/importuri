@@ -360,6 +360,10 @@ class _PhoneBu:
         self.url = u; self.went.append(u)
     def js(self, e):
         self.scripts.append(e)
+        # The reveal confirms it has landed on the ad before reading anything.
+        if "location.pathname" in e:
+            import urllib.parse
+            return urllib.parse.urlparse(self.url).path
         # Order matters: the reader script ALSO contains the wall wording (it reports
         # `login:`), so match its unique marker first or the wall branch swallows it.
         if "href:location.href" in e:
@@ -392,6 +396,34 @@ _wall = _PhoneBu(wall=True)
 check(olx_api.reveal_phone(_wall, "https://www.olx.ro/d/oferta/x.html") == (None, "login_required"),
       "15d: a walled ad must report login_required")
 check(_wall.clicked is False, "15d: must NOT click through the login wall")
+
+# --- 15e. never read a phone off a page that has not navigated yet --------
+# Caught live 2026-08-09: goto_url returns before the navigation settles and the
+# PREVIOUS ad is still in the DOM with its number already revealed, so a private
+# seller in Berceni was about to be saved with an amanet's number from the ad
+# imported moments earlier. The reveal must confirm the path first.
+class _SlowBu(_PhoneBu):
+    """Navigation that never lands on the requested ad."""
+    def js(self, e):
+        if "location.pathname" in e:
+            return "/d/oferta/some-other-ad-IDxxx.html"      # still the old page
+        return super().js(e)
+
+_slow = _SlowBu()
+check(olx_api.reveal_phone(_slow, "https://www.olx.ro/d/oferta/wanted-IDaaa.html")
+      == (None, "wrong_page"),
+      "15e: a page that never navigated must report wrong_page, not a stale phone")
+check(_slow.clicked is False, "15e: must not click a page that is not the target ad")
+
+class _LandedBu(_PhoneBu):
+    def js(self, e):
+        if "location.pathname" in e:
+            return "/d/oferta/wanted-IDaaa.html"
+        return super().js(e)
+
+check(olx_api.reveal_phone(_LandedBu(), "https://www.olx.ro/d/oferta/wanted-IDaaa.html")
+      == ("+40742866198", "ok"),
+      "15e: the matching path must still read normally")
 
 # --- 16. an inactive ad is skipped, not imported --------------------------
 m, _ = run(SMART, dict(SMART_AD, status="removed_by_user"))
