@@ -84,14 +84,21 @@ the usual cause.
 
 Pass 1 reports how the phone reveal went:
 
+- `ok` — the number was read. **Business sellers (shops, amanets) publish their
+  number** and reveal it on click without any account.
 - `login_required` — the normal case for private sellers. Their contact box reads
   "Intră în contul tău OLX ... pentru a contacta acest vânzător" and no click
-  reveals anything. **Log into olx.ro in the CDP Chrome profile** and it works from
-  then on. The importer deliberately checks for this wall *before* clicking: a
+  reveals anything, even when the page otherwise looks logged in — measured
+  2026-08-09, the my-account link was present and the click still redirected. Do
+  not gate on a "looks logged in" check; the contact-box wall text is the only
+  reliable signal. The importer deliberately checks for this wall *before* clicking: a
   logged-out click navigates the tab to `login.olx.ro`, a different origin, and
   every later `/api/v1/` fetch from that tab 404s with "ad did not load".
-- `not_revealed` — the button was clicked but no `tel:` link appeared. Usually the
-  same login wall in a different layout.
+- `not_revealed` — the button was clicked but no `tel:` link appeared. If the
+  number is plainly visible in your own browser, the click missed: OLX renders the
+  control twice (sidebar + sticky bar) and the first in DOM order has width 0, so
+  only VISIBLE controls may be clicked, with the native `.click()` — a synthetic
+  MouseEvent does not fire the handler.
 - `no_button` — the ad has no phone at all (`contact.phone: false`); chat only.
 
 A missing phone never fails an import. If the tab did get stranded on

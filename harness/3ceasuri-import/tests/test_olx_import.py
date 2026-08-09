@@ -346,6 +346,53 @@ check(any("www.olx.ro" in u for u in _b.went),
 check(not any(u.startswith("NEW:") for u in _b.went),
       "15c: must not leak a new tab when one is merely on the wrong olx host")
 
+# --- 15d. the phone reveal: visible button, native click, wall gate -------
+# Measured live 2026-08-09 on the ad the user pointed at: OLX renders the reveal
+# control TWICE (sidebar + sticky bar) and the first in DOM order has width 0, so
+# clicking `querySelector(...)` clicked the hidden one and the number never
+# appeared. A synthetic MouseEvent did not trigger the handler either.
+class _PhoneBu:
+    """Records the JS the reveal runs, and plays back a page that reveals on click."""
+    def __init__(self, wall=False, reveal=True):
+        self.wall, self.reveal, self.clicked = wall, reveal, False
+        self.url, self.went, self.scripts = "https://www.olx.ro/d/oferta/x.html", [], []
+    def goto_url(self, u):
+        self.url = u; self.went.append(u)
+    def js(self, e):
+        self.scripts.append(e)
+        # Order matters: the reader script ALSO contains the wall wording (it reports
+        # `login:`), so match its unique marker first or the wall branch swallows it.
+        if "href:location.href" in e:
+            tel = ["+40742866198"] if (self.clicked and self.reveal) else []
+            return json.dumps({"tel": tel, "txt": [], "href": self.url,
+                               "login": False, "masked": not tel})
+        if "contul t" in e:
+            return "wall" if self.wall else ""
+        if "show-phone" in e:
+            self.clicked = True
+            return "clicked"
+        return ""
+    def list_tabs(self): return [{"targetId": "T", "url": self.url}]
+    def switch_tab(self, t): pass
+    def new_tab(self, u): return {"targetId": "N"}
+    def close_tab(self, t): pass
+
+_ok = _PhoneBu()
+check(olx_api.reveal_phone(_ok, "https://www.olx.ro/d/oferta/x.html") == ("+40742866198", "ok"),
+      "15d: a revealable phone must be read")
+_click = [e for e in _ok.scripts if "show-phone" in e]
+check(_click and "getBoundingClientRect().width > 0" in _click[0],
+      "15d: must click only VISIBLE controls — the first show-phone button has width 0")
+check(_click and ".click()" in _click[0] and "new MouseEvent" not in _click[0],
+      "15d: must use the native .click(); a synthetic MouseEvent does not fire the handler")
+
+# The wall gate has to fire BEFORE any click: on a private ad the click navigates to
+# login.olx.ro and poisons the tab for every later API call.
+_wall = _PhoneBu(wall=True)
+check(olx_api.reveal_phone(_wall, "https://www.olx.ro/d/oferta/x.html") == (None, "login_required"),
+      "15d: a walled ad must report login_required")
+check(_wall.clicked is False, "15d: must NOT click through the login wall")
+
 # --- 16. an inactive ad is skipped, not imported --------------------------
 m, _ = run(SMART, dict(SMART_AD, status="removed_by_user"))
 check(m.get("SKIP", {}).get("reason", "").startswith("ad is not active"), "16: inactive ad: %s" % m.get("SKIP"))

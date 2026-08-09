@@ -174,25 +174,36 @@ def reveal_phone(bu, ad_url, wait=9):
     bu.goto_url(ad_url)
     time.sleep(wait)
 
-    # Check for the login wall BEFORE clicking. Logged out, the button navigates the
-    # tab to login.olx.ro — a different origin — and every later /api/v1/ fetch from
-    # that tab 404s. Verified on 2026-08-09: three ads in a row failed to load until
-    # the tab was steered back.
+    # The contact-box wall text is the ONE reliable signal, and it must be checked
+    # before clicking: on such an ad the button navigates the tab to login.olx.ro — a
+    # different origin — and every later /api/v1/ fetch from that tab 404s.
+    #
+    # Do NOT gate on a "looks logged in" check instead. Measured 2026-08-09 on an ad
+    # whose seller was private: the my-account link was present (`logged: true`) and
+    # the click still redirected to the login page. Business ads carry no wall text
+    # and reveal their number happily; private ads carry it and never do.
     if bu.js('(() => /Intr[ăa] [îi]n contul t[ăa]u OLX|creeaz[ăa] un cont nou pentru a contacta/i'
              '.test(document.body.innerText||"") ? "wall" : "")()') == "wall":
         return None, "login_required"
 
+    # Click every reveal control, VISIBLE ones included — OLX renders the sidebar and
+    # the sticky contact bar as separate copies and the first in DOM order is the
+    # hidden one (width 0). Use the native .click(); a synthetic MouseEvent does not
+    # trigger the handler, which is why this returned "not_revealed" on an ad whose
+    # number was plainly on the page.
     clicked = bu.js(
         '(() => {'
-        ' const b=document.querySelector(\'button[data-testid="show-phone"]\')'
-        '   || [...document.querySelectorAll("button,[role=\\"button\\"]")].find(e =>'
-        '        /^(arat[ăa]|afi[șs]eaz[ăa]|show)$/i.test((e.innerText||"").trim()));'
-        ' if(!b) return "no-button";'
-        ' b.scrollIntoView({block:"center"});'
-        ' ["mousedown","mouseup","click"].forEach(ev =>'
-        '   b.dispatchEvent(new MouseEvent(ev,{bubbles:true,cancelable:true,view:window})));'
+        ' const b=[...document.querySelectorAll(\'button[data-testid="show-phone"],\''
+        '   +\'[data-testid="ad-contact-phone"]\')]'
+        '   .filter(e => e.getBoundingClientRect().width > 0);'
+        ' const extra=[...document.querySelectorAll("button,[role=\\"button\\"]")]'
+        '   .filter(e => /^(arat[ăa]|afi[șs]eaz[ăa]|show)$/i.test((e.innerText||"").trim())'
+        '                && e.getBoundingClientRect().width > 0);'
+        ' const all=[...new Set([...b, ...extra])];'
+        ' if(!all.length) return "no-button";'
+        ' all.forEach(e => { try { e.scrollIntoView({block:"center"}); e.click(); } catch(err) {} });'
         ' return "clicked";})()')
-    time.sleep(6)
+    time.sleep(8)
 
     try:
         found = json.loads(bu.js(
