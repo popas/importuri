@@ -4,3 +4,5 @@ harness/3ceasuri-import/.candidates.json
 
 # per-post photos saved for the extraction contract (regenerated per run)
 .photos/
+harness/3ceasuri-import/.candidates-olx-smart.json
+harness/3ceasuri-import/.candidates-olx-watches.json

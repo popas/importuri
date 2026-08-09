@@ -1,0 +1,203 @@
+#!/usr/bin/env python3
+# =============================================================================
+# olx-find-watches.py — discovery for OLX category 1677 (moda-frumusete/ceasuri).
+#
+# The OLX counterpart of find-posts.py for classic watches. OLX answers its own
+# JSON API from a page already on olx.ro, so there is no feed to scroll and no
+# hydration to wait out: one paged API loop, objective filters, batched Stage-1
+# dedup, one CANDIDATES: line.
+#
+# It is a browser-use *payload*: pipe it on stdin, NOT `python3 <this>`.
+#   export BU_CDP_URL="http://127.0.0.1:9222"
+#   MAX_CANDIDATES=8 browser-use < harness/3ceasuri-import/scripts/olx-find-watches.py
+#
+# Env:
+#   PROJECT_ROOT    repo root (default: the Mac path below)
+#   MAX_CANDIDATES  stop once this many qualify (default 8)
+#   MAX_PAGES       API pages to walk before giving up (default 5, 40 ads each)
+#   MIN_RON/MIN_EUR price floors (default 100 RON / 20 EUR)
+#   SNIPPET         chars of ad text per emitted candidate (default 180)
+#   NO_DEDUP=1      skip the admin Stage-1 dedup pass
+#   DEBUG_DROPS=1   also emit DROPPED: [{id,why,snip}]
+#   OUT             candidates file (default .candidates-olx-watches.json)
+#
+# Emits: CANDIDATES: [...]   STATS: {...}   ERROR: {...}
+#
+# WHAT THIS SCRIPT DECIDES vs WHAT YOU DECIDE
+#   Only objective filters — inactive ads, no price, price under the floor,
+#   explicit replica wording, accessories (a strap is not a watch), price ranges
+#   (a range means several items), blocklisted sellers, already-imported ids.
+#   Everything requiring judgement stays with you: read the snippets and pick.
+#
+#   Business sellers are KEPT (user directive 2026-08-09) and flagged
+#   `business: true`. Amanet and reseller stock relists constantly under fresh ad
+#   ids, so the importer's seller+model dedup is what actually catches those.
+#
+#   A smartwatch in this category is FLAGGED (`looks_smart`), never dropped —
+#   route it to olx-import-smartwatch.py instead of losing it. Same for a wall
+#   clock (`looks_wall`): the site lists those since 2026-08-09.
+# =============================================================================
+import os, re, json, time, sys
+
+PROJECT_ROOT   = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
+import olx_api, admin_import
+
+MAX_CANDIDATES = int(os.environ.get("MAX_CANDIDATES", "8"))
+MAX_PAGES      = int(os.environ.get("MAX_PAGES", "5"))
+MIN_RON        = int(os.environ.get("MIN_RON", "100"))
+MIN_EUR        = int(os.environ.get("MIN_EUR", "20"))
+SNIPPET        = int(os.environ.get("SNIPPET", "180"))
+NO_DEDUP       = os.environ.get("NO_DEDUP", "") == "1"
+DEBUG_DROPS    = os.environ.get("DEBUG_DROPS", "") == "1"
+HARNESS        = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
+OUT            = os.environ.get("OUT", os.path.join(PROJECT_ROOT,
+                                "harness/3ceasuri-import/.candidates-olx-watches.json"))
+
+def emit(tag, obj): print(tag + ": " + json.dumps(obj, ensure_ascii=False))
+def die(msg):       emit("ERROR", {"msg": msg}); raise SystemExit(1)
+
+bu = olx_api.bind(globals())
+A  = admin_import.bind(globals())
+
+BLOCK = {}
+try:
+    _bl = json.load(open(os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/references/seller-blocklist.json")))
+    BLOCK = {str(s["id"]): s.get("name") for s in _bl.get("olx_sellers", [])}
+except Exception:
+    pass
+
+try:
+    BRAND_IDS = admin_import.load_brand_ids(HARNESS)
+except Exception:
+    BRAND_IDS = {}
+
+# --- objective filters ------------------------------------------------------
+REPLICA = re.compile(r"\breplic|\bclon|\bcopie\b|aaa\+|homage", re.I)
+ACCESSORY = re.compile(
+    r"^\s*(curea|curele|bratara|br[ăa][țt]ar[ăa]|husa|hus[ăa]|folie|incarcator|"
+    r"[îi]nc[ăa]rc[ăa]tor|cutie|cutii|suport|carcasa|carcas[ăa]|geam|sticla|sticl[ăa]|"
+    r"mecanism|cadran|ace|baterii|baterie)\b"
+    r"|curea\s+(?:de\s+)?schimb|set\s+curele|doar\s+(?:cutia|curea|bratara|mecanismul)|"
+    r"piese\s+ceas|ceas\s+pentru\s+piese", re.I)
+# A price RANGE means more than one item is for sale — stock, not a listing.
+BULK = re.compile(r"pre[țt]uri\s+(?:cuprinse|[îi]ntre)|\blot\s+de\s+\d|\bloturi\b|"
+                  r"\d+\s*[-–]\s*\d+\s*(?:ron|lei|eur|euro|€)", re.I)
+PHONE_RE = re.compile(r"(?:\+?40[\s.]?|0)7\d{2}[\s.]?\d{3}[\s.]?\d{3}")
+SMART_HINT = re.compile(r"smartwatch|smart\s*watch|apple\s*watch|galaxy\s*watch|"
+                        r"\bamazfit\b|\bgarmin\b|\bfitbit\b|\bhuawei\s*watch|\bmi\s*band|"
+                        r"\bsmart\b|\bwear\s*os\b", re.I)
+WALL_HINT = re.compile(r"ceas(?:uri)?\s+(?:de\s+)?(?:perete|mas[ăa]|birou|[șs]emineu)|"
+                       r"pendul|cuc\b|wall clock", re.I)
+
+seen, candidates, dropped, samples = set(), {}, {}, []
+
+def drop(reason, ad=None, snip=""):
+    dropped[reason] = dropped.get(reason, 0) + 1
+    if DEBUG_DROPS:
+        samples.append({"id": (ad or {}).get("id"), "why": reason, "snip": snip[:110]})
+
+def consider(ad):
+    aid = str(ad.get("id") or "")
+    if not aid or aid in seen:
+        return
+    seen.add(aid)
+
+    title = ad.get("title") or ""
+    desc  = olx_api.clean_description(ad.get("description"))
+    text  = (title + "\n" + desc).strip()
+    snip  = re.sub(r"\s+", " ", text)
+
+    if ad.get("status") != "active":
+        drop("not_active", ad, snip); return
+    s = olx_api.seller(ad)
+    if s["id"] and s["id"] in BLOCK:
+        drop("blocklisted_seller", ad, snip); return
+    if REPLICA.search(text):
+        drop("replica", ad, snip); return
+    if ACCESSORY.search(title):
+        drop("accessory", ad, snip); return
+    if BULK.search(text):
+        drop("bulk_or_price_range", ad, snip); return
+
+    mapped = olx_api.map_params(ad)
+    price, cur = mapped.get("price"), mapped.get("currency", "RON")
+    if price is None:
+        drop("no_price", ad, snip); return
+    if (cur == "RON" and price < MIN_RON) or (cur == "EUR" and price < MIN_EUR):
+        drop("price_below_floor", ad, snip); return
+
+    brand_label = olx_api.brand_param(ad)
+    brand = (admin_import.match_brand(brand_label, BRAND_IDS) if brand_label else None) \
+            or admin_import.match_brand(title, BRAND_IDS) \
+            or admin_import.match_brand(desc, BRAND_IDS)
+
+    candidates[aid] = {
+        "id": aid, "url": ad.get("url"), "title": title[:120],
+        "price": price, "cur": cur,
+        "brand": brand, "brand_label": brand_label,
+        "new_brand": brand is None,
+        "business": s["business"], "seller": s["id"], "seller_name": s["name"],
+        "city": olx_api.location_str(ad),
+        "photos": len(ad.get("photos") or []),
+        "created": ad.get("created_time"),
+        "looks_smart": bool(SMART_HINT.search(text)),
+        "looks_wall": bool(WALL_HINT.search(text)),
+        "text": PHONE_RE.sub("", text)[:1500],
+    }
+
+# --- walk the category ------------------------------------------------------
+olx_api.ensure_tab(bu, olx_api.CATEGORY_URL[olx_api.CATEGORY_WATCHES])
+total, pages = None, 0
+for page in range(MAX_PAGES):
+    offers, tot = olx_api.search(bu, olx_api.CATEGORY_WATCHES,
+                                 offset=page * 40, limit=40, price_from=MIN_RON)
+    pages += 1
+    if tot is not None:
+        total = tot
+    if not offers:
+        if page == 0:
+            die("OLX returned no offers for category 1677 — not logged in on olx.ro, "
+                "blocked by the bot check, or the category id changed")
+        break
+    for ad in offers:
+        consider(ad)
+    if len(candidates) >= MAX_CANDIDATES:
+        break
+    time.sleep(1.5)
+
+# --- Stage-1 dedup ----------------------------------------------------------
+admin_total = None
+if candidates and not NO_DEDUP:
+    at = new_tab("https://3ceasuri.ro/admin/watches/watch/")
+    at = at["targetId"] if isinstance(at, dict) else at
+    time.sleep(3)
+    admin_total = admin_import.admin_count(A)
+    for aid in list(candidates):
+        n = admin_import.admin_count(A, aid)
+        if n is None:
+            candidates[aid]["dedup"] = "unverified"
+        elif n > 0:
+            drop("already_imported", {"id": aid}, candidates[aid]["title"]); del candidates[aid]
+    close_tab(at)
+    olx_api.ensure_tab(bu)
+
+ordered = list(candidates.values())[:MAX_CANDIDATES]
+try:
+    with open(OUT, "w") as f:
+        json.dump({"generated": time.strftime("%Y-%m-%dT%H:%M:%S"), "source": "olx",
+                   "profile": "classic", "category": olx_api.CATEGORY_WATCHES,
+                   "candidates": ordered}, f, ensure_ascii=False, indent=1)
+except Exception as e:
+    emit("ERROR", {"msg": "could not write %s: %s" % (OUT, e)})
+
+emit("CANDIDATES", [{k: c[k] for k in ("id", "price", "cur", "brand", "new_brand",
+                                       "business", "seller_name", "photos",
+                                       "looks_smart", "looks_wall")}
+                    | {"snip": re.sub(r"\s+", " ", c["text"])[:SNIPPET]}
+                    for c in ordered])
+if DEBUG_DROPS:
+    emit("DROPPED", samples)
+emit("STATS", {"candidates": len(ordered), "seen": len(seen), "pages": pages,
+               "category_total": total, "dropped": dropped,
+               "admin_total": admin_total, "out": OUT})

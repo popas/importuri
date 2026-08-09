@@ -69,8 +69,8 @@ def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None, brand_
             return json.dumps({"url": "https://3ceasuri.ro/admin/watches/watch/5/change/"})
         if "id_reference_number" in e or "id_case_diameter_mm" in e:
             return json.dumps({"brandId": "1", "price": "1200", "currency": "RON", "ref": None,
-                               "diameter": "40", "fbId": "777", "authorId": "100055",
-                               "authorName": "Ion Popescu", "imgs": n_images})
+                               "diameter": "40", "extId": "777", "sellerId": "100055",
+                               "sellerName": "Ion Popescu", "source": "facebook", "imgs": n_images})
         return ""
 
     def new_tab(u):
@@ -129,7 +129,7 @@ check(inf["braceletMat"] == "leather", "A: braceletMat %r" % inf.get("braceletMa
 check(inf["displayMat"] == "sapphire", "A: displayMat %r" % inf.get("displayMat"))
 check(inf["price"] == 1200 and inf["currency"] == "RON", "A: price %r %r" % (inf.get("price"), inf.get("currency")))
 check(inf["phone"] == "0731394148", "A: phone %r" % inf.get("phone"))
-check(inf["fbAuthorId"] == "100055", "A: author id not captured")
+check(inf["sellerId"] == "100055", "A: seller id not captured")
 check(not inf["description"].startswith("Ion Popescu"), "A: author/timestamp preamble leaked into description")
 
 # --- B. gold-plating trap: 'placat cu aur' is a coating, case stays steel
@@ -171,12 +171,12 @@ check("REVIEW" in m and any("image" in r for r in m["REVIEW"]["reasons"]),
 check(st["imported"] is None, "E: must not import")
 
 # --- F. dedup Stage 1 still short-circuits before any FB work
-m, _ = run(GOOD, admin_rows_for=lambda q: [{"brand": "Doxa", "model": "X", "fbid": "777"}] if q == "777" else [])
+m, _ = run(GOOD, admin_rows_for=lambda q: [{"brand": "Doxa", "model": "X", "extid": "777"}] if q == "777" else [])
 check(m.get("SKIP", {}).get("reason", "").startswith("already imported"), "F: stage-1 dedup broken: %s" % m.get("SKIP"))
 
 # --- G. Stage 2 repost: same author + same brand/model, different post id
 def rows(q):
-    return [{"brand": "Doxa", "model": "Mecanic Vintage", "fbid": "555"}] if q == "100055" else []
+    return [{"brand": "Doxa", "model": "Mecanic Vintage", "extid": "555"}] if q == "100055" else []
 m, st = run(GOOD, admin_rows_for=rows)
 check(m.get("SKIP", {}).get("reason", "").startswith("repost"), "G: stage-2 repost dedup broken: %s" % m.get("SKIP"))
 check(st["imported"] is None, "G: repost must not import")
@@ -255,8 +255,9 @@ check(m["INFER"].get("caseMat") is None, "N: omitted contract field kept the reg
 check(m["INFER"].get("phone") is None, "N: omitted phone kept the regex guess: %r" % m["INFER"].get("phone"))
 check(m["INFER"]["model"] == "Sub 300T", "N: supplied fields must survive the clear")
 check(m["INFER"]["sourceUrl"].endswith("/777/"), "N: non-contract fields must NOT be cleared")
-check(m["INFER"]["fbListingId"] == "777", "N: fbListingId must survive")
-check(m["INFER"]["fbAuthorId"] == "100055", "N: author capture must survive")
+check(m["INFER"]["externalId"] == "777", "N: externalId must survive")
+check(m["INFER"]["source"] == "facebook", "N: source must survive")
+check(m["INFER"]["sellerId"] == "100055", "N: seller capture must survive")
 check(m.get("RESULT", {}).get("ok") is True, "N: should still import")
 
 # --- O. a targeted OVERRIDES fix (no is_wristwatch) still merges, as before

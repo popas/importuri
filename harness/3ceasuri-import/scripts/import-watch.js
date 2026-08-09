@@ -156,9 +156,10 @@ function detectCurrency(text) {
   return 'RON';
 }
 
-// === WATCH IMPORT HARNESS v5 ===
+// === WATCH IMPORT HARNESS v6 ===
 // Uses brand ID mapping, auto-formats descriptions, extracts phone/location/seller/year/ref.
-// Stores FB post author (fbAuthorId/fbAuthorName) for repost dedup.
+// Stores the marketplace listing id and seller (source/externalId/sellerId/sellerName)
+// for repost dedup — same three columns for Facebook and OLX.
 async function importWatch(data) {
   const log = [];
   function L(msg) { log.push(msg); console.log('[HARNESS]', msg); }
@@ -207,6 +208,12 @@ async function importWatch(data) {
     el.value = String(val);
     el.dispatchEvent(new Event('change', {bubbles: true}));
   };
+  // The provenance columns were renamed facebook_* -> source/external/seller on
+  // 2026-08-09. Write through whichever ids the deployed form actually has, so an
+  // import works either side of that deploy instead of silently dropping the id.
+  const setAny = (ids, val) => {
+    for (const id of ids) if (document.getElementById(id)) return set(id, val);
+  };
 
   set('id_category', data.category);
   set('id_model_name', data.model);
@@ -233,9 +240,10 @@ async function importWatch(data) {
   set('id_description', professionalDesc);
   set('id_source_url', data.sourceUrl);
   set('id_video_url', data.videoUrl);
-  set('id_facebook_listing_id', data.fbListingId);
-  set('id_facebook_author_id', data.fbAuthorId);
-  set('id_facebook_author_name', data.fbAuthorName);
+  set('id_source', data.source);
+  setAny(['id_external_listing_id', 'id_facebook_listing_id'], data.externalId);
+  setAny(['id_seller_id', 'id_facebook_author_id'], data.sellerId);
+  setAny(['id_seller_name', 'id_facebook_author_name'], data.sellerName);
   set('id_phone', data.phone);
 
   const optionalFields = [
@@ -244,7 +252,7 @@ async function importWatch(data) {
     data.connectivity&&'connectivity', data.compatibility&&'compatibility',
     data.year&&'year', data.waterRes&&'WR', data.displayMat&&'glass',
     data.reference&&'ref', data.phone&&'phone', data.seller&&'seller', data.location&&'location',
-    data.fbAuthorId&&'author', data.videoUrl&&'video'
+    data.sellerId&&'seller_id', data.videoUrl&&'video', data.source&&data.source
   ].filter(Boolean);
   L('FIELDS: model,price,cond,movement' + (optionalFields.length ? ', ' + optionalFields.join(',') : ''));
 
@@ -350,4 +358,4 @@ window.extractYear = extractYear;
 window.extractReference = extractReference;
 window.generateSlug = generateSlug;
 window.detectCurrency = detectCurrency;
-'Harness v5 ready. Professional descriptions, phone/location/seller extraction, auto-slug, retry images.';
+'Harness v6 ready. Source-agnostic provenance fields, professional descriptions, phone/location/seller extraction, auto-slug, retry images.';

@@ -23,7 +23,16 @@ Flow per watch:
     import-post.py emits EXTRACT_PROMPT: with the post text and this contract
       -> the agent fills it and re-runs with OVERRIDES='{...}'
       -> validate() rejects anything that isn't a legal DB value
+
+The OLX importers use the same contract through `profile=`: "classic" is the
+rules above, "smart" swaps in the smartwatch rules (and drops the wall-clock
+ones, which cannot apply to a smartwatch listing). OLX also passes `known=` —
+the fields its structured params already answered. Those are shown as evidence
+to restate, NOT as a merge: a contract field the answer omits is still cleared,
+because two half-authoritative sources is how fields go silently wrong.
 """
+
+import json
 
 # ---------------------------------------------------------------------------
 # The structure. Mirrors watches/models.py TextChoices — keep in sync by hand
@@ -56,12 +65,27 @@ FLAGS = ["is_wristwatch", "is_bulk_lot"]
 
 SCHEMA_FIELDS = TEXT + list(NUMERIC) + list(ENUMS) + FLAGS + ["notes"]
 
-PROMPT = """# Extraction contract — fill this from the post text below
+PROMPT = """# Extraction contract — fill this from the {source_noun} below
 
 Populate the 3ceasuri DB record. Answer with ONE JSON object and nothing else.
 Everything not stated or clearly implied in the text stays `null`. Do NOT guess a
 movement, material, or year because it is "usually" that.
+{rules}
+## Fields
 
+{fields}
+
+## Known brands — use these exact spellings when they match, otherwise write the
+brand as the post spells it
+
+{brands}
+{known}
+## {source_noun_title}
+
+{text}
+"""
+
+RULES_CLASSIC = """
 ## Rules that exist because they were broken before
 
 - `model` — the model NAME only. Short. No brand, never a sentence.
@@ -129,20 +153,53 @@ movement, material, or year because it is "usually" that.
 - `is_bulk_lot` — true when one price covers several watches.
 - `notes` — one short sentence ONLY if the operator must know something (suspected
   replica, contradictory price, unclear post). Otherwise null.
-
-## Fields
-
-{fields}
-
-## Known brands — use these exact spellings when they match, otherwise write the
-brand as the post spells it
-
-{brands}
-
-## Post text
-
-{text}
 """
+
+RULES_SMART = """
+## This is a smartwatch listing — rules
+
+- `movement` is always `smart`, `style` is always `smart`, `displayType` is always
+  `smart`. Do not leave them null and do not put the mechanical vocabulary here.
+- `category` is `wrist`. `is_wristwatch` is true for an actual watch and **false
+  for an accessory** — a strap, charger, case, screen protector, dock or an empty
+  box is not a watch, and `is_wristwatch: false` stops the import. Say which in
+  `notes`.
+- `model` — the model NAME only, short, no brand: "Watch Series 9", "Galaxy Watch
+  6 Classic", "Fenix 7X Solar", "Bip 5". The ad title is usually close but padded
+  with condition, size and warranty noise — strip that. **Look at the photos** when
+  the title is vague: the case shape, crown, bezel markings and band tell the
+  generation apart.
+- `series` — the normalized model line, short: "Series 9", "SE 2", "Ultra 2",
+  "Galaxy Watch 7", "Venu 3". No brand, no case size. Required — this is what the
+  site facets on.
+- `connectivity` — `gsm` when the watch takes calls without the phone (the ad or a
+  photo says LTE, Cellular, 4G, eSIM; on an Apple Watch the cellular models have a
+  red ring or dot on the crown), `no_gsm` when it is GPS/Bluetooth only. Null only
+  when the listing genuinely leaves it open — that stops for review.
+- `compatibility` — follows from the model, not the ad: Apple Watch = `ios`;
+  Galaxy Watch 4 and newer = `android`; Galaxy Watch 3 and older, Garmin, Amazfit,
+  Huawei, Xiaomi, Fitbit = `both`.
+- `diameter` — the case size in MILLIMETRES (40mm, 44mm, 46mm). Smartwatch ads
+  state it more often than mechanical ones; take it from the title when it is there.
+- `reference` — usually absent on a smartwatch. Only fill it from a model number
+  you can actually READ (a box label, an "A2986"-style Apple part number in the
+  photos). **Never derive it from the design.**
+- `caseMat` / `braceletMat` — aluminium and titanium are the common Apple Watch
+  cases; steel on the classier Samsung/Garmin models; the strap is usually
+  `rubber` (silicone) or `nylon`. Only fill what the ad or photos actually show.
+- `description` — the seller's text, cleaned: no marketplace chrome, no phone
+  numbers pasted twice, no "citește mai mult". Keep the seller's line breaks.
+- `year` — ONE year as an integer, and only when stated. A smartwatch generation
+  is NOT a year; leave it null and let `series` carry the generation.
+- `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
+- `is_bulk_lot` — true when one price covers several watches, or when the ad is
+  shop stock offering "mai multe bucăți".
+- `notes` — one short sentence ONLY if the operator must know something (suspected
+  replica or clone, activation-locked/iCloud-locked unit, broken screen sold as
+  working, contradictory price). Otherwise null.
+"""
+
+PROFILES = {"classic": RULES_CLASSIC, "smart": RULES_SMART}
 
 
 def _field_lines():
@@ -159,9 +216,33 @@ def _field_lines():
     return "\n".join(out)
 
 
-def build_prompt(text, brands=()):
-    return PROMPT.format(fields=_field_lines(),
+def _known_block(known):
+    """Render the fields a marketplace's own structured data already answered.
+
+    Shown as evidence, never merged: OLX sellers pick these from dropdowns, so
+    they are strong — but the filled contract stays the single authoritative
+    answer, and a field left out of it is cleared.
+    """
+    if not known:
+        return ""
+    lines = "\n".join("- `%s`: %s" % (k, json.dumps(v, ensure_ascii=False))
+                      for k, v in sorted(known.items()))
+    return ("\n## Known from OLX — the seller picked these from OLX's own dropdowns\n\n"
+            "Restate them in your answer unless a photo plainly contradicts one (say so\n"
+            "in `notes` when it does). They are NOT merged for you: anything you leave\n"
+            "out of the answer is cleared.\n\n" + lines + "\n")
+
+
+def build_prompt(text, brands=(), profile="classic", known=None, source_noun="post text"):
+    rules = PROFILES.get(profile)
+    if rules is None:
+        raise ValueError("unknown profile %r (have: %s)" % (profile, ", ".join(sorted(PROFILES))))
+    return PROMPT.format(rules=rules,
+                         fields=_field_lines(),
                          brands=", ".join(sorted(brands)) or "(none)",
+                         known=_known_block(known),
+                         source_noun=source_noun,
+                         source_noun_title=source_noun[:1].upper() + source_noun[1:],
                          text=(text or "").strip())
 
 

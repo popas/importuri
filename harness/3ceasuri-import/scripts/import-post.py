@@ -48,7 +48,7 @@ PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3
 # This file is piped to browser-use on stdin, so there is no __file__ to hang a
 # relative import off — locate the sibling module through PROJECT_ROOT instead.
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
-import infer_fields
+import infer_fields, admin_import
 POST_ID    = os.environ.get("POST_ID", "").strip()
 LISTING_ID = os.environ.get("LISTING_ID", "").strip()
 # find-posts.py emits kind:"listing" for commerce listings, which have no pcb photo set and
@@ -71,27 +71,14 @@ def die(msg):       emit("ERROR", {"post_id": POST_ID, "msg": msg}); raise Syste
 if not POST_ID or not POST_ID.isdigit():
     die("set POST_ID (group post) or LISTING_ID (commerce listing) to a numeric FB id")
 
-def _norm(s):
-    import unicodedata
-    return "".join(c for c in unicodedata.normalize("NFKD", s or "") if not unicodedata.combining(c)).lower().strip()
-
-# --- dedup: read admin result rows for a ?q= query (own site, no rate limit) -
-_ROWS_JS = ("(() => {const g=(tr,c)=>{const e=tr.querySelector('td.field-'+c);return e?(e.innerText||'').trim():'';};"
-            "return JSON.stringify([...document.querySelectorAll('#result_list tbody tr')].map(tr=>"
-            "({brand:g(tr,'brand'),model:g(tr,'model_name'),fbid:g(tr,'facebook_listing_id')})));})()")
+# The admin half of this flow (dedup queries, brand creation, harness injection,
+# submit, banner verification, readback) is shared with the OLX importers and
+# lives in admin_import.py — it never cared where the listing came from.
+A = admin_import.bind(globals())
+_norm = admin_import.norm
 
 def admin_rows(query, return_to):
-    """Query the watch admin by ?q=, return [{brand,model,fbid}], restore return_to tab."""
-    t = new_tab("https://3ceasuri.ro/admin/watches/watch/?q=%s" % query)
-    t = t["targetId"] if isinstance(t, dict) else t
-    time.sleep(3)
-    try:
-        rows = json.loads(js(_ROWS_JS))
-    except Exception:
-        rows = []
-    close_tab(t)
-    switch_tab(return_to)
-    return rows
+    return admin_import.admin_rows(A, query, return_to=return_to)
 
 # --- resolve tabs -----------------------------------------------------------
 tabs = list_tabs()
@@ -101,16 +88,7 @@ def find_tab(pred):
             return t["targetId"]
     return None
 
-ADMIN_TAB = os.environ.get("ADMIN_TAB") or find_tab(lambda u, t: "/watches/watch/add" in u)
-if not ADMIN_TAB:
-    # The previous run's readback leaves this tab on the saved record's change page, so
-    # after every import there is an admin tab but no *add* tab. Steer it back instead
-    # of dying and making the operator re-open it by hand each watch.
-    ADMIN_TAB = find_tab(lambda u, t: "3ceasuri.ro/admin" in u)
-    if ADMIN_TAB:
-        switch_tab(ADMIN_TAB)
-        goto_url("https://3ceasuri.ro/admin/watches/watch/add/")
-        time.sleep(4)
+ADMIN_TAB = os.environ.get("ADMIN_TAB") or admin_import.find_admin_tab(A, tabs)
 if not ADMIN_TAB:
     die("no admin tab found; open https://3ceasuri.ro/admin/watches/watch/add/ or pass ADMIN_TAB")
 PHOTO_TAB = os.environ.get("PHOTO_TAB") or find_tab(lambda u, t: "facebook.com" in u and "/groups/" not in u)
@@ -119,9 +97,9 @@ if not PHOTO_TAB:
     tabs = list_tabs()
     PHOTO_TAB = PHOTO_TAB or find_tab(lambda u, t: "facebook.com" in u)
 
-# --- 0. dedup Stage 1: exact facebook_listing_id (skip before any FB work) ---
-if admin_rows(POST_ID, PHOTO_TAB):
-    emit("SKIP", {"post_id": POST_ID, "reason": "already imported (facebook_listing_id match)"})
+# --- 0. dedup Stage 1: exact listing id (skip before any FB work) ------------
+if admin_import.already_imported(A, POST_ID, return_to=PHOTO_TAB):
+    emit("SKIP", {"post_id": POST_ID, "reason": "already imported (external_listing_id match)"})
     raise SystemExit(0)
 
 # --- 1L. commerce listing: every image is in the DOM at once, no carousel ----
@@ -340,12 +318,8 @@ data["currency"] = cur
 
 # brand — match a known BRAND_IDS key present in the text (diacritic-insensitive:
 # a post's "Helfer Genève" must still resolve to BRAND_IDS "Helfer Geneve")
-lown = _norm(text)
-brand_ids = json.loads(re.search(r"window\.BRAND_IDS\s*=\s*(\{.*?\});", open(HARNESS).read()).group(1))
-brand = None
-for name in sorted(brand_ids, key=len, reverse=True):
-    if re.search(r"\b" + re.escape(_norm(name)) + r"\b", lown):
-        brand = name; break
+brand_ids = admin_import.load_brand_ids(HARNESS)
+brand = admin_import.match_brand(text, brand_ids)
 if brand: data["brand"] = brand
 # model — descriptive remainder of the brand's line, brand words stripped off the front.
 # Also mark where the real body starts (the brand line) so the description can drop the
@@ -384,10 +358,11 @@ def _build_desc(bs):
     return "\n".join(body).strip()
 data["description"] = _build_desc(body_start) or text.strip()
 data["sourceUrl"]  = SOURCE_URL
-data["fbListingId"] = POST_ID
+data["source"]     = "facebook"
+data["externalId"] = POST_ID
 if VIDEO_URL: data["videoUrl"] = VIDEO_URL
-if info.get("authorId"):   data["fbAuthorId"]   = info["authorId"]
-if info.get("authorName"): data["fbAuthorName"] = info["authorName"]
+if info.get("authorId"):   data["sellerId"]   = info["authorId"]
+if info.get("authorName"): data["sellerName"] = info["authorName"]
 # A filled contract is AUTHORITATIVE, including about what the post does NOT say: a
 # contract field the answer left out is cleared, instead of keeping the regex guess.
 # That guess is not harmless — the Tissot listing (1038189799074673) never states a
@@ -507,41 +482,15 @@ if not data.get("model"): die("could not infer model; pass OVERRIDES {\"model\":
 if data.get("price") is None: die("could not infer price; pass OVERRIDES {\"price\":N,\"currency\":\"RON|EUR\"}")
 
 # --- 4b. dedup Stage 2: the same watch reposted under a NEW post id ----------
-# Verified live on 2026-07-27, and the original author+brand+model rule turned out to be
-# dead code: the admin changelist renders the BRAND cell as empty text (confirmed against a
-# record whose brand id is definitely set), so `brand match AND model match` was never true.
-# A known Helfer repost sailed straight through it. Two independent lookups now, matching on
-# MODEL, with brand used only to *veto* — plus a REVIEW when the evidence is weak, so a
-# generic model name can neither silently skip a new watch nor silently import a duplicate.
-author_id = data.get("fbAuthorId")
-my_model, my_brand = _norm(data.get("model")), _norm(data.get("brand"))
-
-def _distinctive(m):
-    """Distinctive enough that an exact match means 'same watch', not 'same word'."""
-    return len(m) >= 8 and (any(c.isdigit() for c in m) or len(m.split()) >= 2)
-
-hits = []
-if author_id:
-    hits += [(r, "author") for r in admin_rows(author_id, ADMIN_TAB)]
-if data.get("model"):
-    import urllib.parse
-    hits += [(r, "model") for r in admin_rows(urllib.parse.quote(data["model"]), ADMIN_TAB)]
-
-for row, via in hits:
-    if _norm(row.get("model")) != my_model or not my_model:
-        continue
-    row_brand = _norm(row.get("brand"))
-    if row_brand and row_brand != my_brand:
-        continue                       # genuinely a different brand — not a repost
-    if row.get("fbid") == POST_ID:
-        continue                       # that's this very post
-    strong = (via == "author") or _distinctive(my_model)
-    detail = {"post_id": POST_ID, "author_id": author_id, "author_name": data.get("fbAuthorName"),
-              "matched_via": via, "brand_confirmed": bool(row_brand),
-              "match": {"brand": data.get("brand"), "model": data.get("model"),
-                        "existing_fb_id": row.get("fbid")}}
-    if strong:
-        emit("SKIP", dict(detail, reason="repost (%s match)" % ("author+model" if via == "author" else "model")))
+# Two independent lookups (seller, model) matching on MODEL, with brand used only
+# to veto — see admin_import.find_repost for why the original author+brand+model
+# rule was dead code.
+repost = admin_import.find_repost(A, data, POST_ID, return_to=ADMIN_TAB)
+if repost:
+    detail = dict(repost, post_id=POST_ID, author_id=data.get("sellerId"),
+                  author_name=data.get("sellerName"))
+    if repost["strong"]:
+        emit("SKIP", dict(detail, reason="repost (%s match)" % repost["matched_via"]))
         raise SystemExit(0)
     if not CONFIRM:
         emit("REVIEW", dict(detail, reasons=["possible repost: model '%s' already on the site, "
@@ -551,63 +500,21 @@ for row, via in hits:
         raise SystemExit(0)
 
 # --- 5. ensure brand exists (create + flag if new) --------------------------
-new_brand_id = None
-if data["brand"] not in brand_ids:
-    import urllib.parse
-
-    def _lookup_brand(name):
-        """Find a brand by NAME on the changelist. The admin's search box covers the
-        name, NOT the slug — looking a freshly created brand up by its slug is what
-        made 'Buchner & Bovalier' (2026-08-08) and 'Fără marcă' (2026-08-09) die with
-        'failed to create/find brand' after the row had already been written."""
-        goto_url("https://3ceasuri.ro/admin/watches/brand/?q=" + urllib.parse.quote(name))
-        time.sleep(3)
-        rows = json.loads(js('(() => JSON.stringify([...document.querySelectorAll('
-                             '\'#result_list tbody tr a[href*="/change/"]\')].map(a=>('
-                             '{name:(a.innerText||"").trim(),'
-                             'id:(a.href.match(/brand\\/(\\d+)\\/change/)||[])[1]}))))()'))
-        for r in rows:
-            if r.get("id") and _norm(r["name"]) == _norm(name):
-                return int(r["id"])
-        return None
-
-    bt = new_tab("https://3ceasuri.ro/admin/watches/brand/")
-    bt = bt["targetId"] if isinstance(bt, dict) else bt
-    time.sleep(3)
-    # A brand missing from BRAND_IDS is not necessarily missing from the DB — the map
-    # is a local cache and drifts. Look before creating, or you get a second row with
-    # a mangled slug ('f-r-marc' next to 'fara-marca').
-    existing_id = _lookup_brand(data["brand"])
-    if existing_id:
-        new_brand_id = existing_id
-        emit("NEW_BRAND", {"name": data["brand"], "id": new_brand_id, "created": False,
-                           "action": "already on the site but MISSING from BRAND_IDS — add it to "
-                                     "import-watch.js AND references/brand-ids.md, then commit"})
-    else:
-        goto_url("https://3ceasuri.ro/admin/watches/brand/add/")
-        time.sleep(4)
-        slug = re.sub(r"[^a-z0-9]+", "-", _norm(data["brand"])).strip("-")
-        js('(() => {const n=document.getElementById("id_name"),s=document.getElementById("id_slug");'
-           'n.value=%s;n.dispatchEvent(new Event("input",{bubbles:true}));'
-           'if(s){s.value=%s;s.dispatchEvent(new Event("input",{bubbles:true}));}'
-           'const b=document.querySelector("input[name=_save]");b?b.click():document.querySelector("form").submit();'
-           'return "ok";})()' % (json.dumps(data["brand"]), json.dumps(slug)))
-        time.sleep(4)
-        new_brand_id = _lookup_brand(data["brand"])
-        if not new_brand_id:
-            close_tab(bt); die("failed to create/find brand %s" % data["brand"])
-        emit("NEW_BRAND", {"name": data["brand"], "id": new_brand_id, "created": True,
-                           "action": "ADD to BRAND_IDS in import-watch.js AND references/brand-ids.md, then commit"})
-    close_tab(bt)
+switch_tab(ADMIN_TAB)
+try:
+    new_brand_id, new_brand_info = admin_import.ensure_brand(A, data["brand"], brand_ids)
+except RuntimeError as e:
+    die(str(e))
+if new_brand_info:
+    emit("NEW_BRAND", new_brand_info)
 
 # --- 6. inject harness (+ runtime brand id if new) --------------------------
+ADMIN_TAB = admin_import.find_admin_tab(A) or ADMIN_TAB
 switch_tab(ADMIN_TAB)
-inject = ("(() => { const s=document.createElement('script'); s.textContent="
-          + json.dumps(open(HARNESS).read()) + "; document.head.appendChild(s); "
-          "return window.importWatch ? 'OK':'NO_FUNC'; })()")
-if js(inject) != "OK": die("harness injection failed")
-if new_brand_id is not None:
-    js('(() => { window.BRAND_IDS[%s]=%d; return "ok"; })()' % (json.dumps(data["brand"]), new_brand_id))
+try:
+    admin_import.inject_harness(A, HARNESS, data["brand"], new_brand_id)
+except RuntimeError as e:
+    die(str(e))
 
 if DRY_RUN:
     emit("RESULT", {"post_id": POST_ID, "dry_run": True, "images": len(images),
@@ -615,43 +522,15 @@ if DRY_RUN:
     raise SystemExit(0)
 
 # --- 7. importWatch (expect the navigation exception = success in progress) --
-call = "(async () => { try { await importWatch(" + json.dumps(data, ensure_ascii=False) + "); return 'OK'; } catch(e){ return 'ERR:'+e.message; } })()"
-try:
-    js(call)
-except Exception as e:
-    pass   # 'Inspected target navigated/closed' / timeout is the normal path
-time.sleep(20 + max(0, len(images) - 5) * 2)
+admin_import.submit(A, data, len(images))
 
 # --- 8. verify banners, then read the record back (saved != correct) --------
-banners = json.loads(js('(() => {const t=document.body.innerText;return JSON.stringify({'
-                        'images_ok:t.includes("imagini salvate"),'
-                        'added_ok:t.includes("added successfully")||t.includes("adăugat cu succes")});})()'))
-readback = None
-chg = json.loads(js('(() => {const a=document.querySelector(\'#result_list tbody tr a[href*="/change/"]\');'
-                    'return JSON.stringify({url:a?a.href:null});})()'))
-if not (chg.get("url")):
-    goto_url("https://3ceasuri.ro/admin/watches/watch/?q=" + POST_ID); time.sleep(3)
-    chg = json.loads(js('(() => {const a=document.querySelector(\'#result_list tbody tr a[href*="/change/"]\');'
-                        'return JSON.stringify({url:a?a.href:null});})()'))
-if chg.get("url"):
-    goto_url(chg["url"]); time.sleep(4)
-    readback = json.loads(js(
-        '(() => {const g=id=>{const e=document.getElementById(id);'
-        'return e?(e.tagName==="SELECT"?(e.options[e.selectedIndex]||{}).value:e.value):null;};'
-        'const imgs=document.querySelectorAll(\'.field-image img,[id*="images-group"] img,img[src*="/media/"]\').length;'
-        'return JSON.stringify({brandId:g("id_brand"),price:g("id_price"),currency:g("id_currency"),'
-        'ref:g("id_reference_number"),diameter:g("id_case_diameter_mm"),fbId:g("id_facebook_listing_id"),'
-        'videoUrl:g("id_video_url"),'
-        'authorId:g("id_facebook_author_id"),authorName:g("id_facebook_author_name"),imgs});})()'))
-
-# The "added successfully" banner is flaky on multi-image saves; a readback that found the
-# record by its own fbId is authoritative proof the add committed. Accept either signal.
-readback_ok = bool(readback and str(readback.get("fbId")) == str(POST_ID))
-ok = bool(banners.get("images_ok") and (banners.get("added_ok") or readback_ok))
+ok, banners, readback, readback_ok = admin_import.verify(A, POST_ID)
 emit("RESULT", {"post_id": POST_ID, "ok": bool(ok), "banners": banners, "readback_ok": readback_ok,
                 "expected_images": len(images), "readback": readback,
                 "new_brand": ({"name": data["brand"], "id": new_brand_id} if new_brand_id else None),
-                "state_entry": {"id": POST_ID, "brand": data["brand"], "model": data["model"],
+                "state_entry": {"source": "facebook", "id": POST_ID,
+                                "brand": data["brand"], "model": data["model"],
                                 "price": data["price"], "currency": data["currency"], "images": len(images),
                                 "video_url": data.get("videoUrl"),
-                                "author_id": data.get("fbAuthorId"), "author_name": data.get("fbAuthorName")}})
+                                "seller_id": data.get("sellerId"), "seller_name": data.get("sellerName")}})

@@ -1,6 +1,6 @@
 ---
 name: import-verify-state
-description: Invoke immediately after every importWatch() call — verify the import by page content (never by return value) and update state.json.
+description: Invoke immediately after every importWatch() call, for either source — verify the import by page content (never by return value) and update state.json.
 ---
 
 # Import Verify & State
@@ -71,15 +71,24 @@ saved row first: `.../admin/watches/watch/?q=<POST_ID>` → follow its `/change/
     price: g('id_price'), currency: g('id_currency'),
     ref: g('id_reference_number'),        // NOTE: id_reference_number, not id_reference
     diameter: g('id_case_diameter_mm'),   // NOTE: id_case_diameter_mm, not id_diameter
-    fbId: g('id_facebook_listing_id'), imgs
+    source: g('id_source'),               // 'facebook' | 'olx'
+    extId: g('id_external_listing_id'),   // was id_facebook_listing_id before 2026-08-09
+    imgs
   });
 })()
 ```
 
+**Both sources use these same fields.** The provenance columns were renamed on
+2026-08-09 (`facebook_listing_id` → `external_listing_id`, `facebook_author_id` →
+`seller_id`, `facebook_author_name` → `seller_name`, plus a new `source`). If a
+readback shows `MISSING:id_external_listing_id`, the deployed admin still has the
+old names — read `id_facebook_listing_id` instead. The harness writes through the
+same fallback, so nothing is lost either way.
+
 **The element IDs are non-obvious** — reference is `id_reference_number` and diameter is
 `id_case_diameter_mm`; reading `id_reference`/`id_diameter` returns null and fakes a bug
 (happened 2026-07-24). Confirm: `brandId` numeric and correct, `price`/`currency` match,
-`ref`/`diameter` present when the post stated them, `fbId` set, and `imgs` equals the count
+`ref`/`diameter` present when the post stated them, `extId` set, and `imgs` equals the count
 you collected. Any mismatch → treat as a failed field (fix + re-inject + re-save that field),
 even though the banners were green.
 
@@ -107,11 +116,11 @@ Two local files, each with one job:
 after every import and every skip. An append cannot drift the way a counter does.
 
 ```json
-{"event":"import","id":"POST_ID","brand":"Orient","model":"Bambino","price":1200,"currency":"RON","images":5,"ts":"2026-07-27T12:00:00","author_id":"100078…","author_name":"Costi Schiverniciuc"}
-{"event":"skip","id":"POST_ID","brand":"Rodania","reason":"no price stated in post"}
+{"event":"import","id":"POST_ID","brand":"Orient","model":"Bambino","price":1200,"currency":"RON","images":5,"ts":"2026-07-27T12:00:00","source":"facebook","seller_id":"100078…","seller_name":"Costi Schiverniciuc"}
+{"event":"skip","id":"AD_ID","source":"olx","brand":"Rodania","reason":"no price stated in the ad"}
 ```
 
-The `RESULT:` line from `import-post.py` carries a ready-made `state_entry` — append it with
+The `RESULT:` line from `import-post.py` and the OLX importers carries a ready-made `state_entry` (including `source`) — append it with
 `event` and `ts` added. Skips the scripts make (`SKIP:` lines) are worth appending too: the
 admin records what *was* imported, only `history.jsonl` records what was rejected and why.
 
@@ -125,8 +134,10 @@ resumed. It holds no cumulative totals by design; do not reintroduce them.
 
 ## Next
 
-If the session target isn't reached, take the next id from
-`harness/3ceasuri-import/.candidates.json` — do **not** re-run discovery. Start it in a fresh
+If the session target isn't reached, take the next id from the candidates file for
+your source — `.candidates.json` (Facebook), `.candidates-olx-smart.json` or
+`.candidates-olx-watches.json` (OLX) — do **not** re-run discovery. Start it in a fresh
 context (`/clear`): nothing from this watch is needed for the next one, and carrying it
 forward is what pushes a session past 150k tokens. The harness form is ready again via "Save
-and add another", but it must be re-injected — see `admin-import-watch`.
+and add another", but it must be re-injected — see `admin-import-watch` (Facebook) or
+`olx-import-smartwatch` / `olx-import-watch` (OLX).
