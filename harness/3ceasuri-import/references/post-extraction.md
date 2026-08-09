@@ -245,3 +245,25 @@ for review rather than guessing.
 Compatibility follows from the model, not the ad: Apple Watch = ios; Galaxy
 Watch 4 and newer = android (needs a Samsung/Android phone); Garmin, Amazfit,
 Huawei, Xiaomi, Fitbit = both.
+
+## Wall clocks (`category` = wall)
+
+Since 2026-08, wall clocks are importable rather than skipped. The DB enum is
+`category`: wrist | wall, and `caseMat` gained `wood`. A wall-clock post is
+still `is_wristwatch: false` — that flag records what the object is, while
+`category` records where it belongs on the site; the skip gate now only fires
+when a non-wristwatch has no `category`.
+
+Identifying one from photos: a pendulum or weights hanging below the dial, a
+key-wind hole (or two) on the dial face, a cuckoo door, a diameter the seller
+gives in centimetres, or a photo of the clock already hanging on a wall.
+"Ceas de perete", "pendulă", "cu cuc", "cartel" in the text settle it outright.
+
+Brands: most are unbranded → `Fără marcă` (a real Brand row, seeded by
+migration). Junghans, Kienzle, Gustav Becker, Schatz, Hermle and Meister
+Anker are genuine makers and usually printed on the dial or stamped on the
+movement plate — check before falling back.
+
+Still out of scope (mark `is_wristwatch: false`, leave `category` null so the
+post skips): mantel/table clocks, pocket watches, alarm clocks, wristwatch
+straps and parts.

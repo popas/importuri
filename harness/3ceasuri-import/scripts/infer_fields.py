@@ -30,13 +30,14 @@ Flow per watch:
 # (the Django app is a separate repo, so there is no import-time coupling).
 # ---------------------------------------------------------------------------
 ENUMS = {
+    "category":     ["wrist", "wall"],
     "currency":     ["RON", "EUR"],
     "condition":    ["new", "excellent", "good", "fair", "broken"],
     "movement":     ["automatic", "manual", "quartz", "smart"],
     "gender":       ["women", "men", "unisex", "kids"],
     "style":        ["sport", "dress", "diver", "chronograph", "smart"],
     "caseMat":      ["titanium", "carbon", "aluminium", "steel", "gold", "silver",
-                     "plastic", "ceramic", "other"],
+                     "plastic", "ceramic", "wood", "other"],
     "braceletMat":  ["titanium", "carbon", "aluminium", "steel", "gold", "silver",
                      "plastic", "rubber", "leather", "nylon", "other"],
     "displayMat":   ["sapphire", "mineral", "acrylic", "plastic", "other"],
@@ -100,8 +101,22 @@ movement, material, or year because it is "usually" that.
   is silently dropped: if the post only says "anii '70", leave this null and put the
   decade in `model` instead.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
+- `category` — `wrist` for anything worn on the wrist, `wall` for a clock hung on a
+  wall (pendulum, cuckoo, kitchen, station, cartel). Leave null only when the post
+  genuinely leaves it open; a null on a non-wristwatch stops the import for review.
 - `is_wristwatch` — false for wall/mantel/pendulum/alarm clocks or anything not worn
-  on the wrist.
+  on the wrist. A post with `is_wristwatch: false` AND `category: "wall"` is now
+  IMPORTED, not skipped — wall clocks are listed on the site. Mantel, pocket, table
+  and alarm clocks are still out: mark them `is_wristwatch: false` and leave
+  `category` null so they skip.
+- Wall clocks are usually unbranded. When no maker is named on the dial or in the ad,
+  set `brand` to `Fără marcă` — never invent a maker, and never put "Ceas de perete"
+  in the brand field (it is the category, not the brand). `model` then carries the
+  defining trait: "Pendulă cu cuc anii '70", "Ceas de perete quartz 30 cm".
+  Vintage German/Austrian makers (Junghans, Kienzle, Gustav Becker, Schatz) are real
+  brands — read the dial and the movement plate before falling back to `Fără marcă`.
+- `caseMat` for a wall clock is usually `wood`; `diameter` is stored in MILLIMETRES,
+  so a 30 cm wall clock is `300`.
 - Smartwatches (`movement` = smart) fill three extra fields; for everything else
   all three stay null. `series` — the normalized model line, short: "Series 9",
   "SE 2", "Ultra 2", "Galaxy Watch 7", "Venu 3" (no brand, no case size).

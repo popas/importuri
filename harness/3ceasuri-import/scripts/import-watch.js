@@ -208,6 +208,7 @@ async function importWatch(data) {
     el.dispatchEvent(new Event('change', {bubbles: true}));
   };
 
+  set('id_category', data.category);
   set('id_model_name', data.model);
   set('id_model_slug', slug);
   set('id_reference_number', data.reference);

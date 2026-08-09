@@ -413,8 +413,9 @@ problems = infer_fields.validate(OVERRIDES)
 if problems:
     die("OVERRIDES are not valid DB values: " + "; ".join(problems))
 
-if OVERRIDES.get("is_wristwatch") is False and not CONFIRM:
-    emit("SKIP", {"post_id": POST_ID, "reason": "not a wristwatch; pass CONFIRM=1 to import anyway"})
+if (OVERRIDES.get("is_wristwatch") is False
+        and OVERRIDES.get("category") != "wall" and not CONFIRM):
+    emit("SKIP", {"post_id": POST_ID, "reason": "not a wristwatch and not a wall clock; pass CONFIRM=1 to import anyway"})
     raise SystemExit(0)
 if OVERRIDES.get("is_bulk_lot") is True and not CONFIRM:
     emit("SKIP", {"post_id": POST_ID, "reason": "bulk lot - one price, several watches; pass CONFIRM=1 to import anyway"})
@@ -477,6 +478,8 @@ if data.get("price") is None:               review.append("price not inferred")
 # guess silently mislabelled a 1970s Poljot on 2026-08-04 — a post that never states its
 # movement must be judged, not defaulted.
 if not data.get("movement"):                review.append("movement not stated in the post (harness would default it to quartz)")
+if OVERRIDES.get("is_wristwatch") is False and not data.get("category"):
+                                            review.append("not a wristwatch but category is null (wall clock? pass category in OVERRIDES)")
 if data.get("movement") == "smart":
     for _smart_field in ("series", "connectivity", "compatibility"):
         if not data.get(_smart_field):      review.append("smartwatch without %s (fill it in OVERRIDES)" % _smart_field)
