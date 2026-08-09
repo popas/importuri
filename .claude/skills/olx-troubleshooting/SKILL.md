@@ -80,6 +80,23 @@ If the banners are genuinely absent, read `document.body.innerText` for the form
 error list. A rejected required field (brand, model, price, condition, movement) is
 the usual cause.
 
+## The phone comes back empty (`phone_status`)
+
+Pass 1 reports how the phone reveal went:
+
+- `login_required` — the normal case for private sellers. Their contact box reads
+  "Intră în contul tău OLX ... pentru a contacta acest vânzător" and no click
+  reveals anything. **Log into olx.ro in the CDP Chrome profile** and it works from
+  then on. The importer deliberately checks for this wall *before* clicking: a
+  logged-out click navigates the tab to `login.olx.ro`, a different origin, and
+  every later `/api/v1/` fetch from that tab 404s with "ad did not load".
+- `not_revealed` — the button was clicked but no `tel:` link appeared. Usually the
+  same login wall in a different layout.
+- `no_button` — the ad has no phone at all (`contact.phone: false`); chat only.
+
+A missing phone never fails an import. If the tab did get stranded on
+`login.olx.ro`, `olx_api.ensure_tab` steers it back on the next run — no manual fix.
+
 ## The record saved but a field is empty
 
 Read it back (`import-verify-state` §3). If `source`, `external_listing_id`,

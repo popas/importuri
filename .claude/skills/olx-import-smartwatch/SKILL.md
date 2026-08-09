@@ -68,6 +68,16 @@ a targeted fix without it still merges over the baseline.
 - Most smartwatch brands are NOT in `BRAND_IDS` yet, so `NEW_BRAND:` is the normal
   case. Follow the new-brand procedure below every time it fires.
 
+## Seller phone numbers
+
+Pass 1 also reveals the seller's phone (OLX masks it and 400s its phones API, so
+the importer clicks the page's show-phone button) and reports `phone_status`.
+Private sellers require a **logged-in olx.ro session** — without one the status is
+`login_required` and `phone` stays empty, which never fails an import. When a
+number does come back it appears in the "Known from OLX" block: restate it in your
+answer like any other field. If you leave it out, pass 2 re-reveals it rather than
+clearing it, since a phone is marketplace metadata and not a claim in the ad text.
+
 ## Review gate
 
 `REVIEW:` fires and nothing is written when: the brand is new, the model or price
