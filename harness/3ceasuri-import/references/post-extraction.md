@@ -227,3 +227,21 @@ reference on a public listing is worse than an empty field.
 
 A model identified this way is our classification, not the seller's claim: put it in
 `model`, note it in `notes`, and leave their `description` as they wrote it.
+
+## Smartwatch fields (series / connectivity / compatibility)
+
+Since 2026-08, smartwatch posts (`movement` = smart) carry three extra contract
+fields. The Django DB enums are `connectivity`: gsm | no_gsm and
+`compatibility`: ios | android | both; `series` is free text ("Series 9",
+"SE 2", "Galaxy Watch 7" — normalized, no brand, no case size).
+
+Identifying GSM from photos when the ad doesn't say: Apple Watch cellular
+models have a red ring (Series 4–5) or red crescent/dot (Series 6+) on the
+digital crown; Galaxy Watch LTE models say "LTE" on the caseback. Textual
+cues: "LTE", "Cellular", "4G", "eSIM", "GPS + Cellular". "GPS" alone means
+no_gsm. When neither text nor photos settle it, leave null — the import stops
+for review rather than guessing.
+
+Compatibility follows from the model, not the ad: Apple Watch = ios; Galaxy
+Watch 4 and newer = android (needs a Samsung/Android phone); Garmin, Amazfit,
+Huawei, Xiaomi, Fitbit = both.

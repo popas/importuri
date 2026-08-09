@@ -477,6 +477,9 @@ if data.get("price") is None:               review.append("price not inferred")
 # guess silently mislabelled a 1970s Poljot on 2026-08-04 — a post that never states its
 # movement must be judged, not defaulted.
 if not data.get("movement"):                review.append("movement not stated in the post (harness would default it to quartz)")
+if data.get("movement") == "smart":
+    for _smart_field in ("series", "connectivity", "compatibility"):
+        if not data.get(_smart_field):      review.append("smartwatch without %s (fill it in OVERRIDES)" % _smart_field)
 if len(images) < 2:                         review.append("only %d image(s) collected" % len(images))
 if len((data.get("description") or "").strip()) < 40:
                                             review.append("description looks thin (%d chars)" % len((data.get("description") or "").strip()))

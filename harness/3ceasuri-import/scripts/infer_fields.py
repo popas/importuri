@@ -44,11 +44,13 @@ ENUMS = {
     "displayType":  ["digital", "analog", "analog_digital", "smart", "none"],
     "displaySize":  ["small", "medium", "large"],
     "waterRes":     ["water_resistant_yes", "water_resistant_no"],
+    "connectivity": ["gsm", "no_gsm"],
+    "compatibility": ["ios", "android", "both"],
 }
 
 NUMERIC = {"price": float, "diameter": float, "year": int}
-TEXT = ["brand", "model", "reference", "priceNote", "phone", "location", "seller",
-        "description"]
+TEXT = ["brand", "model", "series", "reference", "priceNote", "phone", "location",
+        "seller", "description"]
 FLAGS = ["is_wristwatch", "is_bulk_lot"]
 
 SCHEMA_FIELDS = TEXT + list(NUMERIC) + list(ENUMS) + FLAGS + ["notes"]
@@ -100,6 +102,15 @@ movement, material, or year because it is "usually" that.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
 - `is_wristwatch` — false for wall/mantel/pendulum/alarm clocks or anything not worn
   on the wrist.
+- Smartwatches (`movement` = smart) fill three extra fields; for everything else
+  all three stay null. `series` — the normalized model line, short: "Series 9",
+  "SE 2", "Ultra 2", "Galaxy Watch 7", "Venu 3" (no brand, no case size).
+  `connectivity` — gsm when the watch can take calls without the phone (ad or
+  photos say "LTE", "Cellular", "4G", "eSIM"; on Apple Watch the cellular models
+  have a red ring or dot on the crown), no_gsm when it is GPS/Bluetooth only;
+  null when the post genuinely leaves it open. `compatibility` — follows from
+  the model, not the ad: Apple Watch = ios; Galaxy Watch 4 and newer = android;
+  Garmin, Amazfit, Huawei, Xiaomi = both.
 - `is_bulk_lot` — true when one price covers several watches.
 - `notes` — one short sentence ONLY if the operator must know something (suspected
   replica, contradictory price, unclear post). Otherwise null.
