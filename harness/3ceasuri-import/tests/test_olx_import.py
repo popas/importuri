@@ -168,6 +168,11 @@ check(mapped["waterRes"] == "water_resistant_yes", "1: 20 ATM -> yes, got %r" % 
 check(mapped["price"] == 3500 and mapped["currency"] == "RON", "1: price %s" % mapped)
 check(mapped["priceNote"] == "negociabil", "1: negotiable -> priceNote, got %r" % mapped.get("priceNote"))
 check("displayColor" not in mapped, "1: culoare_carcasa is the CASE colour and must NOT become displayColor")
+# OLX hands back padded labels ("Samsung "), which would become a brand row with a
+# trailing space and a mangled slug (seen live 2026-08-09).
+check(olx_api.brand_param({"params": [param("brand", "Brand", "samsung", "Samsung ")]}) == "Samsung",
+      "1: brand label must be stripped, got %r"
+      % olx_api.brand_param({"params": [param("brand", "Brand", "samsung", "Samsung ")]}))
 smapped = olx_api.map_params(SMART_AD)
 check(smapped["condition"] == "good", "1: Utilizat -> good, got %r" % smapped.get("condition"))
 check(smapped["gender"] == "men", "1: barbati -> men, got %r" % smapped.get("gender"))

@@ -406,9 +406,15 @@ def map_params(ad):
 
 
 def brand_param(ad):
-    """The seller-declared brand label, if the category has that param."""
+    """The seller-declared brand label, if the category has that param.
+
+    Whitespace-stripped: OLX hands back labels like `"Samsung "` (seen 2026-08-09),
+    and an unstripped label becomes a brand row whose name carries a trailing space
+    and whose slug is mangled.
+    """
     v = param_values(ad).get("brand") or {}
-    return v.get("label") or None
+    label = (v.get("label") or "").strip()
+    return label or None
 
 
 def location_str(ad):
