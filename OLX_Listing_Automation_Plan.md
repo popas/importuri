@@ -43,7 +43,10 @@ When anything fails at any step → invoke `olx-troubleshooting`.
 4. **Re-inject the harness after every page navigation/submit** — it is lost each time.
 5. **Always fill `description`, `sourceUrl` and the listing id** — without them
    listings are incomplete.
-6. **Route by kind, not by category.** A smartwatch found in category 1677 is
+6. **Never import a suspiciously cheap listing.** Below the floors in
+   `scripts/price_sanity.py` a watch is a fake, not a bargain — discovery drops it
+   and the importers refuse it, `CONFIRM=1` included.
+7. **Route by kind, not by category.** A smartwatch found in category 1677 is
    flagged `looks_smart`, not dropped — import it with the smartwatch script so
    `series`/`connectivity`/`compatibility` get filled. A classic watch in 1943 is
    flagged `looks_classic` and goes the other way.

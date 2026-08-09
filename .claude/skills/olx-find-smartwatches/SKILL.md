@@ -57,6 +57,25 @@ Everything requiring judgement is yours. Read the snippets and pick, watching fo
 - **Generation claims.** Ads routinely call a Series 6 a "Series 9". The photos
   settle it at import time; flag anything that reads odd.
 
+## Suspiciously cheap = fake, never imported
+
+Standing user directive (2026-08-09): **a suspiciously cheap listing is not a
+bargain, it is a fake.** A replica seldom says "replica"; the price is what gives
+it away. Discovery drops these as `suspiciously_cheap`, and the importers refuse
+them outright — before the photos are fetched, and `CONFIRM=1` does **not** wave
+one through.
+
+The floors live in one place, `scripts/price_sanity.py`: a per-brand table
+(Rolex 6000 RON, Omega 1500, Breitling 2500 …) plus model-family floors for
+smartwatches (any Watch Ultra 1200, Apple Watch Series 9-11 700 …). They are the
+lowest price a GENUINE used example plausibly trades at, set generously so the
+rule catches obvious fakes rather than shaving the honest market. Tune them there
+and every script follows.
+
+The brand is matched against the ad's own words as well as the marketplace's brand
+field, because that field is unreliable — OLX offered "Swiss" for a Christophe
+Duchamp. A listing that calls itself a Rolex is judged as one.
+
 ## Then
 
 For each id you keep, in a FRESH context (`/clear` between watches):

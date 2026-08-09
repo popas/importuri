@@ -41,7 +41,7 @@ import os, re, json, time, sys
 
 PROJECT_ROOT   = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
-import olx_api, admin_import
+import olx_api, admin_import, price_sanity
 
 MAX_CANDIDATES = int(os.environ.get("MAX_CANDIDATES", "8"))
 MAX_PAGES      = int(os.environ.get("MAX_PAGES", "5"))
@@ -143,6 +143,12 @@ def consider(ad):
         drop("no_price", ad, snip); return
     if (cur == "RON" and price < MIN_RON) or (cur == "EUR" and price < MIN_EUR):
         drop("price_below_floor", ad, snip); return
+
+    # Never surface a suspiciously cheap listing (user directive 2026-08-09): a
+    # replica seldom says "replica", the price is what gives it away.
+    cheap = price_sanity.implausible_price(price, cur, olx_api.brand_param(ad), text)
+    if cheap:
+        drop("suspiciously_cheap", ad, snip); return
 
     brand_label = olx_api.brand_param(ad)
     brand = (admin_import.match_brand(brand_label, BRAND_IDS) if brand_label else None) \

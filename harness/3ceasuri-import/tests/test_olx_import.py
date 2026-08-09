@@ -12,6 +12,7 @@ SMART = os.path.join(SCRIPTS, "olx-import-smartwatch.py")
 CLASSIC = os.path.join(SCRIPTS, "olx-import-watch.py")
 sys.path.insert(0, SCRIPTS)
 import olx_api
+import price_sanity
 
 
 def param(key, name, vkey, label):
@@ -307,9 +308,14 @@ check("ERROR" in m and "not one of" in json.dumps(m["ERROR"]), "15: bad enum not
 # --- 15b. Romanian "referință" must not yield a mid-word capture ----------
 # Regression 2026-08-09: `erin[țt]a` never matched "referință" (it ends ț+ă), so the
 # capture started mid-word and a Rolex ad proposed reference "erin".
+# Priced like the real one (21000 RON): at CLASSIC_AD's 3500 the cheap-fake rule
+# would skip it before the contract is ever built — which is the rule working.
 ROLEX_AD = dict(CLASSIC_AD, id=307626402,
                 title="Ceas Rolex Datejust 36, Aur 18K+Otel, referință 1601",
-                description="Ceas Rolex Datejust 36, referință 1601, automat (calibru 1570).")
+                description="Ceas Rolex Datejust 36, referință 1601, automat (calibru 1570).",
+                params=[param("state", "Stare", "used", "Utilizat"),
+                        param("brand", "Brand", "rolex", "Rolex"),
+                        price_param(21000)])
 m, _ = run(CLASSIC, ROLEX_AD)
 known = m["EXTRACT_PROMPT"]["prompt"]
 check("`reference`: \"erin\"" not in known, "15b: mid-word reference capture is back")
@@ -424,6 +430,44 @@ class _LandedBu(_PhoneBu):
 check(olx_api.reveal_phone(_LandedBu(), "https://www.olx.ro/d/oferta/wanted-IDaaa.html")
       == ("+40742866198", "ok"),
       "15e: the matching path must still read normally")
+
+# --- 15f. suspiciously cheap is NEVER imported (user directive 2026-08-09) -
+# A replica seldom says "replica"; the price is what gives it away. This is a hard
+# skip, before the photos are fetched, and CONFIRM must not wave it through.
+check(price_sanity.implausible_price(900, "RON", "Rolex", "Ceas Rolex Datejust 36"),
+      "15f: a 900 RON Rolex must be rejected")
+check(price_sanity.implausible_price(160, "RON", "Apple", "apple watch series 11"),
+      "15f: a 160 RON Series 11 must be rejected")
+check(price_sanity.implausible_price(700, "RON", "Apple", "Apple Watch Ultra 2"),
+      "15f: a 700 RON Ultra must be rejected")
+check(price_sanity.implausible_price(200, "RON", "Omega", "Omega Seamaster"),
+      "15f: a 200 RON Omega must be rejected")
+# ...and everything genuinely imported on 2026-08-09 must still pass
+for _p, _c, _b, _t in ((21000, "RON", "Rolex", "Rolex Datejust 36 aur 18k"),
+                       (2000, "RON", "Apple", "Apple Watch Ultra 2 baterie 100%"),
+                       (1100, "RON", "Apple", "Apple watch 9, 45 mm"),
+                       (999, "RON", "Apple", "Apple watch stainless steel 45mm seria 7"),
+                       (9000, "RON", "Breitling", "Ceas Breitling Avenger Seawolf"),
+                       (950, "RON", "Christophe Duchamp", "Christophe Duchamp L'envie"),
+                       (300, "RON", "Police", "Ceas Police Timepieces"),
+                       (400, "EUR", "Omega", "Omega Seamaster vintage")):
+    check(price_sanity.implausible_price(_p, _c, _b, _t) is None,
+          "15f: %s at %s %s must NOT be rejected" % (_b, _p, _c))
+
+CHEAP_AD = dict(SMART_AD, id=999111222, title="Apple Watch Ultra 2 49mm sigilat",
+                params=[param("state", "Stare", "new", "Nou"),
+                        param("brand", "Brand", "apple", "Apple"),
+                        price_param(600)])
+m, st = run(SMART, CHEAP_AD)
+check(m.get("SKIP", {}).get("reason", "").startswith("suspiciously cheap"),
+      "15f: pass 1 must skip a cheap fake, got %s" % (m.get("SKIP") or m.keys()))
+check("EXTRACT_PROMPT" not in m, "15f: must not even build the contract for a fake")
+check(st["imported"] is None, "15f: nothing may be written")
+
+m, st = run(SMART, CHEAP_AD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED_SMART)})
+check(m.get("SKIP", {}).get("reason", "").startswith("suspiciously cheap"),
+      "15f: CONFIRM must NOT wave a cheap fake through")
+check(st["imported"] is None, "15f: CONFIRM must still write nothing")
 
 # --- 16. an inactive ad is skipped, not imported --------------------------
 m, _ = run(SMART, dict(SMART_AD, status="removed_by_user"))

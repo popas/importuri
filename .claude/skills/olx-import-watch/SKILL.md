@@ -90,10 +90,29 @@ login wall instead.
 | `no_button` | the seller published no number (`contact.phone: false`), chat only — normal, not a failure |
 | `not_revealed` | the click missed; see `olx-troubleshooting` |
 
-A missing phone never fails an import. When a number does come back, restate it in
+A missing phone never fails an import — a watch with no number is imported exactly like any other. When a number does come back, restate it in
 your answer like any other contract field — and if you leave it out, pass 2
 re-reveals it rather than clearing it, since a phone is marketplace metadata and
 not a claim in the ad text.
+
+## Suspiciously cheap = fake, never imported
+
+Standing user directive (2026-08-09): **a suspiciously cheap listing is not a
+bargain, it is a fake.** A replica seldom says "replica"; the price is what gives
+it away. Discovery drops these as `suspiciously_cheap`, and the importers refuse
+them outright — before the photos are fetched, and `CONFIRM=1` does **not** wave
+one through.
+
+The floors live in one place, `scripts/price_sanity.py`: a per-brand table
+(Rolex 6000 RON, Omega 1500, Breitling 2500 …) plus model-family floors for
+smartwatches (any Watch Ultra 1200, Apple Watch Series 9-11 700 …). They are the
+lowest price a GENUINE used example plausibly trades at, set generously so the
+rule catches obvious fakes rather than shaving the honest market. Tune them there
+and every script follows.
+
+The brand is matched against the ad's own words as well as the marketplace's brand
+field, because that field is unreliable — OLX offered "Swiss" for a Christophe
+Duchamp. A listing that calls itself a Rolex is judged as one.
 
 ## Review gate
 

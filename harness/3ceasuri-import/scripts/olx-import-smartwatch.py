@@ -38,7 +38,7 @@ import os, re, json, time, sys
 
 PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
-import olx_api, admin_import, infer_fields
+import olx_api, admin_import, infer_fields, price_sanity
 
 AD_ID       = os.environ.get("AD_ID", "").strip()
 OVERRIDES   = json.loads(os.environ.get("OVERRIDES", "{}"))
@@ -99,6 +99,19 @@ emit("EXTRACT", {"ad_id": AD_ID, "title": title[:100], "images": len(images),
                  "chars": len(text), "seller_id": seller["id"],
                  "seller_name": seller["name"], "business": seller["business"],
                  "city": olx_api.location_str(ad)})
+
+# --- 1c. suspiciously cheap = fake, never imported --------------------------
+# User directive 2026-08-09. This is a HARD skip, before the photos are even
+# fetched: CONFIRM does not wave it through, because the whole point is that the
+# listing looks fine apart from the price.
+_m = olx_api.map_params(ad)
+_cheap = price_sanity.implausible_price(_m.get("price"), _m.get("currency"),
+                                        olx_api.brand_param(ad) or "", text)
+if _cheap and os.environ.get("ALLOW_CHEAP", "") != "1":
+    emit("SKIP", {"ad_id": AD_ID, "reason": "suspiciously cheap — %s" % _cheap,
+                  "price": _m.get("price"), "currency": _m.get("currency"),
+                  "title": title[:80]})
+    raise SystemExit(0)
 
 # --- 2. what OLX already answers -------------------------------------------
 brand_ids = admin_import.load_brand_ids(HARNESS)

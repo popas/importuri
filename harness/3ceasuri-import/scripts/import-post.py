@@ -48,7 +48,7 @@ PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3
 # This file is piped to browser-use on stdin, so there is no __file__ to hang a
 # relative import off — locate the sibling module through PROJECT_ROOT instead.
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
-import infer_fields, admin_import
+import infer_fields, admin_import, price_sanity
 POST_ID    = os.environ.get("POST_ID", "").strip()
 LISTING_ID = os.environ.get("LISTING_ID", "").strip()
 # find-posts.py emits kind:"listing" for commerce listings, which have no pcb photo set and
@@ -450,6 +450,16 @@ if not OVERRIDES and not SKIP_PROMPT and not DRY_RUN:
                             "prompt": infer_fields.build_prompt(text, brand_ids.keys()),
                             "photos": photos, "photos_failed": failed,
                             "rerun": "POST_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../import-post.py" % POST_ID})
+    raise SystemExit(0)
+
+# --- 4a0. suspiciously cheap = fake, never imported (user directive) --------
+# The same arithmetic as the OLX path: a fake is a fake whichever marketplace it
+# was posted on. A HARD skip — CONFIRM does not wave it through.
+_cheap = price_sanity.implausible_price(data.get("price"), data.get("currency"),
+                                        data.get("brand") or "", text)
+if _cheap and os.environ.get("ALLOW_CHEAP", "") != "1":
+    emit("SKIP", {"post_id": POST_ID, "reason": "suspiciously cheap — %s" % _cheap,
+                  "price": data.get("price"), "currency": data.get("currency")})
     raise SystemExit(0)
 
 # --- 4a. confidence gate: halt for review ONLY when inference is weak --------

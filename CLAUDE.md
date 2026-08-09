@@ -84,7 +84,8 @@ harness/                           ← shared assets (NOT skills — no SKILL.md
                                      in the loop fills it via OVERRIDES)
     scripts/find-posts.py          ← FB: whole-feed discovery in ONE browser-use call
     scripts/import-post.py         ← FB: per-watch flow; TWO passes (contract out, filled back)
-    scripts/olx_api.py             ← OLX: in-page API, param→enum map, photo URLs
+    scripts/price_sanity.py        ← BOTH: price floors — suspiciously cheap = fake, dropped
+    scripts/olx_api.py             ← OLX: in-page API, param→enum map, photo URLs, phone reveal
     scripts/olx-find-smartwatches.py  ← OLX: category 1943 discovery
     scripts/olx-find-watches.py       ← OLX: category 1677 discovery
     scripts/olx-import-smartwatch.py  ← OLX: per-ad flow, smart profile

@@ -120,6 +120,7 @@ SMART_FEED = [
     ad(10, "Ceas Poljot automatic vintage", price=600,
        desc="Mecanism automatic rusesc, anii 70."),                      # classic in the smart category
     ad(11, "Apple Watch SE 2 40mm", price=800, user_id=999999),          # blocklist test target
+    ad(13, "Apple Watch Ultra 2 49mm sigilat", price=600),               # cheap fake
     ad(12, "Galaxy Watch 5 Pro", price=650, desc="Folosit, stare buna."),  # already imported
 ]
 
@@ -137,6 +138,8 @@ check("6" not in got and why(m, 6) == "price_below_floor", "smart: floor not app
 check("7" not in got and why(m, 7) == "no_price", "smart: priceless ad kept (%s)" % why(m, 7))
 check("8" not in got and why(m, 8) == "not_active", "smart: inactive ad kept (%s)" % why(m, 8))
 check("12" not in got and why(m, 12) == "already_imported", "smart: dedup not applied (%s)" % why(m, 12))
+check("13" not in got and why(m, 13) == "suspiciously_cheap",
+      "smart: a 600 RON Apple Watch Ultra is a fake and must be dropped (%s)" % why(m, 13))
 check("10" in got, "smart: a classic watch in this category must be FLAGGED, not dropped")
 check(next(c for c in m["CANDIDATES"] if c["id"] == "10")["looks_classic"] is True,
       "smart: looks_classic not flagged")
@@ -169,6 +172,8 @@ WATCH_FEED = [
             "telefoane (sigilate). Ceasul il am de un an."),             # NOT bulk
     ad(30, "Ceas Omega Seamaster referinta 2531 - 3500 lei", price=3500,
        desc="Ceas in stare buna, cu cutie."),                            # NOT bulk
+    ad(32, "Ceas Rolex Submariner automatic", price=900,
+       desc="Ceas Rolex Submariner, stare buna, functioneaza."),          # cheap fake
     ad(31, "Ceasuri Amanet BKG", price=600, business=True,
        desc="Amanet BKG vinde: Ceas Lee Cooper LC07717 - 200 lei; "
             "Mark Maddox HC3024 - 350 lei; Casio MTP - 180 lei."),       # real stock ad
@@ -196,6 +201,8 @@ check("23" not in got and why(m, 23) == "bulk_or_stock", "watch: price range not
 # kill any ad whose reference happens to precede its price. Both must survive.
 check("29" in got, "watch: 'loturi de telefoane' in a TRADE offer is not a bulk watch lot")
 check("30" in got, "watch: 'referinta 2531 - 3500 lei' is a reference + price, not a range")
+check("32" not in got and why(m, 32) == "suspiciously_cheap",
+      "watch: a 900 RON Rolex is a fake and must be dropped (%s)" % why(m, 32))
 check("31" not in got and why(m, 31) == "bulk_or_stock",
       "watch: a plural-titled amanet stock ad must drop (%s)" % why(m, 31))
 check("24" not in got and why(m, 24) == "replica", "watch: replica not dropped (%s)" % why(m, 24))
