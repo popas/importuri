@@ -56,6 +56,16 @@ Yours to judge from the snippets:
   seller+model dedup catches most of that, but read the snippet anyway.
 - **Bulk in disguise.** "Ceasuri Hugo Boss" plural, or a photo of six watches with
   one price.
+- **Multiple watches, each its own price, run together in one ad without a bulk
+  keyword.** "Vand ceas Certina ... 450, vand ceas Nixon ... preț 300" reads like
+  one seller's post but is several separate items — the `is_stock_listing` regex
+  only catches ≥3 prices that carry an explicit currency word right next to them,
+  so a run-on paragraph with the unit omitted on some prices slips through as a
+  single candidate (seen 2026-08-11, brand happened to match a category-1677
+  brand yet the ad surfaced in the 1943 sweep — the brand/category match is not
+  a source-routing signal, read the snippet regardless of which sweep found it).
+  Too few photos to attribute to individual watches → skip the whole ad rather
+  than guess a split.
 - **Replicas that do not say replica.** A "Rolex Submariner" at 600 lei is not one.
 - **Parts and non-runners** sold as watches ("nu functioneaza", "pentru piese").
 

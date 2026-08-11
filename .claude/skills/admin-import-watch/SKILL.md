@@ -183,9 +183,10 @@ await importWatch({
   reference: "ABC-1234",
   description: "Raw FB post text here — harness auto-formats to professional description",
   sourceUrl: "https://www.facebook.com/groups/vanzareceasuri/posts/POST_ID/",
-  fbListingId: "POST_ID",
-  fbAuthorId: "100078...",         // FB poster's numeric id — Stage-2 dedup key
-  fbAuthorName: "Costi Schiverniciuc",
+  source: "facebook",
+  externalId: "POST_ID",
+  sellerId: "100078...",         // FB poster's numeric id — Stage-2 dedup key
+  sellerName: "Costi Schiverniciuc",
   phone: "0731394148",
   location: "Satu Mare, Bihor",
   seller: "Razvan Vasile",

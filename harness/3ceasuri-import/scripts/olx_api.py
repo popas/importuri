@@ -291,6 +291,26 @@ def download_photos(bu, urls, dest_dir):
 # --- text --------------------------------------------------------------------
 _TAG_RE = re.compile(r"<[^>]+>")
 
+# Business-seller (amanet/reseller) ads on OLX repeat the same shop boilerplate
+# on every listing — address, hours, generic pitch, internal SKU — after the
+# actual watch-specific line(s). Verified 2026-08-11 across 5 Amanet BKG ads in
+# one session (Angles, Jean Marcel, Maurice Lacroix, Hamilton, 2x Tag Heuer):
+# every one of them had the real description end right before the FIRST line
+# matching one of these markers, with 100% boilerplate after. Truncate there
+# rather than let the operator hand-strip the same block on every ad — this is
+# a shop-template pattern, not specific to one seller, and other business
+# accounts on OLX use near-identical templates.
+#
+# NOTE: Amanet BKG also prefixes its ONE real description line with the same
+# "》" bullet it uses for every boilerplate line after it, so "》" alone is NOT
+# a safe marker — it would truncate the real line too. "Cod produs:" is what
+# reliably sits right after the real description and before the boilerplate.
+_BOILERPLATE_MARKERS = (
+    re.compile(r"^\s*Cod produs\s*:", re.M | re.I),
+    re.compile(r"^\s*Program de lucru\s*:", re.M | re.I),
+    re.compile(r"^\s*Oferim garan[țt]ie din amanet", re.M | re.I),
+)
+
 
 def clean_description(html):
     """OLX descriptions are HTML with <br /> line breaks. Keep the breaks."""
@@ -304,7 +324,14 @@ def clean_description(html):
         text = text.replace(ent, ch)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
-    return "\n".join(ln.rstrip() for ln in text.splitlines()).strip()
+    text = "\n".join(ln.rstrip() for ln in text.splitlines()).strip()
+
+    cut = len(text)
+    for marker in _BOILERPLATE_MARKERS:
+        m = marker.search(text)
+        if m:
+            cut = min(cut, m.start())
+    return text[:cut].strip()
 
 
 # --- params -> DB enums ------------------------------------------------------

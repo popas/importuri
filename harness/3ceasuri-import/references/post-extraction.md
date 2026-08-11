@@ -167,6 +167,14 @@ a specific claim.
 - **Gold-plating trap:** "placat cu aur", "gold plated", "AU20", "dublé" describe a *coating*
   over a base case (usually steel). Set `caseMat: "steel"` and mention the plating in
   `description`. On 2026-07-24 a plated Slava was wrongly filed as a solid-gold case.
+- **"Diametru X mm fără coroniță" is a measurement convention, not a missing-parts claim.**
+  It means the diameter figure excludes the crown's protrusion (crowns add ~1-2mm to a
+  case's footprint), not that the watch is missing its crown — the crown is normally
+  present and shown intact in the photos right alongside the phrase. Seen repeatedly
+  across both FB and OLX listings (verified 2026-08-11 on a Certina and a Saturne, both
+  with the crown clearly present in photos). Do not flag it as a defect or contradiction
+  in `notes`; a separate mention like "coroniță originală" elsewhere in the same ad is
+  confirming the crown, not contradicting this.
 - Leave a field **unset** rather than guessing an enum the text doesn't support — an empty
   field is honest, a wrong one misrepresents the watch.
 

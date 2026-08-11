@@ -62,6 +62,11 @@ Garmin:58
 Samsung:59
 Christophe Duchamp:60
 Breitling:61
+Locman:62
+Saturne:63
+Angles:64
+Jean Marcel:65
+Tag Heuer:66
 ```
 
 Last updated: 2026-08-09. Added `Apple`(57) — the first brand created by the OLX

@@ -54,6 +54,13 @@ Everything requiring judgement is yours. Read the snippets and pick, watching fo
   unusable; skip it and note why.
 - **`looks_classic: true`** — a mechanical watch that wandered into this category.
   Route it to `olx-import-watch.py`, do not import it here.
+- **Multiple watches, each its own price, run together in one ad.** The
+  bulk/stock regex only reliably catches ≥3 prices that carry an explicit
+  currency word — a listing that omits the unit on some prices (e.g. "Certina
+  ... 450, vand Nixon ... preț 300 Ron") can surface as a single candidate in
+  EITHER category regardless of `looks_classic`/`looks_smart` (seen 2026-08-11:
+  a 3-classic-watch post landed in the smartwatch sweep). Too few photos to
+  attribute to individual watches → skip the whole ad, don't guess a split.
 - **Generation claims.** Ads routinely call a Series 6 a "Series 9". The photos
   settle it at import time; flag anything that reads odd.
 
