@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-08-09",
-  "target": 9,
-  "session_imported": 9,
-  "session_skipped": 0,
+  "session_date": "2026-08-11",
+  "target": 10,
+  "session_imported": 10,
+  "session_skipped": 2,
   "status": "idle",
-  "note": "2026-08-09 (session 2): OLX became a second source. 9 imports, all OLX: 7 smartwatches (Apple Watch Series 10, Ultra 2, Ultra 3, Series 7 stainless, Series 9; Garmin Lily 2 Active; Samsung Galaxy Watch Ultra) + 2 classic (Tissot T-Race, Rolex Datejust 1601). New brands: Apple(57), Garmin(58), Samsung(59) — synced to BRAND_IDS + brand-ids.md. Harness flaws found live and fixed: bulk filter dropped a Rolex over 'loturi de telefoane'; 'referință' regex captured 'erin'; logged-out phone click redirected to login.olx.ro and poisoned the OLX tab; OLX brand labels arrive padded ('Samsung '). PENDING FOR USER: (1) deploy the Django repo — migration 0015 renames facebook_* to source/external_listing_id/seller_id/seller_name; until then `source` is unset live and the ad ids sit in facebook_listing_id (the migration backfills source from source_url). (2) DONE — logged into olx.ro, so seller phones now import (verified on private and business ads). Existing imports were left without phones by user directive; only new imports capture them. ~1 ad in 5 publishes no number at all (contact.phone false). | Session 3: 2 more OLX imports (Christophe Duchamp L'envie Moonphase 60, Breitling Avenger Seawolf 61) with seller phones. Django deploy is LIVE — readbacks now show source=olx. New standing rule: suspiciously cheap listings are fakes and are never imported (scripts/price_sanity.py, enforced in discovery AND both importers, CONFIRM cannot bypass). Fixed: the phone reveal could return the PREVIOUS ad's number when navigation lagged."
+  "note": "2026-08-11 (session 5): OLX session, both categories (classic 1677 + smartwatch 1943), target 10. Logged into olx.ro as Stelian - phone capture enabled. Prior FB session (session 4) this same day reached 3 imported / 5 skipped of a target-5 before being paused mid-session to switch sources; see history.jsonl and the previous note for its detail and its 2 unprocessed queued candidates (Fortis Flieger Pilot 1607941334079819, Sekonda automatic 1922779435346436, still in .candidates.json). | OLX session complete: 10/10 imported, 2 skipped. New brands: Saturne(63), Angles(64), Jean Marcel(65), Tag Heuer(66)."
 }
