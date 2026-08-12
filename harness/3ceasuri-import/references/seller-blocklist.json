@@ -12,5 +12,16 @@
       "reason": "user directive 2026-07-27: deals in wall/floor/mantel clocks, not wristwatches, so nothing he posts is importable. Observed in the 2026-07-27 sweep: 2087284375473544 'Ceasuri de perete funcționale, prețuri cuprinse între 200-350 ron' (bulk, price range), 2084763422392306 'Polaris, 31 zile, cheie' and 2084766165725365 '76 cm height, 30 cm width' (both floor/wall clocks). He accounted for most of that sweep's rejects."
     }
   ],
-  "olx_sellers": []
+  "olx_sellers": [
+    {
+      "id": "1380706487",
+      "name": "Dan",
+      "reason": "user directive 2026-08-12: six near-identical ads posted together, all boilerplate 'nou, sigilat, sticla sapphire' with vague titles and no brand on half of them, at prices no genuine example reaches — 306941267 'ceas longines sigilat' 700 RON, 306941259 and 306941272 'ceas tissot automatic sigilat' at 700 and 400 RON, plus 306941243/306941275/306941280 'ceas barbatesc (automatic) sigilat' 500-600 RON. A sealed new Longines or Tissot at those prices is a replica. Slipped past price_sanity because Longines' floor is exactly 700 and Tissot had no floor at all — the NEW_FLOOR_RON table added the same day now catches this pattern."
+    },
+    {
+      "id": "1377833468",
+      "name": "watches.best",
+      "reason": "observed 2026-08-12: two listings (ad 307738324 Polar Vantage V3 at 1500 RON, ad 290102642 Apple Watch 9 Cellular at 1500 RON) both used screenshots of a retailer's product page as \"photos\" (visible price tags, star ratings, wishlist icons) rather than real photos of the item, and both asked roughly half the retail price shown in their own screenshots. Pattern reads as stolen/scraped images, not genuine sales."
+    }
+  ]
 }

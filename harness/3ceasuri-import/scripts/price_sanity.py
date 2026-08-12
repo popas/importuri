@@ -67,10 +67,55 @@ FAMILY_FLOOR_RON = [
 ]
 
 
+# A watch advertised as NEW or SEALED is a different market from a used one, and the
+# floors above cannot see the difference: they have to stay low enough for a
+# scratched vintage piece, which leaves them useless against "ceas tissot automatic
+# sigilat, 400 lei" (seller 1380706487, six such ads on 2026-08-12 — a sealed
+# Longines at exactly 700 RON cleared the used floor by one leu, and Tissot had no
+# floor at all). These apply ONLY when the ad claims the watch is new or sealed, so
+# the honest second-hand and vintage market is untouched.
+#
+# "ca nou" means "like new" and describes a USED watch — it must not trigger this,
+# which is why the claim is matched after those phrases are stripped out.
+_USED_BUT_TIDY_RE = re.compile(r"\b(ca|aproape|aproape ca|precum)\s+nou[aă]?\b", re.I)
+NEW_CLAIM_RE = re.compile(
+    r"\bsigilat[eă]?\b|\bin tipla\b|\bnepurtat[aă]?\b|\bnew in box\b|\bnib\b|\bnou[aă]?\b", re.I)
+
+NEW_FLOOR_RON = {
+    "rolex": 25000,
+    "cartier": 10000,
+    "iwc": 15000,
+    "panerai": 15000,
+    "omega": 8000,
+    "tudor": 8000,
+    "breitling": 8000,
+    "tag heuer": 4000,
+    "oris": 3000,
+    "longines": 2500,
+    "maurice lacroix": 2500,
+    "frederique constant": 2500,
+    "rado": 2000,
+    "hamilton": 1800,
+    "tissot": 1200,
+    "certina": 900,
+    "seiko": 600,
+    "citizen": 500,
+    "orient": 500,
+    "fossil": 400,
+    "g-shock": 350,
+    "casio": 250,
+}
+
+
 def _norm(s):
     import unicodedata
     return "".join(c for c in unicodedata.normalize("NFKD", s or "")
                    if not unicodedata.combining(c)).lower()
+
+
+def claims_new(text):
+    """True when the ad presents the watch as new/sealed rather than second-hand."""
+    return bool(NEW_CLAIM_RE.search(_USED_BUT_TIDY_RE.sub(" ", text or "")))
 
 
 def price_in_ron(price, currency):
@@ -106,6 +151,18 @@ def implausible_price(price, currency, brand=None, text=""):
     # and frequently absent. So the ad's own words count too: a listing that calls
     # itself a Rolex is judged as one, whoever filled in the dropdown.
     haystack = _norm(brand) + " \n " + low
+
+    # Checked before the used floor, because it is the stricter of the two and the
+    # used floor would otherwise clear the listing and return.
+    if claims_new(text):
+        for name, floor in NEW_FLOOR_RON.items():
+            if re.search(r"\b" + re.escape(name) + r"\b", haystack):
+                if ron < floor:
+                    return ("%s advertised as new/sealed at %d RON is below the %d RON "
+                            "floor for a genuine new one — almost certainly a replica"
+                            % (brand or name, ron, floor))
+                break
+
     for name, floor in BRAND_FLOOR_RON.items():
         # match as a word, so "Tudor" does not fire on "Tudorache"
         if re.search(r"\b" + re.escape(name) + r"\b", haystack):
