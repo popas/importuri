@@ -67,11 +67,34 @@ Saturne:63
 Angles:64
 Jean Marcel:65
 Tag Heuer:66
+Amazfit:67
+Xiaomi:68
+Traser:69
+U-Boat:70
+Festina:71
+Guess:72
+Rado:73
+Jaguar:74
+Roberto Cavalli:75
+Theorein:76
+Skoda Motorsport:77
+Michael Kors:78
 ```
 
-Last updated: 2026-08-09. Added `Apple`(57) — the first brand created by the OLX
+Last updated: 2026-08-12. Added `Michael Kors`(78, ad 307974009), `Skoda
+Motorsport`(77, ad 299467472 — OLX's own dropdown picked Seiko because the
+movement inside is a Seiko Epson VR42, but the dial/box both read "SKODA
+Motorsport" with no Seiko branding anywhere on the item, so the importer used
+the actual retail brand instead), `Theorein`(76, ad 249821518), `Roberto
+Cavalli`(75, ad 307140522), `Jaguar`(74, ad 304154865), `Rado`(73, ad 283650344),
+`Guess`(72, ad 305363118), `Festina`(71, ad 290156551), `U-Boat`(70, ad
+279321699 — same brand-correction pattern, OLX said Breitling), `Traser`(69, ad
+306813551), `Amazfit`(67, ad 298341794), `Xiaomi`(68, ad 303268328) — all
+created by the OLX importers the same day.
+
+2026-08-09: Added `Apple`(57) — the first brand created by the OLX
 importer (`olx-import-smartwatch.py`, ad 307818256). Expect most smartwatch brands
-(Huawei, Amazfit, Xiaomi, Fitbit) to arrive the same way — `Garmin`(58)
+(Huawei, Xiaomi, Fitbit) to arrive the same way — `Garmin`(58)
 already did, on the same day: in the
 smartwatch category a NEW_BRAND is the normal case, not the exception.
 

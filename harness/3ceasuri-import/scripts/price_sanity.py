@@ -77,7 +77,8 @@ FAMILY_FLOOR_RON = [
 #
 # "ca nou" means "like new" and describes a USED watch — it must not trigger this,
 # which is why the claim is matched after those phrases are stripped out.
-_USED_BUT_TIDY_RE = re.compile(r"\b(ca|aproape|aproape ca|precum)\s+nou[aă]?\b", re.I)
+_USED_BUT_TIDY_RE = re.compile(
+    r"\b(?:ca|aproape|precum)\s+(?:[sș]i\s+)?nou[aă]?\b", re.I)
 NEW_CLAIM_RE = re.compile(
     r"\bsigilat[eă]?\b|\bin tipla\b|\bnepurtat[aă]?\b|\bnew in box\b|\bnib\b|\bnou[aă]?\b", re.I)
 

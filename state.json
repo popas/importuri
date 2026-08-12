@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-08-11",
+  "session_date": "2026-08-12",
   "target": 10,
   "session_imported": 10,
-  "session_skipped": 2,
+  "session_skipped": 7,
   "status": "idle",
-  "note": "2026-08-11 (session 5): OLX session, both categories (classic 1677 + smartwatch 1943), target 10. Logged into olx.ro as Stelian - phone capture enabled. Prior FB session (session 4) this same day reached 3 imported / 5 skipped of a target-5 before being paused mid-session to switch sources; see history.jsonl and the previous note for its detail and its 2 unprocessed queued candidates (Fortis Flieger Pilot 1607941334079819, Sekonda automatic 1922779435346436, still in .candidates.json). | OLX session complete: 10/10 imported, 2 skipped. New brands: Saturne(63), Angles(64), Jean Marcel(65), Tag Heuer(66)."
+  "note": "2026-08-12 (session 8): OLX classic wrist watches (category 1677), restricted to seller location București or Ilfov. Complete: 10/10 imported (9 București, 1 Ilfov/Mogosoaia), admin 165 -> 175. First session after județ/localitate shipped — every import verified to carry county+city. Skipped 7: seller 1380706487 'Dan' (6 near-identical 'sigilat' replicas, now blocklisted) and a 199 RON 'NOU IN TIPLA' G-Shock. Also passed over, NOT imported: ad 303907865 'Ceas GMT-Master II' at 149.99 RON and 307247416 'HB Big Bang' at 1599 RON — both replicas whose MODEL name implies the brand (Rolex, Hublot) while price_sanity only matches brand words, so neither floor fired. That gap is still open. Two pocket watches skipped as out of scope (wrist only) and several 1-2 photo luxury listings left alone."
 }
