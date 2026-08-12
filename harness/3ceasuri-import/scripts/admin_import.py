@@ -56,6 +56,70 @@ def _target(t):
     return t["targetId"] if isinstance(t, dict) else t
 
 
+# --- județ / localitate ------------------------------------------------------
+# OLX answers these as structured fields (see olx_api._split_location); Facebook
+# has no geo at all, so the only source there is the free-text `location` the
+# contract filled. Same spelling table both sides, so the two importers cannot
+# drift into writing "Iasi" and "Iași" as different counties.
+COUNTY_SPELLING = {
+    "Arges": "Argeș", "Bacau": "Bacău", "Bistrita-Nasaud": "Bistrița-Năsăud",
+    "Botosani": "Botoșani", "Braila": "Brăila", "Brasov": "Brașov",
+    "Bucuresti": "București", "Buzau": "Buzău", "Caras-Severin": "Caraș-Severin",
+    "Calarasi": "Călărași", "Constanta": "Constanța", "Dambovita": "Dâmbovița",
+    "Galati": "Galați", "Ialomita": "Ialomița", "Iasi": "Iași",
+    "Maramures": "Maramureș", "Mehedinti": "Mehedinți", "Mures": "Mureș",
+    "Neamt": "Neamț", "Salaj": "Sălaj", "Timis": "Timiș", "Valcea": "Vâlcea",
+}
+
+# A bare city name only yields a județ when the city IS one — a county seat or the
+# capital. Anything else stays countyless rather than guessed: a wrong județ on a
+# public listing is worse than an empty one.
+COUNTY_SEATS = {
+    "bucuresti": ("București", "București"),
+    "constanta": ("Constanța", "Constanța"),
+    "bacau": ("Bacău", "Bacău"),
+    "suceava": ("Suceava", "Suceava"),
+    "iasi": ("Iași", "Iași"),
+    "brasov": ("Brașov", "Brașov"),
+    "galati": ("Galați", "Galați"),
+    "braila": ("Brăila", "Brăila"),
+    "sibiu": ("Sibiu", "Sibiu"),
+    "arad": ("Arad", "Arad"),
+    "botosani": ("Botoșani", "Botoșani"),
+    "buzau": ("Buzău", "Buzău"),
+    "vaslui": ("Vaslui", "Vaslui"),
+    "tulcea": ("Tulcea", "Tulcea"),
+    "covasna": ("Covasna", "Covasna"),
+    "cluj-napoca": ("Cluj", "Cluj-Napoca"),
+    "timisoara": ("Timiș", "Timișoara"),
+    "ploiesti": ("Prahova", "Ploiești"),
+    "craiova": ("Dolj", "Craiova"),
+    "oradea": ("Bihor", "Oradea"),
+}
+
+# Free text after "Locație:" often ends in a country, which is not a județ.
+_NOT_A_COUNTY = {"romania"}
+
+
+def split_location(text):
+    """(county, city) from a free-text location. Either half may be ''.
+
+    "Florești, Cluj" -> ("Cluj", "Florești"); "București, România" -> the country is
+    dropped and the capital recognised; "Comuna Necunoscuta" -> ("", "Comuna
+    Necunoscuta"), because inventing a județ for an unknown commune is worse than
+    leaving the column empty.
+    """
+    parts = [p.strip() for p in (text or "").split(",") if p.strip()]
+    parts = [p for p in parts if norm(p) not in _NOT_A_COUNTY]
+    if not parts:
+        return "", ""
+    if len(parts) == 1:
+        seat = COUNTY_SEATS.get(norm(parts[0]))
+        return seat if seat else ("", parts[0])
+    city, county = parts[0], parts[-1]
+    return COUNTY_SPELLING.get(county, county), city
+
+
 # --- changelist reads --------------------------------------------------------
 # The provenance columns were renamed on 2026-08-09 (facebook_listing_id ->
 # external_listing_id). Read whichever cell the deployed admin renders, so a

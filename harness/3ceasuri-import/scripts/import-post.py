@@ -391,6 +391,11 @@ if data.get("brand") and not IS_CONTRACT:
     if "description" not in OVERRIDES and _bs > body_start:
         data["description"] = _build_desc(_bs) or data["description"]
 
+# Județ/localitate as their own columns. Facebook carries no structured geo, so the
+# free-text `location` the contract filled is all there is — parsed rather than split
+# on the comma, because "București, România" names a country, not a județ.
+data["county"], data["city"] = admin_import.split_location(data.get("location"))
+
 # --- 3b. the extraction contract --------------------------------------------
 # The regexes above are the baseline and they are reliably wrong on the same
 # fields (model, reference, movement). The agent driving the session does the real

@@ -1,7 +1,7 @@
 // === BRAND ID MAPPING ===
 // Extract from https://3ceasuri.ro/admin/watches/brand/
 // Regenerate if new brands are added.
-window.BRAND_IDS = {"Certina":28,"Spinnaker":27,"Atlantic":26,"Orient":25,"Cauny":24,"Doxa":23,"Seconda":22,"Fossil":21,"Maurice Lacroix":20,"Bischoff":19,"Longines":18,"Hamilton":17,"Zenith":16,"Seiko":15,"Tudor":14,"Citizen":13,"Tissot":12,"Poljot":11,"Cartier":10,"Le Duc":9,"Raketa":8,"Racheta":8,"Omega":7,"TITUS Geneve":6,"Glashutte":5,"Rotary":4,"Rolex":3,"Casio":2,"Aerowatch":1,"Dugena":29,"Helfer Geneve":30,"Eberhard & Co":31,"Oris":33,"Saint Honoré":34,"Luch":35,"Sandoz":36,"Vostok":37,"Slava":39,"Fresard":40,"Chaika":41,"Junghans":42,"Gruppo Gamma":43,"Jovial":44,"NET":45,"Tressa Lux":46,"Westbury":47,"Ralmor":48,"Timex":49,"Seksy":50,"Edox":51,"Mido":52,"Buchner & Bovalier":53,"Fără marcă":54,"Predom Metron":56,"Apple":57,"Garmin":58,"Samsung":59,"Christophe Duchamp":60,"Breitling":61,"Locman":62,"Saturne":63,"Angles":64,"Jean Marcel":65,"Tag Heuer":66};
+window.BRAND_IDS = {"Certina":28,"Spinnaker":27,"Atlantic":26,"Orient":25,"Cauny":24,"Doxa":23,"Seconda":22,"Fossil":21,"Maurice Lacroix":20,"Bischoff":19,"Longines":18,"Hamilton":17,"Zenith":16,"Seiko":15,"Tudor":14,"Citizen":13,"Tissot":12,"Poljot":11,"Cartier":10,"Le Duc":9,"Raketa":8,"Racheta":8,"Omega":7,"TITUS Geneve":6,"Glashutte":5,"Rotary":4,"Rolex":3,"Casio":2,"Aerowatch":1,"Dugena":29,"Helfer Geneve":30,"Eberhard & Co":31,"Oris":33,"Saint Honoré":34,"Luch":35,"Sandoz":36,"Vostok":37,"Slava":39,"Fresard":40,"Chaika":41,"Junghans":42,"Gruppo Gamma":43,"Jovial":44,"NET":45,"Tressa Lux":46,"Westbury":47,"Ralmor":48,"Timex":49,"Seksy":50,"Edox":51,"Mido":52,"Buchner & Bovalier":53,"Fără marcă":54,"Predom Metron":56,"Apple":57,"Garmin":58,"Samsung":59,"Christophe Duchamp":60,"Breitling":61,"Locman":62,"Saturne":63,"Angles":64,"Jean Marcel":65,"Tag Heuer":66,"Amazfit":67,"Xiaomi":68,"Traser":69,"U-Boat":70,"Festina":71,"Guess":72,"Rado":73,"Jaguar":74,"Roberto Cavalli":75,"Theorein":76,"Skoda Motorsport":77,"Michael Kors":78};
 
 // === DESCRIPTION FORMATTER ===
 // Rewrites raw FB post text into a professional, structured description.
@@ -156,7 +156,7 @@ function detectCurrency(text) {
   return 'RON';
 }
 
-// === WATCH IMPORT HARNESS v6 ===
+// === WATCH IMPORT HARNESS v7 ===
 // Uses brand ID mapping, auto-formats descriptions, extracts phone/location/seller/year/ref.
 // Stores the marketplace listing id and seller (source/externalId/sellerId/sellerName)
 // for repost dedup — same three columns for Facebook and OLX.
@@ -244,6 +244,9 @@ async function importWatch(data) {
   setAny(['id_seller_id', 'id_facebook_author_id'], data.sellerId);
   setAny(['id_seller_name', 'id_facebook_author_name'], data.sellerName);
   set('id_phone', data.phone);
+  set('id_location', data.location);
+  set('id_county', data.county);
+  set('id_city', data.city);
 
   const optionalFields = [
     data.diameter&&'diameter', data.caseMat&&'case', data.braceletMat&&'bracelet',
@@ -251,6 +254,7 @@ async function importWatch(data) {
     data.connectivity&&'connectivity', data.compatibility&&'compatibility',
     data.year&&'year', data.waterRes&&'WR', data.displayMat&&'glass',
     data.reference&&'ref', data.phone&&'phone', data.seller&&'seller', data.location&&'location',
+    data.county&&'county', data.city&&'city',
     data.sellerId&&'seller_id', data.videoUrl&&'video', data.source&&data.source
   ].filter(Boolean);
   L('FIELDS: model,price,cond,movement' + (optionalFields.length ? ', ' + optionalFields.join(',') : ''));
@@ -357,4 +361,4 @@ window.extractYear = extractYear;
 window.extractReference = extractReference;
 window.generateSlug = generateSlug;
 window.detectCurrency = detectCurrency;
-'Harness v6 ready. Source-agnostic provenance fields, professional descriptions, phone/location/seller extraction, auto-slug, retry images.';
+'Harness v7 ready. Writes location/county/city to id_location/id_county/id_city (was description-only), source-agnostic provenance fields, professional descriptions, phone/location/seller extraction, auto-slug, retry images.';

@@ -473,13 +473,63 @@ def brand_param(ad):
     return label or None
 
 
-def location_str(ad):
+# OLX writes region names without diacritics. The județe are a closed list of 41 +
+# the capital, so they are worth spelling properly on a Romanian site; localities are
+# not (there are thousands) and stay exactly as OLX spells them.
+_COUNTY_SPELLING = {
+    "Arges": "Argeș", "Bacau": "Bacău", "Bistrita-Nasaud": "Bistrița-Năsăud",
+    "Botosani": "Botoșani", "Braila": "Brăila", "Brasov": "Brașov",
+    "Bucuresti": "București", "Buzau": "Buzău", "Caras-Severin": "Caraș-Severin",
+    "Calarasi": "Călărași", "Constanta": "Constanța", "Dambovita": "Dâmbovița",
+    "Galati": "Galați", "Ialomita": "Ialomița", "Iasi": "Iași",
+    "Maramures": "Maramureș", "Mehedinti": "Mehedinți", "Mures": "Mureș",
+    "Neamt": "Neamț", "Salaj": "Sălaj", "Timis": "Timiș", "Valcea": "Vâlcea",
+}
+
+
+def _split_location(ad):
+    """(county, city) for an ad, normalised.
+
+    OLX's `region` is a real județ everywhere except the capital, where it is the
+    combined label "Bucuresti - Ilfov" — 202 of ~560 watch ads sampled 2026-08-12,
+    so this is the common case, not an edge one. Splitting it matters: Voluntari,
+    Snagov, Chiajna and Popesti-Leordeni are Ilfov localities, while București is
+    its own județ-level unit. OLX also files 12 ads under the city "Ilfov", which
+    is the județ standing in for a locality nobody filled — that is not a city.
+    """
     loc = ad.get("location") or {}
-    city = (loc.get("city") or {}).get("name")
-    region = (loc.get("region") or {}).get("name")
-    if city and region and region != city:
-        return "%s, %s" % (city, region)
-    return city or region or ""
+    county = (loc.get("region") or {}).get("name") or ""
+    city = (loc.get("city") or {}).get("name") or ""
+
+    if county == "Bucuresti - Ilfov":
+        county = "Bucuresti" if city == "Bucuresti" else "Ilfov"
+        if city == "Ilfov":
+            city = ""
+
+    # A county seat carries the județ's own name (Iasi/Iasi, Constanta/Constanta),
+    # so it gets the same spelling — otherwise the pair reads "Județul Iași,
+    # localitatea Iasi".
+    if city and city == county:
+        city = _COUNTY_SPELLING.get(county, county)
+
+    return _COUNTY_SPELLING.get(county, county), city
+
+
+def location_city(ad):
+    return _split_location(ad)[1]
+
+
+def location_county(ad):
+    return _split_location(ad)[0]
+
+
+def location_str(ad):
+    county, city = _split_location(ad)
+    if county and city:
+        return "Județul %s, localitatea %s" % (county, city)
+    if county:
+        return "Județul %s" % county
+    return city or ""
 
 
 def seller(ad):

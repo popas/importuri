@@ -201,6 +201,8 @@ for k in ("is_wristwatch", "is_bulk_lot", "notes"):     # contract-only, not for
 # it is only fetched when the contract did not already carry it.
 if not data.get("location"):
     data["location"] = olx_api.location_str(ad)
+data["county"] = olx_api.location_county(ad)
+data["city"] = olx_api.location_city(ad)
 if not data.get("phone"):
     data["phone"] = olx_api.reveal_phone(bu, SOURCE_URL)[0] or None
 data["images"] = images

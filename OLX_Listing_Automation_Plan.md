@@ -67,7 +67,7 @@ here: OLX links are unsigned and templated, and the importer deliberately rewrit
 - Shared: `.../scripts/olx_api.py` (API, param map, photos),
   `.../scripts/admin_import.py` (the admin half, shared with Facebook),
   `.../scripts/infer_fields.py` (the contract, profiles `classic` / `smart`),
-  `.../scripts/import-watch.js` (harness v6, authoritative)
+  `.../scripts/import-watch.js` (harness v7, authoritative)
 - Brand ID mapping: `.../references/brand-ids.md` · blocklist:
   `.../references/seller-blocklist.json` (`olx_sellers`)
 - Session state: `$PROJECT_ROOT/state.json` (bookkeeping only) · local log:

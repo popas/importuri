@@ -77,7 +77,7 @@ history.jsonl                      ← append-only local log of every import + s
   import-verify-state/             ← BOTH: banner verification, history.jsonl append
 harness/                           ← shared assets (NOT skills — no SKILL.md here)
   3ceasuri-import/
-    scripts/import-watch.js        ← THE HARNESS (authoritative, v6) — injected into admin
+    scripts/import-watch.js        ← THE HARNESS (authoritative, v7) — injected into admin
     scripts/admin_import.py        ← the admin half, shared: dedup, brand, inject, verify
     scripts/infer_fields.py        ← the extraction contract: DB enums + prompt + validator,
                                      profiles `classic` / `smart` (NO API call — the agent
