@@ -83,9 +83,10 @@ Invicta:79
 Girard-Perregaux:80
 Audemars Piguet:81
 Sector:82
+Gevril:83
 ```
 
-Last updated: 2026-08-12. Added `Sector`(82, ad 304369016), `Audemars Piguet`(81, ad 293791993), `Girard-Perregaux`(80, ad 288774671), `Invicta`(79, ad 304369204), `Michael Kors`(78, ad 307974009), `Skoda
+Last updated: 2026-08-12. Added `Gevril`(83, ad 274923668), `Sector`(82, ad 304369016), `Audemars Piguet`(81, ad 293791993), `Girard-Perregaux`(80, ad 288774671), `Invicta`(79, ad 304369204), `Michael Kors`(78, ad 307974009), `Skoda
 Motorsport`(77, ad 299467472 — OLX's own dropdown picked Seiko because the
 movement inside is a Seiko Epson VR42, but the dial/box both read "SKODA
 Motorsport" with no Seiko branding anywhere on the item, so the importer used
