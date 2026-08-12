@@ -22,6 +22,11 @@
       "id": "1377833468",
       "name": "watches.best",
       "reason": "observed 2026-08-12: two listings (ad 307738324 Polar Vantage V3 at 1500 RON, ad 290102642 Apple Watch 9 Cellular at 1500 RON) both used screenshots of a retailer's product page as \"photos\" (visible price tags, star ratings, wishlist icons) rather than real photos of the item, and both asked roughly half the retail price shown in their own screenshots. Pattern reads as stolen/scraped images, not genuine sales."
+    },
+    {
+      "id": "1380774246",
+      "name": "Mihail",
+      "reason": "observed 2026-08-13: ad 307338450 'ceas OMEEGA automatic' (misspelled Omega) at 600 RON, sealed/new, using the exact boilerplate 'Ceasul este nou ,sigilat ,sticla sapphire ,funcționează toate cadranele ,automatic ,cutie !' also seen the same session on ad 307317577 (dial reads HUBLOT, 400 RON) and ad 307400373 ('Pateek Philiippe', misspelled Patek, 500 RON) — all counterfeits, all far under the genuine brand's floor. Misspelled/altered brand names are a deliberate evasion of text-based brand matching."
     }
   ]
 }
