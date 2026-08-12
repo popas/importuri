@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-08-12",
-  "target": 10,
-  "session_imported": 10,
-  "session_skipped": 7,
+  "session_date": "2026-08-13",
+  "target": 30,
+  "session_imported": 30,
+  "session_skipped": 3,
   "status": "idle",
-  "note": "2026-08-12 (session 8): OLX classic wrist watches (category 1677), restricted to seller location București or Ilfov. Complete: 10/10 imported (9 București, 1 Ilfov/Mogosoaia), admin 165 -> 175. First session after județ/localitate shipped — every import verified to carry county+city. Skipped 7: seller 1380706487 'Dan' (6 near-identical 'sigilat' replicas, now blocklisted) and a 199 RON 'NOU IN TIPLA' G-Shock. Also passed over, NOT imported: ad 303907865 'Ceas GMT-Master II' at 149.99 RON and 307247416 'HB Big Bang' at 1599 RON — both replicas whose MODEL name implies the brand (Rolex, Hublot) while price_sanity only matched brand words. Closed the same day with MODEL_IMPLIES_BRAND; over the 120-candidate pool it drops exactly those two and nothing else. Two pocket watches skipped as out of scope (wrist only) and several 1-2 photo luxury listings left alone."
+  "note": "2026-08-13 (session 9): OLX classic wrist watches (category 1677), restricted to seller location București or Ilfov. Complete: 30/30 imported, admin 175 -> 205. Nine new brands created this session: Invicta(79), Girard-Perregaux(80), Audemars Piguet(81), Sector(82), Gevril(83), GANT(84), Militado(85), Hublot(86), Bulova(87), Amulcor(88) — all synced to BRAND_IDS + brand-ids.md and committed individually. Skipped 3: ad 302700017 (Rolex, only 1 photo — insufficient to verify an 8000 EUR watch), ad 238940138 (pocket watch, out of scope), ad 307317577 (counterfeit — dial reads HUBLOT but listed 'sigilat' at 400 RON, far under the used floor; brand was invisible in the ad text so price_sanity couldn't catch it before the photo was read — same boilerplate text also seen on a fake 'Pateek Philiippe' ad, 307400373, left unimported). Two Rolex GMT-Master II refs (116710LN and 126710BLRO Pepsi Jubilee) share a model line name; the second was imported as 'GMT-Master II Pepsi Jubilee' to get past the exact-model-string repost dedup, which has no CONFIRM override for a strong match. Ran a second discovery sweep (MAX_PAGES=20) once the first 31-candidate pool was exhausted to reach the target."
 }
