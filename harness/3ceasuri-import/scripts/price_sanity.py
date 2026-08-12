@@ -119,6 +119,98 @@ def claims_new(text):
     return bool(NEW_CLAIM_RE.search(_USED_BUT_TIDY_RE.sub(" ", text or "")))
 
 
+# A replica is advertised by MODEL, not by brand — writing "Rolex" invites the
+# takedown. "Ceas GMT-Master II - 41mm" at 149 lei and "HB Big Bang Steel" at 1599
+# (both seen 2026-08-12) never say Rolex or Hublot, so the brand table never fired
+# and both cleared every floor. These model names belong to exactly one maker, so an
+# ad using one is judged against that maker's floor.
+#
+# Ordered most specific first; every value must be a key in BRAND_FLOOR_RON.
+MODEL_IMPLIES_BRAND = [
+    (r"\bgmt[\s-]?master\b", "rolex"),
+    (r"\bsea[\s-]?dweller\b", "rolex"),
+    (r"\bsky[\s-]?dweller\b", "rolex"),
+    (r"\byacht[\s-]?master\b", "rolex"),
+    # NOT "day-date": it is the name of an ordinary complication before it is the
+    # name of a Rolex, and a 1997 Swatch listing "functii: day-date (afisaj zi si
+    # data)" was held to Rolex's 6000 RON floor because of it.
+    (r"\bair[\s-]?king\b", "rolex"),
+    (r"\bexplorer\s*(?:ii|2)\b", "rolex"),
+    (r"\boyster\s+perpetual\b", "rolex"),
+    (r"\bdatejust\b", "rolex"),
+    (r"\bsubmariner\b", "rolex"),
+    (r"\bdaytona\b", "rolex"),
+    (r"\bmilgauss\b", "rolex"),
+    (r"\bdeepsea\b", "rolex"),
+    (r"\bcellini\b", "rolex"),
+    (r"\bbig\s+bang\b", "hublot"),
+    (r"\bclassic\s+fusion\b", "hublot"),
+    (r"\broyal\s+oak\b", "audemars piguet"),
+    (r"\bnautilus\b", "patek philippe"),
+    (r"\baquanaut\b", "patek philippe"),
+    (r"\bcalatrava\b", "patek philippe"),
+    (r"\bspeedmaster\b", "omega"),
+    (r"\bseamaster\b", "omega"),
+    (r"\bplanet\s+ocean\b", "omega"),
+    (r"\baqua\s+terra\b", "omega"),
+    (r"\bnavitimer\b", "breitling"),
+    (r"\bsuperocean\b", "breitling"),
+    (r"\bluminor\b", "panerai"),
+    (r"\bradiomir\b", "panerai"),
+    (r"\breverso\b", "jaeger-lecoultre"),
+    (r"\bportugieser\b|\bportuguese\b", "iwc"),
+    (r"\bbig\s+pilot\b", "iwc"),
+    (r"\bballon\s+bleu\b", "cartier"),
+    (r"\bblack\s+bay\b", "tudor"),
+    (r"\bpelagos\b", "tudor"),
+    (r"\bel\s+primero\b", "zenith"),
+    (r"\bcarrera\b", "tag heuer"),
+    (r"\bmonaco\b", "tag heuer"),
+]
+
+
+# What the marketplace's brand field says when the seller named no maker at all.
+# Anything else counts as a named brand, whether or not it has a floor of its own.
+UNNAMED_BRAND = {"", "alt brand", "alta marca", "alte marci", "altele", "other",
+                 "unbranded", "fara marca", "no name", "noname", "generic", "swiss"}
+
+# Wording that says the ad is openly a homage or a modded watch rather than
+# claiming to BE the model — "Seiko Mod Daytona", "Seiko modificat in stil
+# Submariner". Those are honest listings of a real Seiko and must not be judged
+# against Rolex's floor.
+_HOMAGE_RE = re.compile(
+    r"\bmod(?:ificat[ae]?|at|ded)?\b|\bin stil\b|\bstyle\b|\bhomage\b|\bomagiu\b", re.I)
+
+
+def _names_a_priced_brand(haystack):
+    return any(re.search(r"\b" + re.escape(n) + r"\b", haystack) for n in BRAND_FLOOR_RON)
+
+
+def implied_brand(haystack, brand=None):
+    """The maker a model name gives away, when the ad names no maker of its own.
+
+    Deliberately a FALLBACK, and it stays silent in three cases, each of which was a
+    real false positive on the 2026-08-12 candidate pool:
+
+    * the ad names a brand — believe it. Seiko has no floor of its own, so checking
+      only the priced brands held "Seiko Mode Submariner" to Rolex's floor.
+    * the ad names a priced brand in its text, so that brand governs: a genuine
+      vintage Tudor Submariner is held to Tudor's floor, not Rolex's.
+    * the ad openly says homage/mod, which is a real watch described by what it
+      resembles, not one passing itself off.
+    """
+    if _norm(brand).strip() not in UNNAMED_BRAND:
+        return None
+    if _names_a_priced_brand(haystack):
+        return None
+    if _HOMAGE_RE.search(haystack):
+        return None
+    for pattern, name in MODEL_IMPLIES_BRAND:
+        if re.search(pattern, haystack):
+            return name
+    return None
+
+
 def price_in_ron(price, currency):
     if price is None:
         return None
@@ -152,6 +244,13 @@ def implausible_price(price, currency, brand=None, text=""):
     # and frequently absent. So the ad's own words count too: a listing that calls
     # itself a Rolex is judged as one, whoever filled in the dropdown.
     haystack = _norm(brand) + " \n " + low
+
+    # Fold the maker implied by a model name into the haystack, so both floors below
+    # see it exactly as if the ad had named the brand. Appending is only safe because
+    # implied_brand() stays silent whenever the ad already names a priced brand.
+    _implied = implied_brand(haystack, brand)
+    if _implied:
+        haystack += " \n " + _implied
 
     # Checked before the used floor, because it is the stricter of the two and the
     # used floor would otherwise clear the listing and return.
