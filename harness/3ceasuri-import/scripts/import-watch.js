@@ -227,7 +227,6 @@ async function importWatch(data) {
   set('id_bracelet_material', data.braceletMat);
   set('id_gender', data.gender);
   set('id_style', data.style);
-  set('id_series', data.series);
   set('id_connectivity', data.connectivity);
   set('id_compatibility', data.compatibility);
   set('id_year', data.year);
@@ -248,7 +247,7 @@ async function importWatch(data) {
 
   const optionalFields = [
     data.diameter&&'diameter', data.caseMat&&'case', data.braceletMat&&'bracelet',
-    data.gender&&'gender', data.style&&'style', data.series&&'series',
+    data.gender&&'gender', data.style&&'style',
     data.connectivity&&'connectivity', data.compatibility&&'compatibility',
     data.year&&'year', data.waterRes&&'WR', data.displayMat&&'glass',
     data.reference&&'ref', data.phone&&'phone', data.seller&&'seller', data.location&&'location',

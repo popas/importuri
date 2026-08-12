@@ -220,7 +220,7 @@ if not data.get("brand"):                    review.append("brand not inferred")
 elif data["brand"] not in brand_ids:         review.append("NEW brand '%s' — will be created in the DB" % data["brand"])
 if not data.get("model"):                    review.append("model not inferred")
 if data.get("price") is None:                review.append("price not inferred")
-for f in ("series", "connectivity", "compatibility"):
+for f in ("connectivity", "compatibility"):
     if not data.get(f):                      review.append("smartwatch without %s (fill it in OVERRIDES)" % f)
 if len(images) < 2:                          review.append("only %d image(s) on the ad" % len(images))
 if len((data.get("description") or "").strip()) < 40:
@@ -283,7 +283,6 @@ emit("RESULT", {"ad_id": AD_ID, "ok": bool(ok), "banners": banners,
                 "new_brand": ({"name": data["brand"], "id": new_brand_id} if new_brand_id else None),
                 "state_entry": {"source": "olx", "id": AD_ID, "url": SOURCE_URL,
                                 "brand": data["brand"], "model": data["model"],
-                                "series": data.get("series"),
                                 "price": data["price"], "currency": data.get("currency"),
                                 "images": len(images),
                                 "seller_id": seller["id"], "seller_name": seller["name"],

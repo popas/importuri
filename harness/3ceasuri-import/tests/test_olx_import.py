@@ -204,7 +204,7 @@ check("anything you leave\nout of the answer is cleared" in p, "4: the clearing 
 check("Garmin Fenix 7x Solar" in p, "4: ad text missing from the prompt")
 
 # --- 5. the smartwatch importer never lets `movement` fall back to quartz ---
-FILLED_SMART = {"brand": "Garmin", "model": "Fenix 7X Solar", "series": "Fenix 7",
+FILLED_SMART = {"brand": "Garmin", "model": "Fenix 7X Solar",
                 "connectivity": "no_gsm", "compatibility": "both", "price": 1700,
                 "currency": "RON", "condition": "good", "gender": "men",
                 "description": "Ceas in stare foarte buna, folosit un an. Vine cu incarcator si cutie.",
@@ -230,11 +230,11 @@ m2, _ = run(SMART, SMART_AD, env={"CONFIRM": "1",
                                   "OVERRIDES": json.dumps(dict(FILLED_SMART, gender=None))})
 check(m2["INFER"].get("gender") is None, "6: an omitted/nulled contract field must be cleared")
 
-# --- 7. a smartwatch missing its three facets stops for review -------------
+# --- 7. a smartwatch missing its facets stops for review -------------------
 m, st = run(SMART, SMART_AD, env={"OVERRIDES": json.dumps(
-    dict(FILLED_SMART, series=None, connectivity=None, compatibility=None))})
+    dict(FILLED_SMART, connectivity=None, compatibility=None))})
 check("REVIEW" in m, "7: missing smart facets must stop for review")
-for f in ("series", "connectivity", "compatibility"):
+for f in ("connectivity", "compatibility"):
     check(any(f in r for r in m["REVIEW"]["reasons"]), "7: %s not flagged" % f)
 check(st["imported"] is None, "7: must not import")
 

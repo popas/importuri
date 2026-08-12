@@ -59,7 +59,7 @@ ENUMS = {
 }
 
 NUMERIC = {"price": float, "diameter": float, "year": int}
-TEXT = ["brand", "model", "series", "reference", "priceNote", "phone", "location",
+TEXT = ["brand", "model", "reference", "priceNote", "phone", "location",
         "seller", "description"]
 FLAGS = ["is_wristwatch", "is_bulk_lot"]
 
@@ -141,9 +141,9 @@ RULES_CLASSIC = """
   brands — read the dial and the movement plate before falling back to `Fără marcă`.
 - `caseMat` for a wall clock is usually `wood`; `diameter` is stored in MILLIMETRES,
   so a 30 cm wall clock is `300`.
-- Smartwatches (`movement` = smart) fill three extra fields; for everything else
-  all three stay null. `series` — the normalized model line, short: "Series 9",
-  "SE 2", "Ultra 2", "Galaxy Watch 7", "Venu 3" (no brand, no case size).
+- Smartwatches (`movement` = smart) fill two extra fields; for everything else
+  both stay null. The model line itself goes in `model` ("Watch Series 9",
+  "Galaxy Watch 7", "Venu 3") — there is no separate series field.
   `connectivity` — gsm when the watch can take calls without the phone (ad or
   photos say "LTE", "Cellular", "4G", "eSIM"; on Apple Watch the cellular models
   have a red ring or dot on the crown), no_gsm when it is GPS/Bluetooth only;
@@ -169,9 +169,6 @@ RULES_SMART = """
   with condition, size and warranty noise — strip that. **Look at the photos** when
   the title is vague: the case shape, crown, bezel markings and band tell the
   generation apart.
-- `series` — the normalized model line, short: "Series 9", "SE 2", "Ultra 2",
-  "Galaxy Watch 7", "Venu 3". No brand, no case size. Required — this is what the
-  site facets on.
 - `connectivity` — `gsm` when the watch takes calls without the phone (the ad or a
   photo says LTE, Cellular, 4G, eSIM; on an Apple Watch the cellular models have a
   red ring or dot on the crown), `no_gsm` when it is GPS/Bluetooth only. Null only
@@ -190,7 +187,7 @@ RULES_SMART = """
 - `description` — the seller's text, cleaned: no marketplace chrome, no phone
   numbers pasted twice, no "citește mai mult". Keep the seller's line breaks.
 - `year` — ONE year as an integer, and only when stated. A smartwatch generation
-  is NOT a year; leave it null and let `series` carry the generation.
+  is NOT a year; leave it null and let `model` carry the generation.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
 - `is_bulk_lot` — true when one price covers several watches, or when the ad is
   shop stock offering "mai multe bucăți".

@@ -479,7 +479,7 @@ if not data.get("movement"):                review.append("movement not stated i
 if OVERRIDES.get("is_wristwatch") is False and not data.get("category"):
                                             review.append("not a wristwatch but category is null (wall clock? pass category in OVERRIDES)")
 if data.get("movement") == "smart":
-    for _smart_field in ("series", "connectivity", "compatibility"):
+    for _smart_field in ("connectivity", "compatibility"):
         if not data.get(_smart_field):      review.append("smartwatch without %s (fill it in OVERRIDES)" % _smart_field)
 if len(images) < 2:                         review.append("only %d image(s) collected" % len(images))
 if len((data.get("description") or "").strip()) < 40:
