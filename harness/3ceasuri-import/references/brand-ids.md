@@ -87,9 +87,10 @@ Gevril:83
 GANT:84
 Militado:85
 Hublot:86
+Bulova:87
 ```
 
-Last updated: 2026-08-12. Added `Hublot`(86, ad 307129191), `Militado`(85, ad 302695090), `GANT`(84, ad 247268734), `Gevril`(83, ad 274923668), `Sector`(82, ad 304369016), `Audemars Piguet`(81, ad 293791993), `Girard-Perregaux`(80, ad 288774671), `Invicta`(79, ad 304369204), `Michael Kors`(78, ad 307974009), `Skoda
+Last updated: 2026-08-13. Added `Bulova`(87, ad 273108277), `Hublot`(86, ad 307129191), `Militado`(85, ad 302695090), `GANT`(84, ad 247268734), `Gevril`(83, ad 274923668), `Sector`(82, ad 304369016), `Audemars Piguet`(81, ad 293791993), `Girard-Perregaux`(80, ad 288774671), `Invicta`(79, ad 304369204), `Michael Kors`(78, ad 307974009), `Skoda
 Motorsport`(77, ad 299467472 — OLX's own dropdown picked Seiko because the
 movement inside is a Seiko Epson VR42, but the dial/box both read "SKODA
 Motorsport" with no Seiko branding anywhere on the item, so the importer used
