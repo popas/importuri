@@ -79,9 +79,10 @@ Roberto Cavalli:75
 Theorein:76
 Skoda Motorsport:77
 Michael Kors:78
+Invicta:79
 ```
 
-Last updated: 2026-08-12. Added `Michael Kors`(78, ad 307974009), `Skoda
+Last updated: 2026-08-12. Added `Invicta`(79, ad 304369204), `Michael Kors`(78, ad 307974009), `Skoda
 Motorsport`(77, ad 299467472 — OLX's own dropdown picked Seiko because the
 movement inside is a Seiko Epson VR42, but the dial/box both read "SKODA
 Motorsport" with no Seiko branding anywhere on the item, so the importer used
