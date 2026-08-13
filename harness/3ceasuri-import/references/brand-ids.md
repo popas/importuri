@@ -107,9 +107,10 @@ Adidas:103
 Emporio Armani:104
 Unique:105
 Frederique Constant:106
+Fortis:107
 ```
 
-Last updated: 2026-08-13. Added `Frederique Constant`(106, ad 305702589), `Unique`(105, ad 307997777), `Emporio Armani`(104, ad 301201897), `Adidas`(103, ad 307998215), `Stuhrling Original`(102, ad 295098648), `Philip Watch`(101, ad 306587562), `Vostok Europe`(100, ad 291377529), `Capuer`(99, ad 308010140), `Sinn`(98, ad 302208145), `IWC`(97, ad 302933017), `Corum`(96, ad 299571378), `Super Speed V6`(95, ad 189855374), `Swatch`(94, ad 298142936), `Police`(93, ad 303485157), `Hugo Boss`(92, ad 299395469), `Accurist`(91, ad 303993731), `Huawei`(90, ad 305344167), `OnePlus`(89, ad 306786878), `Amulcor`(88, ad 305357778), `Bulova`(87, ad 273108277), `Hublot`(86, ad 307129191), `Militado`(85, ad 302695090), `GANT`(84, ad 247268734), `Gevril`(83, ad 274923668), `Sector`(82, ad 304369016), `Audemars Piguet`(81, ad 293791993), `Girard-Perregaux`(80, ad 288774671), `Invicta`(79, ad 304369204), `Michael Kors`(78, ad 307974009), `Skoda
+Last updated: 2026-08-13. Added `Fortis`(107, ad 307129988), `Frederique Constant`(106, ad 305702589), `Unique`(105, ad 307997777), `Emporio Armani`(104, ad 301201897), `Adidas`(103, ad 307998215), `Stuhrling Original`(102, ad 295098648), `Philip Watch`(101, ad 306587562), `Vostok Europe`(100, ad 291377529), `Capuer`(99, ad 308010140), `Sinn`(98, ad 302208145), `IWC`(97, ad 302933017), `Corum`(96, ad 299571378), `Super Speed V6`(95, ad 189855374), `Swatch`(94, ad 298142936), `Police`(93, ad 303485157), `Hugo Boss`(92, ad 299395469), `Accurist`(91, ad 303993731), `Huawei`(90, ad 305344167), `OnePlus`(89, ad 306786878), `Amulcor`(88, ad 305357778), `Bulova`(87, ad 273108277), `Hublot`(86, ad 307129191), `Militado`(85, ad 302695090), `GANT`(84, ad 247268734), `Gevril`(83, ad 274923668), `Sector`(82, ad 304369016), `Audemars Piguet`(81, ad 293791993), `Girard-Perregaux`(80, ad 288774671), `Invicta`(79, ad 304369204), `Michael Kors`(78, ad 307974009), `Skoda
 Motorsport`(77, ad 299467472 — OLX's own dropdown picked Seiko because the
 movement inside is a Seiko Epson VR42, but the dial/box both read "SKODA
 Motorsport" with no Seiko branding anywhere on the item, so the importer used
