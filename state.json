@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
   "session_date": "2026-08-13",
-  "target": 100,
-  "session_imported": 112,
-  "session_skipped": 25,
-  "status": "idle",
-  "note": "2026-08-13 (session 12): target 100 OLX watches+smartwatches (categories 1677 and 1943), restricted to seller location Bucuresti or Ilfov. Overshot to 112 imported, 25 skipped (137 attempted) -- admin 285 -> 397. Discovery ran two sweeps per category (initial 300-candidate NO_DEDUP=1 sweep, then a deeper 500-candidate sweep once the first pool was exhausted), filtered locally to B/I city + not-in-history + not-blocklisted before importing. New brands created and synced to BRAND_IDS + brand-ids.md, each committed individually: Kienzle, Pobeda, LIGE, Pierre Lannier, Cronos, Pierre Cardin, Chopard, Memphis Belle, Tommy Hilfiger, Scuderia Ferrari, Gucci, Coros, Google, Fitbit, Future, Polar, Suunto, Fredric, Lorus, Frederic Graff, Lucien Rochat, San Martin. Skips: repost-dedup hits, counterfeits (misspelled brand names mimicking a genuine design), scraped stock/retail-screenshot photos passed off as the sellers own (brand.com product pages, eMAG listing screenshots, Chrono24 watermarks), bundle/non-watch listings (dashcam, watch winder, walkman set, flooring ad, pocket watch), an illegible-brand vintage piece, activation-locked and price-floor rejections. Two same-model-string false-dedup hits resolved by folding a distinguishing detail (reference/color) into the model field, matching session-11 precedent."
+  "target": 200,
+  "session_imported": 92,
+  "session_skipped": 32,
+  "status": "running",
+  "note": "2026-08-13 (session 13): target 200 OLX watches+smartwatches, explicitly split ~50 each across 4 buckets: smartwatches Bucuresti, smartwatches Ilfov, classic watches Bucuresti, classic watches Ilfov."
 }
