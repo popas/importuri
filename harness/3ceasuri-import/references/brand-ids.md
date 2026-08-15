@@ -167,9 +167,10 @@ Ulysse Nardin:163
 Armani Exchange:164
 POEDAGAR:165
 Navitec:166
+RSW:167
 ```
 
-Last updated: 2026-08-15. Added `Navitec`(166, ad 297134995), `POEDAGAR`(165, ad 308186861), `Armani Exchange`(164, ad 305458528 — distinct from
+Last updated: 2026-08-15. Added `RSW`(167, ad 260294396), `Navitec`(166, ad 297134995), `POEDAGAR`(165, ad 308186861), `Armani Exchange`(164, ad 305458528 — distinct from
 `Emporio Armani`(104) and `American Exchange`(150), a separate Armani Group diffusion
 line), `Ulysse Nardin`(163, ad 304618234), `Patek Philippe`(162, ad 307352360), `SevenFriday`(161, ad 280529083), `Jaeger-LeCoultre`(160, ad 308190031 — OLX's own dropdown
 picked Breitling, but the ad and dial both read Jaeger-LeCoultre Master Compressor
