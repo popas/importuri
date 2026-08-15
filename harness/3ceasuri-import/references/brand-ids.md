@@ -180,9 +180,11 @@ Teslar:176
 Timecode:177
 Charpateon:178
 Carl F. Bucherer:179
+LAGENIO:180
 ```
 
-Last updated: 2026-08-15. Added `Carl F. Bucherer`(179, ad 303042737 — OLX's own
+Last updated: 2026-08-15. Added `LAGENIO`(180, ad 306851459 — OLX's own dropdown
+picked Fossil for this kids GPS watch phone), `Carl F. Bucherer`(179, ad 303042737 — OLX's own
 dropdown picked Rolex, same brand-correction pattern as Christophe Duchamp/U-Boat/Skoda
 Motorsport/Mercury/Murex above), `Charpateon`(178, ad 307347737), `Timecode`(177, ad 261608598), `Teslar`(176, ad 277387244), `Optima`(175, ad 260292812), `Nito`(174, ad 304055530), `Eterna`(173, ad 275095490), `PAJ`(172, ad 307128831), `Withings`(171, ad 307538118), `Raymond Weil`(170, ad 298218236), `Murex`(169, ad 301793854 — same "Swiss" dropdown
 mislabel), `Mercury`(168, ad 307182509 — OLX's own dropdown
