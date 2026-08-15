@@ -37,6 +37,11 @@
       "id": "8437685",
       "name": "maxim",
       "reason": "observed 2026-08-14: two ads (308088617 'Ceas Automatic, curea Silicon' rose gold/white dial, 308088010 'Ceas Chronograph' yellow/black dial), both 280 RON, both photographed with a dial reading HUBLOT GENEVE — Hublot's genuine floor is 8000 RON, so both are counterfeits."
+    },
+    {
+      "id": "1380764381",
+      "name": "elctromax",
+      "reason": "observed 2026-08-15: ad 307319314 'Set de ceas analog si bratara pentru batbati' (Diesel, 600 RON) — both listing photos are literal screenshots of an emag.ro product page (visible iOS status bar, Safari address bar, 'Adauga in Cos' button, thumbnail strip), not photos of the seller's own item. Same stolen/scraped-retail-image pattern as seller watches.best (id 1377833468)."
     }
   ]
 }
