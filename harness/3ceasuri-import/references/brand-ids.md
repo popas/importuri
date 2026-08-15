@@ -170,9 +170,10 @@ Navitec:166
 RSW:167
 Mercury:168
 Murex:169
+Raymond Weil:170
 ```
 
-Last updated: 2026-08-15. Added `Murex`(169, ad 301793854 — same "Swiss" dropdown
+Last updated: 2026-08-15. Added `Raymond Weil`(170, ad 298218236), `Murex`(169, ad 301793854 — same "Swiss" dropdown
 mislabel), `Mercury`(168, ad 307182509 — OLX's own dropdown
 picked "Swiss", same brand-correction pattern as Christophe Duchamp/U-Boat/Skoda
 Motorsport above), `RSW`(167, ad 260294396), `Navitec`(166, ad 297134995), `POEDAGAR`(165, ad 308186861), `Armani Exchange`(164, ad 305458528 — distinct from
