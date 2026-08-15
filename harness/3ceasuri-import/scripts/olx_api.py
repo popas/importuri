@@ -22,6 +22,7 @@ helpers through `bind(globals())`.
 """
 
 import json
+import os
 import re
 import time
 import urllib.parse
@@ -168,8 +169,14 @@ def reveal_phone(bu, ad_url, wait=9):
     lands on an unrelated ad (verified the hard way on 2026-08-09: an invented
     id token resolved to a car-parts listing).
 
-    status: "ok" | "login_required" | "no_button" | "not_revealed" | "no_url"
+    status: "ok" | "login_required" | "no_button" | "not_revealed" | "no_url" | "skipped"
+
+    `SKIP_PHONE=1` bypasses this entirely (no navigation, no click) — set it when
+    OLX's fraud-detection wall is up, since the extra goto_url + click cycle per ad
+    is exactly the kind of automated-looking traffic pattern that trips it.
     """
+    if os.environ.get("SKIP_PHONE"):
+        return None, "skipped"
     if not ad_url:
         return None, "no_url"
     bu.goto_url(ad_url)
