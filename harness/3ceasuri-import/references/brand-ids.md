@@ -186,9 +186,11 @@ Calvin Klein:182
 Bvlgari:183
 Elgin:184
 Brenatt:185
+Megalith:186
 ```
 
-Last updated: 2026-08-16. Added `Brenatt`(185, ad 249684672 — genuine standalone
+Last updated: 2026-08-16. Added `Megalith`(186, ad 299136897 — Chinese reseller
+sport-chronograph brand, genuine standalone), `Brenatt`(185, ad 249684672 — genuine standalone
 brand, dial reads "brenatt watches" with Japan movement, not a known-brand replica), `Elgin`(184, ad 307470385), `Bvlgari`(183, ad 308212164), `Calvin Klein`(182, ad 308182182), `Piaget`(181, ad 308207459), `LAGENIO`(180, ad 306851459 — OLX's own dropdown
 picked Fossil for this kids GPS watch phone), `Carl F. Bucherer`(179, ad 303042737 — OLX's own
 dropdown picked Rolex, same brand-correction pattern as Christophe Duchamp/U-Boat/Skoda
