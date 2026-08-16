@@ -189,9 +189,12 @@ Brenatt:185
 Megalith:186
 Candino:187
 HALO:188
+Riversong:189
 ```
 
-Last updated: 2026-08-16. Added `HALO`(188, ad 264254998 — generic Chinese
+Last updated: 2026-08-16. Added `Riversong`(189, ad 303991973 — OLX's own
+dropdown picked "iUni", same brand-correction pattern as Christophe
+Duchamp/Mercury/Murex/Candino above; ad names it Riversong Motive 10 GT), `HALO`(188, ad 264254998 — generic Chinese
 "KR80" rugged smartwatch, "HALO" is the only name printed on the physical case
 bezel, box itself is unbranded "SPORTS WATCH" packaging), `Candino`(187, ad 299501232 — OLX's own dropdown
 picked "Swiss", same brand-correction pattern as Christophe Duchamp/Mercury/Murex
