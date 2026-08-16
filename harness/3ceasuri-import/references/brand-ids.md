@@ -188,9 +188,12 @@ Elgin:184
 Brenatt:185
 Megalith:186
 Candino:187
+HALO:188
 ```
 
-Last updated: 2026-08-16. Added `Candino`(187, ad 299501232 — OLX's own dropdown
+Last updated: 2026-08-16. Added `HALO`(188, ad 264254998 — generic Chinese
+"KR80" rugged smartwatch, "HALO" is the only name printed on the physical case
+bezel, box itself is unbranded "SPORTS WATCH" packaging), `Candino`(187, ad 299501232 — OLX's own dropdown
 picked "Swiss", same brand-correction pattern as Christophe Duchamp/Mercury/Murex
 above; OLX's `year` field also read 2086 from the model number C2086, not a real
 year), `Megalith`(186, ad 299136897 — Chinese reseller
