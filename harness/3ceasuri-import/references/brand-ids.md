@@ -191,9 +191,12 @@ Candino:187
 HALO:188
 Riversong:189
 Pirelli:190
+Simplify:191
 ```
 
-Last updated: 2026-08-20. Added `Pirelli`(190, ad 301579642 — OLX's own dropdown
+Last updated: 2026-08-20. Added `Simplify`(191, ad 260229054 — budget US
+fashion-watch brand, minimalist black-dial quartz, no OLX brand dropdown was
+picked at all), `Pirelli`(190, ad 301579642 — OLX's own dropdown
 picked "Swiss"; ad is a Pirelli PZero Tempo chronograph, a real Swiss-made
 tie-in line by the tire maker, engraved "PzeroTempo" on the caseback).
 Previously last updated 2026-08-16. Added `Riversong`(189, ad 303991973 — OLX's own
