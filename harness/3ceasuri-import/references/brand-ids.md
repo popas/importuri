@@ -190,9 +190,13 @@ Megalith:186
 Candino:187
 HALO:188
 Riversong:189
+Pirelli:190
 ```
 
-Last updated: 2026-08-16. Added `Riversong`(189, ad 303991973 — OLX's own
+Last updated: 2026-08-20. Added `Pirelli`(190, ad 301579642 — OLX's own dropdown
+picked "Swiss"; ad is a Pirelli PZero Tempo chronograph, a real Swiss-made
+tie-in line by the tire maker, engraved "PzeroTempo" on the caseback).
+Previously last updated 2026-08-16. Added `Riversong`(189, ad 303991973 — OLX's own
 dropdown picked "iUni", same brand-correction pattern as Christophe
 Duchamp/Mercury/Murex/Candino above; ad names it Riversong Motive 10 GT), `HALO`(188, ad 264254998 — generic Chinese
 "KR80" rugged smartwatch, "HALO" is the only name printed on the physical case
