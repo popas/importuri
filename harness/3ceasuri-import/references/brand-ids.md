@@ -198,9 +198,12 @@ Montblanc:194
 Massimo Dutti:195
 Versus Versace:196
 Smith & Wesson:197
+Lancaster:198
 ```
 
-Last updated: 2026-08-20. Added `Smith & Wesson`(197, ad 261602079 — S.W.A.T.
+Last updated: 2026-08-20. Added `Lancaster`(198, ad 305827921 — Italian
+fashion brand, Gotha moonphase multifunction, no OLX brand dropdown was
+picked at all), `Smith & Wesson`(197, ad 261602079 — S.W.A.T.
 tactical line, printed on the dial; OLX's own dropdown picked unrelated
 "Optima"), `Versus Versace`(196, ad 308231458 — the
 Versace diffusion line, printed on the dial as "Versus Versace"; OLX's own
