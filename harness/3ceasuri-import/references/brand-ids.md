@@ -195,9 +195,11 @@ Simplify:191
 Thomas Earnshaw:192
 Lee Cooper:193
 Montblanc:194
+Massimo Dutti:195
 ```
 
-Last updated: 2026-08-20. Added `Montblanc`(194, ad 305699697 — Star Legacy
+Last updated: 2026-08-20. Added `Massimo Dutti`(195, ad 305704180 — the
+fashion retailer's own watch line, diver-style chronograph), `Montblanc`(194, ad 305699697 — Star Legacy
 automatic, ref 132887; OLX's own dropdown correctly picked "Montblanc"),
 `Lee Cooper`(193, ad 299805702 — British
 fashion brand, blue-dial steel field-style watch, no OLX brand dropdown was
