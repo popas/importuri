@@ -199,9 +199,11 @@ Massimo Dutti:195
 Versus Versace:196
 Smith & Wesson:197
 Lancaster:198
+Dior:199
 ```
 
-Last updated: 2026-08-20. Added `Lancaster`(198, ad 305827921 — Italian
+Last updated: 2026-08-20. Added `Dior`(199, ad 306547922 — Christal
+diamond-set ladies' watch, ref EY6787), `Lancaster`(198, ad 305827921 — Italian
 fashion brand, Gotha moonphase multifunction, no OLX brand dropdown was
 picked at all), `Smith & Wesson`(197, ad 261602079 — S.W.A.T.
 tactical line, printed on the dial; OLX's own dropdown picked unrelated
