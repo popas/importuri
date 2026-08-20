@@ -42,6 +42,7 @@ BRAND_FLOOR_RON = {
     "tudor": 2500,
     "chopard": 2500,
     "zenith": 2000,
+    "ulysse nardin": 12000,
     "grand seiko": 2500,
     "omega": 1500,
     "tag heuer": 1200,
