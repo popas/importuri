@@ -197,9 +197,12 @@ Lee Cooper:193
 Montblanc:194
 Massimo Dutti:195
 Versus Versace:196
+Smith & Wesson:197
 ```
 
-Last updated: 2026-08-20. Added `Versus Versace`(196, ad 308231458 — the
+Last updated: 2026-08-20. Added `Smith & Wesson`(197, ad 261602079 — S.W.A.T.
+tactical line, printed on the dial; OLX's own dropdown picked unrelated
+"Optima"), `Versus Versace`(196, ad 308231458 — the
 Versace diffusion line, printed on the dial as "Versus Versace"; OLX's own
 dropdown picked plain "Versace"), `Massimo Dutti`(195, ad 305704180 — the
 fashion retailer's own watch line, diver-style chronograph), `Montblanc`(194, ad 305699697 — Star Legacy
