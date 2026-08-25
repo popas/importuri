@@ -200,9 +200,13 @@ Versus Versace:196
 Smith & Wesson:197
 Lancaster:198
 Dior:199
+Viking:200
 ```
 
-Last updated: 2026-08-20. Added `Dior`(199, ad 306547922 — Christal
+Last updated: 2026-08-25. Added `Viking`(200, ad 308496657 — vintage
+Swiss-made manual dress watch, "VIKING-SPORT VATTENTAT INCABLOC" printed on
+the dial, movement by Cortebert (OEM ebauche maker); no OLX brand dropdown was
+picked at all). Previously last updated 2026-08-20. Added `Dior`(199, ad 306547922 — Christal
 diamond-set ladies' watch, ref EY6787), `Lancaster`(198, ad 305827921 — Italian
 fashion brand, Gotha moonphase multifunction, no OLX brand dropdown was
 picked at all), `Smith & Wesson`(197, ad 261602079 — S.W.A.T.
