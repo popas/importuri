@@ -206,9 +206,13 @@ Timberland:202
 RZE:203
 Louis Erard:204
 Slazenger:205
+Versace:206
 ```
 
-Last updated: 2026-08-25. Added `Slazenger`(205, ad 301832106 — ladies'
+Last updated: 2026-08-25. Added `Versace`(206, ad 267317759 — Medusa-logo
+automatic, black textured dial, "AUTOMATIC / SWISS MADE" printed on dial;
+distinct from the existing `Versus Versace` diffusion line, no OLX brand
+dropdown was picked at all), `Slazenger`(205, ad 301832106 — ladies'
 mother-of-pearl-style two-tone dress watch, Slazenger logo on dial, no OLX
 brand dropdown was picked at all), `Louis Erard`(204, ad 246416795 — the "1931"
 collection, manual ETA/Peseux 7001; OLX's own dropdown picked "Edox" and a
