@@ -177,12 +177,6 @@ def already_imported(bu, listing_id, return_to=None):
     return bool(admin_rows(bu, listing_id, return_to=return_to))
 
 
-def distinctive(model):
-    """Distinctive enough that an exact match means 'same watch', not 'same word'."""
-    m = norm(model)
-    return len(m) >= 8 and (any(c.isdigit() for c in m) or len(m.split()) >= 2)
-
-
 def find_repost(bu, data, listing_id, return_to=None):
     """Stage-2 dedup: the same watch relisted under a NEW listing id.
 
@@ -213,7 +207,17 @@ def find_repost(bu, data, listing_id, return_to=None):
             continue                        # genuinely a different brand — not a repost
         if str(row.get("extid") or "") == str(listing_id):
             continue                        # that's this very listing
-        return {"strong": (via == "seller") or distinctive(my_model),
+        # A same-seller hit is a real repost signal. A model-text-only hit
+        # (via == "model") is cross-seller by construction — and for mass-produced
+        # items (any Apple/Samsung/etc. smartwatch generation name has a digit or
+        # 2+ words, which used to count as "distinctive" enough to auto-skip)
+        # thousands of genuine distinct owners share the same model name. That was
+        # wrongly auto-skipping unrelated listings. Confirmed 2026-08-20: ad
+        # 307587348 (seller Simona) auto-skipped as a "repost" of 308182765
+        # (seller Oana) — different sellers, different units. Only a same-seller
+        # match is strong now; a model-only match is always weak/REVIEW, matching
+        # this function's own originally documented intent above.
+        return {"strong": via == "seller",
                 "matched_via": via, "brand_confirmed": bool(row_brand),
                 "match": {"brand": data.get("brand"), "model": data.get("model"),
                           "existing_listing_id": row.get("extid")}}
