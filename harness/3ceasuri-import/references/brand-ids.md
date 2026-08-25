@@ -204,9 +204,13 @@ Viking:200
 Universal Genève:201
 Timberland:202
 RZE:203
+Louis Erard:204
 ```
 
-Last updated: 2026-08-25. Added `RZE`(203, ad 308495452 — independent
+Last updated: 2026-08-25. Added `Louis Erard`(204, ad 246416795 — the "1931"
+collection, manual ETA/Peseux 7001; OLX's own dropdown picked "Edox" and a
+year of 1931, both wrong - the seller's title explicitly says "nu Edox, Mido,
+Epos, Nomos" and 1931 is the collection name, not a year), `RZE`(203, ad 308495452 — independent
 microbrand field watch, "Valour 38 Carbon Black", carbon case, OLX's own
 dropdown picked generic "Alt brand"), `Timberland`(202, ad 269897783 — rugged
 men's multifunction with month and 24hr subdials, Timberland logo on dial,
