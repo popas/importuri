@@ -201,9 +201,13 @@ Smith & Wesson:197
 Lancaster:198
 Dior:199
 Viking:200
+Universal Genève:201
 ```
 
-Last updated: 2026-08-25. Added `Viking`(200, ad 308496657 — vintage
+Last updated: 2026-08-25. Added `Universal Genève`(201, ad 308496614 —
+vintage 18K gold Compax chronograph, dial reads "UNIVERSAL GENEVE / COMPAX";
+seller titled it "Tri-Compax" but the dial shows no calendar complications,
+so the plain-Compax model name was used instead), `Viking`(200, ad 308496657 — vintage
 Swiss-made manual dress watch, "VIKING-SPORT VATTENTAT INCABLOC" printed on
 the dial, movement by Cortebert (OEM ebauche maker); no OLX brand dropdown was
 picked at all). Previously last updated 2026-08-20. Added `Dior`(199, ad 306547922 — Christal
