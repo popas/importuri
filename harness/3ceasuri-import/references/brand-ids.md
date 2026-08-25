@@ -205,9 +205,12 @@ Universal Genève:201
 Timberland:202
 RZE:203
 Louis Erard:204
+Slazenger:205
 ```
 
-Last updated: 2026-08-25. Added `Louis Erard`(204, ad 246416795 — the "1931"
+Last updated: 2026-08-25. Added `Slazenger`(205, ad 301832106 — ladies'
+mother-of-pearl-style two-tone dress watch, Slazenger logo on dial, no OLX
+brand dropdown was picked at all), `Louis Erard`(204, ad 246416795 — the "1931"
 collection, manual ETA/Peseux 7001; OLX's own dropdown picked "Edox" and a
 year of 1931, both wrong - the seller's title explicitly says "nu Edox, Mido,
 Epos, Nomos" and 1931 is the collection name, not a year), `RZE`(203, ad 308495452 — independent
