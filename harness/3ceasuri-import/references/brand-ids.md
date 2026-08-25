@@ -202,9 +202,12 @@ Lancaster:198
 Dior:199
 Viking:200
 Universal Genève:201
+Timberland:202
 ```
 
-Last updated: 2026-08-25. Added `Universal Genève`(201, ad 308496614 —
+Last updated: 2026-08-25. Added `Timberland`(202, ad 269897783 — rugged
+men's multifunction with month and 24hr subdials, Timberland logo on dial,
+dark green leather strap; no OLX brand dropdown was picked at all), `Universal Genève`(201, ad 308496614 —
 vintage 18K gold Compax chronograph, dial reads "UNIVERSAL GENEVE / COMPAX";
 seller titled it "Tri-Compax" but the dial shows no calendar complications,
 so the plain-Compax model name was used instead), `Viking`(200, ad 308496657 — vintage
