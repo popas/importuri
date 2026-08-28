@@ -209,9 +209,14 @@ Slazenger:205
 Versace:206
 Koppel:207
 Paterson:208
+Vector:209
 ```
 
-Last updated: 2026-08-26. Added `Paterson`(208, ad 307307129 — budget
+Last updated: 2026-08-26. Added `Vector`(209, ad 308525709 — Vector Luna
+hybrid smartwatch, Romanian startup acquired by Fitbit in 2017, "VECTOR"
+printed on the dial; discovery flagged it `brand: "Alt brand"` and OLX's own
+dropdown guessed "Google" — both wrong, imported via
+`olx-import-smartwatch.py`). Previously same day, added `Paterson`(208, ad 307307129 — budget
 analog-digital chronograph, "PATERSON" printed on dial, no OLX brand dropdown
 was picked at all; new with tag, no separate model name given so "Chronograph"
 used as the defining trait). Previously same day, added `Koppel`(207, ad 301869009 — budget Chinese
