@@ -210,9 +210,12 @@ Versace:206
 Koppel:207
 Paterson:208
 Vector:209
+Adriatica:210
 ```
 
-Last updated: 2026-08-26. Added `Vector`(209, ad 308525709 — Vector Luna
+Last updated: 2026-08-26. Added `Adriatica`(210, ad 303198123 — Swiss Made
+quartz chronograph, "Adriatica 1160 3040.2" engraved on the caseback; OLX's
+own dropdown just said "Alt brand"). Previously same day, added `Vector`(209, ad 308525709 — Vector Luna
 hybrid smartwatch, Romanian startup acquired by Fitbit in 2017, "VECTOR"
 printed on the dial; discovery flagged it `brand: "Alt brand"` and OLX's own
 dropdown guessed "Google" — both wrong, imported via
