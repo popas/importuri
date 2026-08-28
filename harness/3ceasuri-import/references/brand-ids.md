@@ -214,9 +214,12 @@ Adriatica:210
 Monbrey:211
 HW:212
 U.S. Polo Assn:213
+Lacoste:214
 ```
 
-Last updated: 2026-08-26. Added `U.S. Polo Assn`(213, ad 233158964 — gift
+Last updated: 2026-08-26. Added `Lacoste`(214, ad 308513224 — cream dial,
+green crocodile logo, full reference LC.52.1.14.2277 given by the seller).
+Previously same day, added `U.S. Polo Assn`(213, ad 233158964 — gift
 set with matching keychain/money clip, "U.S. Polo Assn" printed on the box;
 no model name given, `model` uses the defining trait "Leather Strap Gift
 Set"). Previously same day, added `HW`(212, ad 283660358 — generic Chinese
