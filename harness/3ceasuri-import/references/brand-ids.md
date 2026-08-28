@@ -212,9 +212,12 @@ Paterson:208
 Vector:209
 Adriatica:210
 Monbrey:211
+HW:212
 ```
 
-Last updated: 2026-08-26. Added `Monbrey`(211, ad 308483844 — independent
+Last updated: 2026-08-26. Added `HW`(212, ad 283660358 — generic Chinese
+AMOLED smartwatch, "HW 10 Pro" printed on the box, no other maker name
+anywhere). Previously same day, added `Monbrey`(211, ad 308483844 — independent
 microbrand dress watch, Miyota 9039 movement, "MONBREY" printed on dial,
 model now sold out at manufacturer per seller). Previously same day, added `Adriatica`(210, ad 303198123 — Swiss Made
 quartz chronograph, "Adriatica 1160 3040.2" engraved on the caseback; OLX's
