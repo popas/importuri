@@ -213,9 +213,13 @@ Vector:209
 Adriatica:210
 Monbrey:211
 HW:212
+U.S. Polo Assn:213
 ```
 
-Last updated: 2026-08-26. Added `HW`(212, ad 283660358 — generic Chinese
+Last updated: 2026-08-26. Added `U.S. Polo Assn`(213, ad 233158964 — gift
+set with matching keychain/money clip, "U.S. Polo Assn" printed on the box;
+no model name given, `model` uses the defining trait "Leather Strap Gift
+Set"). Previously same day, added `HW`(212, ad 283660358 — generic Chinese
 AMOLED smartwatch, "HW 10 Pro" printed on the box, no other maker name
 anywhere). Previously same day, added `Monbrey`(211, ad 308483844 — independent
 microbrand dress watch, Miyota 9039 movement, "MONBREY" printed on dial,
