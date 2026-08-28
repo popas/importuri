@@ -208,9 +208,13 @@ Louis Erard:204
 Slazenger:205
 Versace:206
 Koppel:207
+Paterson:208
 ```
 
-Last updated: 2026-08-26. Added `Koppel`(207, ad 301869009 — budget Chinese
+Last updated: 2026-08-26. Added `Paterson`(208, ad 307307129 — budget
+analog-digital chronograph, "PATERSON" printed on dial, no OLX brand dropdown
+was picked at all; new with tag, no separate model name given so "Chronograph"
+used as the defining trait). Previously same day, added `Koppel`(207, ad 301869009 — budget Chinese
 AMOLED smartwatch "AMMO PRO" by Koppel/Qualtec, box reads "by koppel"; no OLX
 brand dropdown was picked at all, ad title just said "qualtec"; discovery
 flagged it `looks_smart: false` even though it's a smartwatch — imported via
