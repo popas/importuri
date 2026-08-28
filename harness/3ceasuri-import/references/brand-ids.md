@@ -207,9 +207,15 @@ RZE:203
 Louis Erard:204
 Slazenger:205
 Versace:206
+Koppel:207
 ```
 
-Last updated: 2026-08-25. Added `Versace`(206, ad 267317759 — Medusa-logo
+Last updated: 2026-08-26. Added `Koppel`(207, ad 301869009 — budget Chinese
+AMOLED smartwatch "AMMO PRO" by Koppel/Qualtec, box reads "by koppel"; no OLX
+brand dropdown was picked at all, ad title just said "qualtec"; discovery
+flagged it `looks_smart: false` even though it's a smartwatch — imported via
+`olx-import-smartwatch.py` instead of the classic importer per rule 7).
+Previously last updated 2026-08-25. Added `Versace`(206, ad 267317759 — Medusa-logo
 automatic, black textured dial, "AUTOMATIC / SWISS MADE" printed on dial;
 distinct from the existing `Versus Versace` diffusion line, no OLX brand
 dropdown was picked at all), `Slazenger`(205, ad 301832106 — ladies'
