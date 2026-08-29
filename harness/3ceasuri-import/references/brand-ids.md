@@ -218,9 +218,14 @@ Lacoste:214
 Roamer:215
 Pagani Design:216
 Dianpai:217
+Raymond Renee:218
 ```
 
-Last updated: 2026-08-29. Added `Dianpai`(217, ad 304105314 — "Ceas automatic Dianpai
+Last updated: 2026-08-29. Added `Raymond Renee`(218, ad 253223789 — "Ceas bărbătesc
+elvețian Raymond Renee placat cu aur 18k", quartz dress watch, dial reads "RAYMOND
+RENEE" / "QUARTZ" / "SWISS EB", caseback reads "RAYMOND RENEE SWISS EB NS1111"; a
+gold-plated Swiss-movement fashion-tier dress watch, not a counterfeit target).
+Previously, added `Dianpai`(217, ad 304105314 — "Ceas automatic Dianpai
 Nou", "Dianpai"/"AUTOMATIC" printed on the dial, steel case and bracelet, 38mm,
 copper/bronze sunburst dial with date; a legitimate Chinese microbrand selling
 homage-styled automatics under its own name, not a counterfeit). Previously, added
