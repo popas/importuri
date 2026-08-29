@@ -216,9 +216,13 @@ HW:212
 U.S. Polo Assn:213
 Lacoste:214
 Roamer:215
+Pagani Design:216
 ```
 
-Last updated: 2026-08-29. Added `Roamer`(215, ad 304460511 — vintage 1970s
+Last updated: 2026-08-29. Added `Pagani Design`(216, ad 308609310 — "PAGANI DESIGN
+nou la cutie", automatic PD1728, steel Nautilus-styled case, 40mm, sapphire dial
+glass, turquoise dial; a legitimate Chinese microbrand selling homage designs
+under its own name, not a counterfeit). Previously, added `Roamer`(215, ad 304460511 — vintage 1970s
 Searock, "ROAMER SEAROCK AUTOMATIC" printed on the dial and "ROAMER SEVENTEEN
 17 JEWELS" engraved on the rotor bridge, gold-plated cushion case, 37mm; OLX's
 own dropdown just said "Alt brand"). Previously, added `Lacoste`(214, ad 308513224 — cream dial,
