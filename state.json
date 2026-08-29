@@ -1,9 +1,9 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-08-13",
-  "target": 200,
-  "session_imported": 92,
-  "session_skipped": 32,
-  "status": "running",
-  "note": "2026-08-13 (session 13): target 200 OLX watches+smartwatches, explicitly split ~50 each across 4 buckets: smartwatches Bucuresti, smartwatches Ilfov, classic watches Bucuresti, classic watches Ilfov."
+  "session_date": "2026-08-29",
+  "target": 30,
+  "session_imported": 24,
+  "session_skipped": 6,
+  "status": "idle",
+  "note": "2026-08-29 (session 16 complete): Cluj county leg, classic watches (category 1677). Swept the ENTIRE category (~1000 active listings, no server-side county filter exists) and found only ~30-31 legitimate Cluj-county candidates total (one was a false-positive car-diagnostic-tool ad, dropped) -- user was asked and chose to import all ~30 and stop rather than pad with smartwatches or widen to another county. Target lowered from the original ask of 50 to 30 accordingly, and reached exactly: 24 imported, 6 skipped (2 dedup hits already in admin, 1 pocket watch, 1 suspected reused-photo Rolex listing, 1 unbranded ad hiding a real IWC ~1/7 of its genuine floor -- replica, 1 miscategorized boombox). New brands added: Roamer, Pagani Design, Dianpai, Raymond Renee. Cluj county's classic-watch inventory on OLX is now essentially exhausted at this snapshot -- revisit only after enough time has passed for new listings to accumulate. Previous leg (session 15) complete: Bucuresti+Ilfov, 40 imported. Session 13 (Buzau) status still not confirmed complete; revisit."
 }
