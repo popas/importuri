@@ -217,9 +217,14 @@ U.S. Polo Assn:213
 Lacoste:214
 Roamer:215
 Pagani Design:216
+Dianpai:217
 ```
 
-Last updated: 2026-08-29. Added `Pagani Design`(216, ad 308609310 — "PAGANI DESIGN
+Last updated: 2026-08-29. Added `Dianpai`(217, ad 304105314 — "Ceas automatic Dianpai
+Nou", "Dianpai"/"AUTOMATIC" printed on the dial, steel case and bracelet, 38mm,
+copper/bronze sunburst dial with date; a legitimate Chinese microbrand selling
+homage-styled automatics under its own name, not a counterfeit). Previously, added
+`Pagani Design`(216, ad 308609310 — "PAGANI DESIGN
 nou la cutie", automatic PD1728, steel Nautilus-styled case, 40mm, sapphire dial
 glass, turquoise dial; a legitimate Chinese microbrand selling homage designs
 under its own name, not a counterfeit). Previously, added `Roamer`(215, ad 304460511 — vintage 1970s
