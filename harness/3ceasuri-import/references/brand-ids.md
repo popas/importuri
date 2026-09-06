@@ -221,9 +221,18 @@ Dianpai:217
 Raymond Renee:218
 Kenneth Cole:219
 ZRC:220
+Cerruti 1881:221
 ```
 
-Last updated: 2026-09-06. Added `ZRC`(220, ad 307754683 — "Ceas ZRC Black
+Last updated: 2026-09-06. Added `Cerruti 1881`(221, ad 304656566 — "Ceas
+Cerutti 1881", modern quartz sport watch, cushion-shaped steel case, textured navy
+dial with date, integrated leather strap, dial and caseback both read "CERRUTI
+1881" (correct spelling has two Rs; the ad title misspells it "Cerutti"); the
+seller's ad text calls it a chronograph but the dial shows only 3 hands + a date,
+no chrono subdials or pushers visible in any photo — likely a misdescription, not
+imported as a chronograph. Private seller, Bucuresti (same seller as previously
+imported `Orient` ad 304656891 and `Citizen` ad 304656762). Previously, added
+`ZRC`(220, ad 307754683 — "Ceas ZRC Black
 Phantom", genuine Swiss dive-watch brand est. 1904, dial reads "ZRC" / "25 JEWELS"
 / "AUTOMATIC" / "ANTIMAGNETIC" / "SWISS MADE", full box/papers with retail price
 tag (~16,600-16,700 RON) shown on the box, private seller, Bucuresti). Previously,
