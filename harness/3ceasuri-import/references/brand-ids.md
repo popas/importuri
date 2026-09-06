@@ -224,9 +224,15 @@ ZRC:220
 Cerruti 1881:221
 Swiss Military by Chrono:222
 Briston:223
+Akribos XXIV:224
 ```
 
-Last updated: 2026-09-06. Added `Briston`(223, ad 300845146 — "Vand/
+Last updated: 2026-09-07. Added `Akribos XXIV`(224, ad 274101952 — "Ceas Akribos
+XXIV", automatic skeleton watch, exhibition caseback showing visible mechanical
+rotor, stainless steel case ("STAINLESS STEEL" / "SAPPHIRE COATED CRYSTAL" engraved
+on caseback), black genuine-leather strap ("AKRIBOS XXIV" embossed, "20 GENUINE
+LEATHER"), black skeleton dial with red seconds hand; a real American fashion-watch
+brand, private seller, Bucuresti. Previously, added `Briston`(223, ad 300845146 — "Vand/
 Schimb Briston Clubmaster Alpine Hunter", quartz chronograph (Miyota), cushion
 case in Briston's signature tortoise-shell cellulose acetate ("Case body in
 tortoise shell cellulose acetate made in Italy & polished by hand"), steel
