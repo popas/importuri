@@ -222,9 +222,18 @@ Raymond Renee:218
 Kenneth Cole:219
 ZRC:220
 Cerruti 1881:221
+Swiss Military by Chrono:222
 ```
 
-Last updated: 2026-09-06. Added `Cerruti 1881`(221, ad 304656566 — "Ceas
+Last updated: 2026-09-06. Added `Swiss Military by Chrono`(222, ad 267835182 —
+"Ceas NOU - Swiss Military SM34093.02 – Sports Chronograph for Men", new/unworn
+Sports Chronograph, ref SM34093.02, quartz chronograph (Ronda Cal. 5040.D), blue
+dial, steel case/bracelet, dial reads "SWISS MILITARY / BY CHRONO"; this is a real,
+distinct licensee of the "Swiss Military" trademark, a separate company from
+"Swiss Military Hanowa" — OLX's own brand dropdown mis-tagged it "Sector". Listing
+photos are manufacturer catalog images matching the seller's stated new/boxed
+condition, not personal photos of the physical unit. Private seller, Bucuresti.
+Previously, added `Cerruti 1881`(221, ad 304656566 — "Ceas
 Cerutti 1881", modern quartz sport watch, cushion-shaped steel case, textured navy
 dial with date, integrated leather strap, dial and caseback both read "CERRUTI
 1881" (correct spelling has two Rs; the ad title misspells it "Cerutti"); the
