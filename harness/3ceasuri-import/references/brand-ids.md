@@ -219,9 +219,14 @@ Roamer:215
 Pagani Design:216
 Dianpai:217
 Raymond Renee:218
+Kenneth Cole:219
 ```
 
-Last updated: 2026-08-29. Added `Raymond Renee`(218, ad 253223789 — "Ceas bărbătesc
+Last updated: 2026-09-06. Added `Kenneth Cole`(219, ad 266461454 — "Ceas Kenneth
+Cole", "KENNETH COLE NEW YORK" quartz dress watch, gunmetal mesh bracelet,
+caseback reads "KENNETH COLE NEW YORK" / "KC50781002", private seller,
+Bucuresti).
+Previously, added `Raymond Renee`(218, ad 253223789 — "Ceas bărbătesc
 elvețian Raymond Renee placat cu aur 18k", quartz dress watch, dial reads "RAYMOND
 RENEE" / "QUARTZ" / "SWISS EB", caseback reads "RAYMOND RENEE SWISS EB NS1111"; a
 gold-plated Swiss-movement fashion-tier dress watch, not a counterfeit target).
