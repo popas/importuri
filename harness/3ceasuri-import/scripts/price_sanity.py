@@ -31,6 +31,7 @@ BRAND_FLOOR_RON = {
     "audemars piguet": 40000,
     "vacheron constantin": 30000,
     "richard mille": 50000,
+    "franck muller": 30000,
     "a. lange": 30000,
     "hublot": 8000,
     "rolex": 6000,
