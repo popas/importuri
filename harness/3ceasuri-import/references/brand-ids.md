@@ -223,9 +223,16 @@ Kenneth Cole:219
 ZRC:220
 Cerruti 1881:221
 Swiss Military by Chrono:222
+Briston:223
 ```
 
-Last updated: 2026-09-06. Added `Swiss Military by Chrono`(222, ad 267835182 —
+Last updated: 2026-09-06. Added `Briston`(223, ad 300845146 — "Vand/
+Schimb Briston Clubmaster Alpine Hunter", quartz chronograph (Miyota), cushion
+case in Briston's signature tortoise-shell cellulose acetate ("Case body in
+tortoise shell cellulose acetate made in Italy & polished by hand"), steel
+screw-down caseback, 40mm/20mm lugs, mineral crystal, 100m water resistance,
+NATO strap, "BRISTON" / "Clubmaster" printed on the dial; a genuine French
+watch brand, private seller, Bucuresti. Previously, added `Swiss Military by Chrono`(222, ad 267835182 —
 "Ceas NOU - Swiss Military SM34093.02 – Sports Chronograph for Men", new/unworn
 Sports Chronograph, ref SM34093.02, quartz chronograph (Ronda Cal. 5040.D), blue
 dial, steel case/bracelet, dial reads "SWISS MILITARY / BY CHRONO"; this is a real,
