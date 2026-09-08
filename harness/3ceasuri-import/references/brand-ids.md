@@ -225,9 +225,18 @@ Cerruti 1881:221
 Swiss Military by Chrono:222
 Briston:223
 Akribos XXIV:224
+Maserati:225
 ```
 
-Last updated: 2026-09-07. Added `Akribos XXIV`(224, ad 274101952 — "Ceas Akribos
+Last updated: 2026-09-08. Added `Maserati`(225, ad 295508094 — "Ceas Maserati
+Automatic Zeus Amanet Vitan 3157", automatic skeleton dress-sport watch, steel
+case ("STAINLESS STEEL" / "AUTOMATIC MOVEMENT" engraved on caseback), black
+strap, white skeleton dial reading "MASERATI AUTOMATIC SKELETON"; a real
+licensed brand (from the car marque), business seller (Zeus Amanet Vitan
+pawnshop chain). Note: OLX's own structured brand param wrongly offered
+"Sector" for this ad — confirmed the actual brand from dial/caseback text
+instead, another instance of that field being unreliable. Previously, added
+`Akribos XXIV`(224, ad 274101952 — "Ceas Akribos
 XXIV", automatic skeleton watch, exhibition caseback showing visible mechanical
 rotor, stainless steel case ("STAINLESS STEEL" / "SAPPHIRE COATED CRYSTAL" engraved
 on caseback), black genuine-leather strap ("AKRIBOS XXIV" embossed, "20 GENUINE
