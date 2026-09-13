@@ -72,6 +72,11 @@
       "id": "1380626783",
       "name": "Tlhu",
       "reason": "observed 2026-09-11: two listings at absurdly HIGH prices rather than low ones, so price_sanity's floor check cannot see this pattern. 306308958 'Rolex Daytona 116508-0015 Cadran Meteorit' at 280000 EUR (genuine trades around 35000-45000 EUR) and 306251679 'Patek Philippe Grand Complications 5270P-001' at 430000 EUR both use the identical description line 'Autenticitate garantata (Compensare tripla pentru contrafaceri)' plus, on the Rolex ad, 'Suporta Verificarea Codului' -- Chinese replica-dropship spec-sheet boilerplate (triple compensation for counterfeits, supports code verification) machine-translated into Romanian, a phrase no genuine private seller or dealer uses. Photos are generic studio/catalog product shots on a plain pillow, not personal snapshots."
+    },
+    {
+      "id": "1380940894",
+      "name": "Dial",
+      "reason": "observed 2026-09-13: ad 308861319 'Rolex Date - Just Blue Dial 41,mm', 6000 RON -- sits exactly on Rolex's price_sanity floor, a genuine Datejust 41 retails 8000-11000+ EUR new. White-glove studio product photo (watch held in hand against a designer trunk/bag backdrop), not a personal snapshot despite the ad's own claim 'Poze Reale'. Boilerplate reassurance copy ('Calitate Garantata - (TOP)', 'Satisfactia ta este siguranta platii', cash-on-delivery, contact via WhatsApp only) matching the templated-counterfeit-dealer pattern documented for nb/Nosp/Gabriel Mihai above. Generic non-name seller handle."
     }
   ]
 }
