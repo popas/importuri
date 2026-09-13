@@ -230,9 +230,17 @@ Calvaneo 1583:226
 Exacta:227
 Westfalia:228
 Martyn Line:229
+Honda:230
 ```
 
-Last updated: 2026-09-11. Added `Martyn Line`(229, ad 248186385 — "Ceas Martyn
+Last updated: 2026-09-13. Added `Honda`(230, ad 306906098 — "Vând ceas Honda
+Chronograph (mecanism Seiko)", black-cased quartz chronograph with tachymeter
+bezel, black steel bracelet, dial and warranty booklet both read "HONDA" — a
+genuine automaker promotional watch built on a Seiko VD53 meca-quartz movement,
+not a Seiko catalog model; OLX had mismapped the brand field to "Seiko" off the
+movement mention. Bucuresti private seller.
+
+Previously (2026-09-11), added `Martyn Line`(229, ad 248186385 — "Ceas Martyn
 Line", analog-digital chronograph, steel case and bracelet, dark dial, box reads
 "MARTYN LINE DUAL TIME CHRONOGRAPH WATERPROOF"; no model name in the ad, used the
 box text as the model. Added `Westfalia`(228, ad 307719446 — "Westfalia Ceas de
