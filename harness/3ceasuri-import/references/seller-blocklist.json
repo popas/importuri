@@ -42,6 +42,36 @@
       "id": "1380764381",
       "name": "elctromax",
       "reason": "observed 2026-08-15: ad 307319314 'Set de ceas analog si bratara pentru batbati' (Diesel, 600 RON) — both listing photos are literal screenshots of an emag.ro product page (visible iOS status bar, Safari address bar, 'Adauga in Cos' button, thumbnail strip), not photos of the seller's own item. Same stolen/scraped-retail-image pattern as seller watches.best (id 1377833468)."
+    },
+    {
+      "id": "1377806599",
+      "name": "Watch mania",
+      "reason": "observed 2026-09-06: two ads (308474821 'Casio g shock gmw 5000 METAL', 308474398 'Casio g shock roze SKY') both 500 RON — roughly 12-18% of genuine retail for the specific modules pictured (full-metal GMW-B5000 and Bluetooth/Solar GM-B2100PG-4A respectively; one ad's title even undersold its own photographed module, e.g. claiming plain-quartz GM-B2100D while the module number on the caseback read the pricier Bluetooth/Solar variant). Studio/catalog product photography, not personal snapshots, plus reseller boilerplate ('see our other listings'). Suspiciously-cheap fake pattern, same as other blocked resellers above."
+    },
+    {
+      "id": "1380919799",
+      "name": "nb",
+      "reason": "observed 2026-09-06: two confirmed counterfeits from the same seller — 308914292 'Cartier Santos Large Black' (dial genuinely reads Cartier, 6000 RON vs Cartier's real ~47000+ RON new price) and 308913386 'HB Sourit of Bang 42 Black Ice Out' (dial genuinely reads HUBLOT, retitled 'HB' to dodge the 8000 RON Hublot brand-floor filter, 6250 RON vs tens of thousands EUR genuine). Both used dealer/catalog studio photography, cash-on-delivery-with-inspection language, a private seller offering a '12-month warranty', and 'full box sold separately' — a repeatable fake-reseller template. Seller also posted several more near-identical 'HB Spirit of Bang' colorway listings in the same ad-id cluster (308913344, 308913308, 308913275, 308913248) presumed to be the same counterfeit pattern."
+    },
+    {
+      "id": "1380773156",
+      "name": "ThoughtfulTurtle484",
+      "reason": "observed 2026-09-07: two confirmed counterfeits, both genuinely reading 'AUDEMARS PIGUET' on the dial but titled vaguely as 'Ceas AP model 2' (308916363, 200 RON) and 'Ceas Audemara Piguet AP' (308916254, 180 RON) to dodge the 40000 RON AP brand-floor filter -- vs a genuine AP's real value. Both photographed with several near-identical rose-gold counterfeit cases/bracelets visible in the background (wholesale fake-stock photography), same pattern as the tray-of-counterfeits seen on a separate seller's fake Franck Muller (308916464) in the same tight ad-id cluster."
+    },
+    {
+      "id": "1380919633",
+      "name": "Nosp",
+      "reason": "observed 2026-09-10: ad 308652834 'HB Square of Bang King Gold', 1599 RON -- dial genuinely reads HUBLOT (gold Big Bang Integral/Square skeleton chronograph), title deliberately garbled to 'HB Square of Bang' to dodge the 8000 RON Hublot brand-floor filter. White-glove product photography against a luxury-trunk backdrop, 'full box contra cost'. Same disguise template ('HB [Spirit/Square] of Bang') as seller nb (1380919799, blocklisted 2026-09-06) -- different account, same counterfeit-dealer pattern."
+    },
+    {
+      "id": "1380855796",
+      "name": "Gabriel Mihai",
+      "reason": "observed 2026-09-11: four listings, at least two confirmed counterfeits. 308569122 'ceas barbatesc cronograf' (800 RON) photographs a dial genuinely reading HUELOT GENEVE, a misspelling of Hublot (diamond-bezel rose-gold Big Bang style), 10x under the 8000 RON Hublot floor. 308618347 'ceas Jeager-LeCoultre automatic' and 308554689 'ceas Jeager-LeCoultre reverse' (both 1200 RON, both misspelled the same way, missing the first a) are 1200 RON against JLC's 3000 RON floor -- the typo let both slip past price_sanity.py's brand regex before the 2026-09-11 fix added a misspelling alias for this exact case. All three share the identical boilerplate 'Ceasul este nou ,sigilat ,sticla sapphire ,funcționează toate cadranele ,[X] ,cutie !' plus 'Vizionați și celelalte anunțuri ale mele!' -- the same templated-counterfeit-dealer pattern as nb/Nosp above. Fourth listing (308617658 'ceas Seiko automatic', 900 RON, no brand-name disguise) not individually verified but withheld given the seller's pattern."
+    },
+    {
+      "id": "1380626783",
+      "name": "Tlhu",
+      "reason": "observed 2026-09-11: two listings at absurdly HIGH prices rather than low ones, so price_sanity's floor check cannot see this pattern. 306308958 'Rolex Daytona 116508-0015 Cadran Meteorit' at 280000 EUR (genuine trades around 35000-45000 EUR) and 306251679 'Patek Philippe Grand Complications 5270P-001' at 430000 EUR both use the identical description line 'Autenticitate garantata (Compensare tripla pentru contrafaceri)' plus, on the Rolex ad, 'Suporta Verificarea Codului' -- Chinese replica-dropship spec-sheet boilerplate (triple compensation for counterfeits, supports code verification) machine-translated into Romanian, a phrase no genuine private seller or dealer uses. Photos are generic studio/catalog product shots on a plain pillow, not personal snapshots."
     }
   ]
 }

@@ -226,9 +226,30 @@ Swiss Military by Chrono:222
 Briston:223
 Akribos XXIV:224
 Maserati:225
+Calvaneo 1583:226
+Exacta:227
+Westfalia:228
+Martyn Line:229
 ```
 
-Last updated: 2026-09-08. Added `Maserati`(225, ad 295508094 — "Ceas Maserati
+Last updated: 2026-09-11. Added `Martyn Line`(229, ad 248186385 — "Ceas Martyn
+Line", analog-digital chronograph, steel case and bracelet, dark dial, box reads
+"MARTYN LINE DUAL TIME CHRONOGRAPH WATERPROOF"; no model name in the ad, used the
+box text as the model. Added `Westfalia`(228, ad 307719446 — "Westfalia Ceas de
+mână Nou nefolosit", analog-digital quartz diver-style watch, steel case and
+bracelet, white dial reading "Westfalia" / "QUARZ"; no model line in the ad, dial
+branding only, Ilfov private seller. Added `Exacta`(227, ad 304940532 — "Ceas
+exacta 1970", backfilled 2026-09-11: this brand/watch was actually created in the
+admin during session 17 on 2026-09-10 but the reference-file update was missed at
+the time, same gap as the history.jsonl line for this ad).
+
+Previously, added `Calvaneo 1583`(226, ad 304932026 — "Ceas Calvaneo
+1583 colectia Amanio Gold", quartz chronograph (Miyota/Citizen module per ad text),
+gold-tone steel case, black leather strap, gold dial with two black sub-dials reading
+"Calvaneo 1583 / Amanio Gold"; a real German watch brand, private seller, Bucuresti.
+Note: OLX's own structured brand param wrongly offered "Citizen" for this ad —
+confirmed the actual brand from the dial text instead, same unreliable-field pattern
+seen before. Previously, added `Maserati`(225, ad 295508094 — "Ceas Maserati
 Automatic Zeus Amanet Vitan 3157", automatic skeleton dress-sport watch, steel
 case ("STAINLESS STEEL" / "AUTOMATIC MOVEMENT" engraved on caseback), black
 strap, white skeleton dial reading "MASERATI AUTOMATIC SKELETON"; a real

@@ -1,9 +1,11 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-08-29",
-  "target": 30,
-  "session_imported": 24,
-  "session_skipped": 6,
+  "session_date": "2026-09-11",
+  "target": 40,
+  "session_imported": 20,
+  "session_skipped": 10,
+  "smartwatch_imported": 20,
+  "smartwatch_skipped": 3,
   "status": "idle",
-  "note": "2026-08-29 (session 16 complete): Cluj county leg, classic watches (category 1677). Swept the ENTIRE category (~1000 active listings, no server-side county filter exists) and found only ~30-31 legitimate Cluj-county candidates total (one was a false-positive car-diagnostic-tool ad, dropped) -- user was asked and chose to import all ~30 and stop rather than pad with smartwatches or widen to another county. Target lowered from the original ask of 50 to 30 accordingly, and reached exactly: 24 imported, 6 skipped (2 dedup hits already in admin, 1 pocket watch, 1 suspected reused-photo Rolex listing, 1 unbranded ad hiding a real IWC ~1/7 of its genuine floor -- replica, 1 miscategorized boombox). New brands added: Roamer, Pagani Design, Dianpai, Raymond Renee. Cluj county's classic-watch inventory on OLX is now essentially exhausted at this snapshot -- revisit only after enough time has passed for new listings to accumulate. Previous leg (session 15) complete: Bucuresti+Ilfov, 40 imported. Session 13 (Buzau) status still not confirmed complete; revisit."
+  "note": "2026-09-11 (session 18) COMPLETE: target was 20 classic watches + 20 smartwatches, Bucuresti + Ilfov -- both legs hit exactly 20/20. CLASSIC LEG: 20 imported (18 fresh + 1 crash-recovery bookkeeping fix for Exacta/304940532 from session 17 + 1 fresh-discovery Glashutte pickup once the 31 Ilfov leftovers ran out at 19/20), 10 skipped (4 confirmed counterfeits -- misspelled Jeager-LeCoultre x2, HUELOT/Hublot -- seller Gabriel Mihai blocklisted; 2 replica-dropship ultra-luxury overpricing -- Rolex/Patek from seller Tlhu, blocklisted; 2 expired ads; 2 already-resolved bookkeeping gaps). SMARTWATCH LEG: 20 imported (18 fresh via category-1943 discovery, filtered to Bucuresti/Ilfov by city field since the script has no native county filter, + 2 routed in from the classic sweep's looks_smart flag: Citizen CZ Smart Hybrid 303748738, Polar Vantage V3 284392147 mislabeled Pola in its own title), 3 skipped (HP Poly Studio E60 camera miscategorized as a watch; an edited-in-place OLX ad whose id already belonged to a different watch in the DB; one ambiguous 2-watches-1-photo ad). Two price_sanity.py regex gaps found and fixed this session: misspelled brand names (Jeager-LeCoultre) and Romanian seria vs English series for the Apple Watch family floors -- both retroactively caught further listings automatically once fixed. New brands added: Westfalia(228), Martyn Line(229); Exacta(227) backfilled from session 17. New blocklist entries: Gabriel Mihai (1380855796, counterfeit dealer), Tlhu (1380626783, replica-dropship overpricing). Session 13 (Buzau) status still not confirmed complete; revisit."
 }

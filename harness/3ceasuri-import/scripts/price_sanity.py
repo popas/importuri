@@ -58,9 +58,12 @@ BRAND_FLOOR_RON = {
 # specific first — the first hit wins.
 FAMILY_FLOOR_RON = [
     (r"watch\s*ultra|ultra\s*[23]\b", 1200, "Apple/Samsung Watch Ultra"),
-    (r"apple\s*watch.*\bseries\s*(9|10|11)\b|\bseries\s*(9|10|11)\b.*apple\s*watch", 700,
+    # "seria" is Romanian for "series" -- found 2026-09-11: "Apple watch seria 11 nou"
+    # at 240 RON matched only the generic 200 RON Apple Watch floor below because
+    # \bseries\b never matched "seria", letting an obvious fake clear the check.
+    (r"apple\s*watch.*\b(?:series|seria)\s*(9|10|11)\b|\b(?:series|seria)\s*(9|10|11)\b.*apple\s*watch", 700,
      "Apple Watch Series 9-11"),
-    (r"apple\s*watch.*\bseries\s*([6-8])\b|\bseries\s*([6-8])\b.*apple\s*watch", 400,
+    (r"apple\s*watch.*\b(?:series|seria)\s*([6-8])\b|\b(?:series|seria)\s*([6-8])\b.*apple\s*watch", 400,
      "Apple Watch Series 6-8"),
     (r"apple\s*watch.*\bse\s*2?\b", 250, "Apple Watch SE"),
     (r"apple\s*watch", 200, "Apple Watch"),
@@ -114,6 +117,22 @@ def _norm(s):
     import unicodedata
     return "".join(c for c in unicodedata.normalize("NFKD", s or "")
                    if not unicodedata.combining(c)).lower()
+
+
+# Common seller misspellings of priced brands, normalized to the canonical spelling
+# so the floor regexes below still fire. Found 2026-09-11: "Jeager-LeCoultre" (missing
+# the first a) at 1200 RON, well under the 3000 RON floor, cleared implausible_price
+# because \bjaeger-lecoultre\b never matched the typo. Add new ones here, not by
+# loosening the floor regexes themselves, which would risk over-matching unrelated text.
+_BRAND_MISSPELLINGS = [
+    (re.compile(r"\bjeager[\s-]?lecoultre\b", re.I), "jaeger-lecoultre"),
+]
+
+
+def _fix_misspellings(s):
+    for pattern, canonical in _BRAND_MISSPELLINGS:
+        s = pattern.sub(canonical, s)
+    return s
 
 
 def claims_new(text):
@@ -245,7 +264,7 @@ def implausible_price(price, currency, brand=None, text=""):
     # own label, which is unreliable (OLX offered "Swiss" for a Christophe Duchamp)
     # and frequently absent. So the ad's own words count too: a listing that calls
     # itself a Rolex is judged as one, whoever filled in the dropdown.
-    haystack = _norm(brand) + " \n " + low
+    haystack = _fix_misspellings(_norm(brand) + " \n " + low)
 
     # Fold the maker implied by a model name into the haystack, so both floors below
     # see it exactly as if the ad had named the brand. Appending is only safe because
