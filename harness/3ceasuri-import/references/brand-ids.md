@@ -4,6 +4,7 @@ Extracted from https://3ceasuri.ro/admin/watches/brand/ on 2026-05-31.
 Regenerate when new brands are added.
 
 ```
+Sekonda:232
 Certina:28
 Spinnaker:27
 Atlantic:26
@@ -232,9 +233,28 @@ Westfalia:228
 Martyn Line:229
 Honda:230
 Steinhart:231
+Sjöö Sandström:233
+Air France:234
 ```
 
-Last updated: 2026-09-16. Added `Steinhart`(231, ad 309263206 — "ceas automatic
+Last updated: 2026-09-16. Added `Air France`(234, ad 309459503 — "ceas Air France
+chronograph aniversare 80 ani impecabil", ~500 RON, Bucuresti private seller), a
+corporate/promotional chronograph made for the airline's 80th anniversary; caseback
+engraves "ALL STAINLESS STEEL / 80 ANS YEARS AIRFRANCE / 1933 / 2013 / MADE IN
+GERMANY". Model = 80 Ans Chronograph; no reference visible; movement inferred as
+quartz (not stated in the ad, standard for this class of promotional chronograph).
+
+Previously (same day, 2026-09-16), added `Sjöö Sandström`(233, ad 309281309 — "Sjoo
+Sandstrom Chronolink", ~2990 EUR, Bucuresti private seller), a genuine Swedish
+independent watchmaker; dial and caseback both engrave "SJÖÖ SANDSTRÖM" with
+diacritics (ad title itself drops them, used the watch's own spelling as the
+brand of record). Model = Chronolink, ref. WT 6202, steel case/bracelet,
+titanium caseback, hand-wound ETA 7001-based caliber. The flip-open caseback
+exposes a separate hidden digital "WorldTimer UTC" LCD — a documented feature
+of this model, and a strong authenticity signal given how rare/small this
+brand is to counterfeit.
+
+Previously (same day, 2026-09-16), added `Steinhart`(231, ad 309263206 — "ceas automatic
 steinhart ocean one gmt 42mm", genuine German microbrand, black/green ceramic
 GMT bezel, steel Oyster-style bracelet, dial reads "STEINHART OCEAN ONE GM..."
 and "AUTOMATIC MOVEMENT PROFESSIONAL" / "1000ft·300m"; model = Ocean One GMT.
