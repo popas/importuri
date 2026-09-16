@@ -231,9 +231,16 @@ Exacta:227
 Westfalia:228
 Martyn Line:229
 Honda:230
+Steinhart:231
 ```
 
-Last updated: 2026-09-13. Added `Honda`(230, ad 306906098 — "Vând ceas Honda
+Last updated: 2026-09-16. Added `Steinhart`(231, ad 309263206 — "ceas automatic
+steinhart ocean one gmt 42mm", genuine German microbrand, black/green ceramic
+GMT bezel, steel Oyster-style bracelet, dial reads "STEINHART OCEAN ONE GM..."
+and "AUTOMATIC MOVEMENT PROFESSIONAL" / "1000ft·300m"; model = Ocean One GMT.
+Bucuresti private seller.
+
+Previously (2026-09-13), added `Honda`(230, ad 306906098 — "Vând ceas Honda
 Chronograph (mecanism Seiko)", black-cased quartz chronograph with tachymeter
 bezel, black steel bracelet, dial and warranty booklet both read "HONDA" — a
 genuine automaker promotional watch built on a Seiko VD53 meca-quartz movement,
