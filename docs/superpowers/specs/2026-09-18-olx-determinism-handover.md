@@ -1,7 +1,8 @@
 # Handover prompt — make the OLX harness deterministic enough for Haiku
 
 **Date:** 2026-09-18 · **For:** a fresh Claude Code (Opus) session in
-`/Users/stelian/.hermes/proiecte/3ceasuri` · **Status:** analysis done, nothing implemented.
+`/Users/stelian/.hermes/proiecte/3ceasuri` · **Status:** analysis done; §6 decisions answered 2026-09-19; nothing implemented yet.
+Next step: superpowers:writing-plans against §5.
 
 Paste everything from "## THE PROMPT" down into the new session. Sections 1–6 below it are
 the analysis that prompt refers to — the new session reads them from this file.
@@ -38,10 +39,19 @@ in the Python modules under harness/3ceasuri-import/scripts/ (portable), never i
 skill prose (not portable).
 
 HOW TO WORK:
-- Start with superpowers:brainstorming with the user on section 5 ("The levers") before
-  writing any code. Sections 5B, 5D and 5G change import semantics and are the user's
-  call, not yours. Section 6 lists the questions to ask.
-- Then superpowers:writing-plans, then execute.
+- Section 6 is ANSWERED (2026-09-19) — do not re-litigate it. The decisions are folded
+  into section 5, and 5B/5C/5D/5G are settled. Go straight to
+  superpowers:writing-plans, then execute. Brainstorm only if you hit something
+  section 6 did not cover.
+- Four rules the decisions impose, which you must not soften:
+  (a) the seeded draft file is the whole contract — a field the model blanks is still
+      cleared;
+  (b) the agent NEVER overrides a REVIEW: gate — it fixes what the gate named, or skips
+      and logs the reason code;
+  (c) the agent MAY add a brand, blocklist an OLX seller, and skip on its own judgement,
+      each with a logged reason;
+  (d) the run is ONE continuous session, so the candidates work queue is mandatory and
+      per-watch context is the binding constraint.
 - TDD: harness/3ceasuri-import/tests/ runs offline with stubbed browser-use
   (python3 tests/test_olx_import.py, test_olx_find.py — all 4 suites pass today).
   Every new deterministic rule gets a test there BEFORE it gets an implementation.
@@ -210,36 +220,78 @@ The scripts are `browser-use` payloads piped on stdin — a model that "corrects
 Everything else in sections 3.1–3.10 is transport, bookkeeping or a rule that has not
 been written down yet.
 
-## 5. The levers (brainstorm these with the user before building)
+## 5. The levers
 
-**A. Move the answer off the command line.** Add `OVERRIDES_FILE=<path>` to both
-importers, preferred over `OVERRIDES`. Kills a whole class of failure with ~5 lines.
-Cheap, safe, no semantic change — probably do this first regardless of the rest.
+**§6 was answered by the user on 2026-09-19** — the decisions are folded in below
+and recorded in full in §6. B, C, D, G are now settled; the rest were never contested.
 
-**B. Stop making the model retype what the script already knows.** Two candidate shapes;
-the user picks, because this changes import semantics:
-- *Seeded draft (recommended).* Pass 1 writes a complete pre-filled contract to
-  `.contracts/olx-<id>.json` — every mapped param, the cleaned description, the phone,
-  with the genuinely-open fields as `null` and a `"_todo"` list naming them. The model
-  edits that file in place and pass 2 reads it. Clearing semantics survive untouched
-  (the file *is* the whole contract), the transcription surface goes to zero, and the
-  model's job shrinks to ~6 fields.
-- *Merge + explicit clear.* Omission merges from the baseline; deliberate erasure needs
-  `"clear": ["field", …]`. Simpler to implement, but it reintroduces exactly the
-  two-half-authoritative-sources problem `infer_fields.py`'s docstring was written to
-  kill. Recommend against unless the user wants it.
+**A. Move the answer off the command line** — **subsumed by B.** The seeded draft file
+*is* the transport, so a separate `OVERRIDES_FILE` is not needed. Keep the `OVERRIDES`
+env var working for one-off human fixes; the agent path stops using it entirely.
 
-**C. Turn triage into code plus a fixed checklist.** Move to `olx-find-*.py` /
-discovery flags everything regex-able: activation-lock wording, "peste N bucati"
-stock language, multi-price run-ons with the currency word omitted, plural-title
-stock ads, obvious non-watch categories. What remains goes in a numbered checklist with
-a fixed output shape (`KEEP <id> / DROP <id> <reason-code>`), not prose.
+**B. Seeded draft file — DECIDED.** Pass 1 writes a complete pre-filled contract to
+`.contracts/olx-<id>.json`: every mapped param, the cleaned description, the phone, the
+location — with the genuinely-open fields as `null` and a `"_todo"` array naming them.
+The model edits that file in place; pass 2 reads it and needs no `OVERRIDES` env var.
 
-**D. Replace `CONFIRM=1` with per-gate acknowledgement.** e.g.
-`ACK=thin_description,new_brand` — the model must name the gate it is overriding, and
-naming a gate it did not see is an error. Keep `price_sanity` unoverridable. Then give
-each gate a one-line prescribed action in the skill: fix / skip with reason code /
-acknowledge. A table, not a paragraph.
+Clearing semantics survive untouched, because **the file is the whole contract** — a
+field the model blanks is still cleared, it just never has to retype the ones it isn't
+deciding. The transcription surface goes to zero and the answer shrinks from ~25 fields
+to the `_todo` list (typically `model`, `movement`, `reference`, `is_wristwatch`,
+`is_bulk_lot`, `notes`; for smart, `connectivity` + `compatibility` instead of
+`movement`).
+
+Merge-with-explicit-clear was rejected: it reintroduces the two-half-authoritative-
+sources problem `infer_fields.py`'s docstring was written to kill, and OLX's own params
+are demonstrably unreliable (it offered "Swiss" for a Christophe Duchamp).
+
+Implementation notes:
+- `_todo` is computed by the script, not chosen by the model: a field is open when the
+  deterministic baseline could not fill it.
+- Validate on read that no key outside `SCHEMA_FIELDS` was introduced, and that every
+  `_todo` entry is now non-null — an unanswered `_todo` is a `REVIEW:`, not a silent null.
+- Strip `_todo` before merging into `data`.
+- Because the draft carries the rules' answers already, **the `EXTRACT_PROMPT` can shrink
+  to the rules for the `_todo` fields only**. That matters more than it looks: see the
+  context note under G.
+
+**C. Triage: near-zero-false-positive rules only — DECIDED.** New automatic DROPs are
+limited to wording a regex gets right every time. Start with: activation lock
+(`iCloud`, `cont Apple`, `nu stiu parola`, `blocat`), explicit stock language
+(`peste N bucati`, `disponibile pe stoc`, `lichidari de stoc`), and obvious non-watch
+categories. Everything else that today lives in skill prose becomes a **flag on the
+candidate**, not a drop — and the model answers a numbered checklist with a fixed output
+shape (`KEEP <id>` / `DROP <id> <reason-code>`), never prose.
+
+Explicitly NOT auto-dropped, because the false-positive cost is real: stock photos and
+renders, inflated generation claims, amanet relists, and the multi-price run-on ads (the
+currency-word heuristic already misfires both ways — see the 2026-08-11 notes in the
+discovery skills). Those stay flags.
+
+Every new drop rule ships with a test in `tests/` asserting it does NOT fire on a named
+historical listing that was legitimately imported.
+
+**D. `REVIEW:` is never overridable by the agent — DECIDED, and simpler than planned.**
+The per-gate acknowledgement scheme is dropped. The agent may not pass a review gate at
+all, so `CONFIRM=1` stops being an agent-facing flag (it stays for a human re-run).
+
+Because the run is a continuous loop (§6 Q5) and the agent *may* skip on its own
+judgement (§6 Q3), the rule that keeps the loop moving without weakening a gate is:
+
+> **`REVIEW:` → fix it if the fix is mechanical and named by the gate; otherwise log a
+> skip with the gate's reason code and take the next candidate. Never override.**
+
+"Mechanical and named" means the gate told the model exactly which field to supply and
+the answer is already in hand — e.g. a missing `connectivity` the photos settle. A gate
+that reflects genuine doubt (`movement not stated`, `possible repost`, `description
+looks thin`) is a skip, logged, not a judgement call.
+
+`price_sanity` remains a hard skip that nothing waives, as it already is.
+
+**Cost to measure before trusting it:** this converts some importable watches into
+skips, and nothing in `history.jsonl` records how often `REVIEW:` fired historically, so
+the rate is currently unknown. Instrument it in the replay eval (K) and report the
+would-be skip rate before running a long unattended session.
 
 **E. Collapse the two importers into one** (`PROFILE=classic|smart`), keeping the two
 filenames as three-line wrappers so the skills and muscle memory still work.
@@ -249,10 +301,22 @@ filenames as three-line wrappers so the skills and muscle memory still work.
 Rewrite `import-verify-state` so the OLX branch is: "the importer already verified;
 read `RESULT.ok`/`readback_ok`; run the log command; done."
 
-**G. Make the candidate file a work queue.** Per-candidate `status` (`pending` /
-`imported` / `skipped` / `error`) plus `reason` and `ts`, written by the importer
-itself. Add a `next-candidate` command that prints the next pending id. Then "which
-watch is next" is a command, not a memory.
+**G. Candidate file as a work queue — MANDATORY, not optional.** §6 Q5 chose a single
+continuous session, so nothing external tracks progress: per-candidate `status`
+(`pending` / `imported` / `skipped` / `error`) plus `reason` and `ts`, written by the
+importer itself, and a `next-candidate` command that prints the next pending id. "Which
+watch is next" must be a command, not a memory.
+
+**The continuous loop makes per-watch context the binding constraint.** Today's design
+assumed `/clear` between watches; ~20 watches in one context will not fit if each pays
+a ~2,500-word `EXTRACT_PROMPT` plus photo reads. Mitigations, in order of value:
+- shrink `EXTRACT_PROMPT` to the `_todo` rules only (see B);
+- read ONE photo per watch by default — already the rule, now load-bearing;
+- have the importer print a one-line result per watch, not the full `INFER:` dump, once
+  the readback confirms;
+- treat a context checkpoint as a first-class stop: the work queue means a fresh session
+  resumes exactly where the last one stopped, so a long run can be several sessions
+  without human bookkeeping.
 
 **H. Split each skill into an executable core and a rationale appendix.** SKILL.md
 becomes ≤150 lines of imperative steps with literal, copy-pasteable commands and
@@ -263,8 +327,9 @@ only when troubleshooting. Keep every fact — just move it off the execution pa
 then one per-watch prompt), and add a `.claude/settings.local.json` allowlist for the
 `browser-use`, `python3` and admin commands the loop actually uses.
 
-**J. Extend the offline tests** to cover every new rule — especially B's seeded draft
-round-trip and D's per-gate acks. Tests run with no browser and no network; they are
+**J. Extend the offline tests** to cover every new rule — especially B's seeded-draft
+round-trip (including an unanswered `_todo` → `REVIEW:`), C's new drop rules not firing
+on known-good historical listings, and D's skip-instead-of-override path. Tests run with no browser and no network; they are
 the safety net for all of the above.
 
 **K. Measure, do not assert.** Replay the last ~50 OLX ads from `history.jsonl` through
@@ -272,20 +337,47 @@ the new deterministic path and diff against what was actually saved; then run on
 Haiku session and log every deviation. The replay harness is also step 1 of the
 standalone-agent eval in the other design doc — build it so both use it.
 
-## 6. Questions for the user (ask before planning)
+## 6. Decisions (answered by the user, 2026-09-19)
 
-1. **B: seeded draft or merge-with-explicit-clear?** This is the one decision that
-   changes what "the contract is authoritative" means.
-2. **How much triage judgement may become a hard drop?** Every regex added to discovery
-   trades a missed good listing against an unattended run. Where is the line?
-3. **Is a Haiku session allowed to add a brand** (edit `import-watch.js` +
-   `references/brand-ids.md` + commit) mid-loop, or should `NEW_BRAND:` become a stop
-   that queues for the user?
-4. **Should a Haiku session be allowed to blocklist a seller**, or is that the user's
-   call only? (The standalone-agent design says human-only; today Claude does it.)
-5. **Does the Haiku run still get `/clear` between watches** (i.e. a human pasting a
-   prompt per watch), or is the target one continuous session? That decides how much of
-   G is mandatory.
-6. **Does this supersede or feed the standalone-agent design?** Assumed: it feeds it —
-   every rule lands in the Python modules that `contract.py` / `checks.py` / `store.py`
-   will be ported from. Confirm.
+| # | Question | Answer |
+|---|---|---|
+| 1 | Contract transport & semantics | **Seeded draft file.** Pass 1 pre-fills `.contracts/olx-<id>.json`, the model edits only `_todo` fields, pass 2 reads it. Omission-clears semantics are preserved because the file is the whole contract. Merge-with-explicit-clear rejected. |
+| 2 | How much triage becomes a hard drop | **Near-zero-false-positive rules only.** Activation lock, explicit stock language, obvious non-watch categories. Everything else becomes a flag plus a fixed `KEEP`/`DROP <reason-code>` checklist. |
+| 3 | May the agent add a brand? | **Yes.** On `NEW_BRAND:` it edits `import-watch.js` + `references/brand-ids.md` and commits, mid-loop. |
+| 4 | May the agent blocklist a seller? | **Yes.** It may add an OLX seller to `references/seller-blocklist.json`. (This differs from the standalone-agent design's human-only stance — see the note below.) |
+| 5 | May the agent override a `REVIEW:` gate? | **No.** Never. `REVIEW:` always stops the watch; `CONFIRM=1` becomes a human-only flag. |
+| 6 | May the agent skip a candidate on its own judgement? | **Yes**, provided it logs the reason to `history.jsonl`. |
+| 7 | Session shape | **One continuous session**, the agent loops through the candidates file until the target is hit. No `/clear` per watch. |
+
+### What follows from 5 + 6 + 7 together
+
+The three interact, and the resolution is the rule in lever D: **`REVIEW:` stops the
+watch, and the agent then skips it and logs the gate's reason code rather than stalling
+the loop.** Without this, a non-overridable gate inside a continuous unattended loop
+would halt the run on the first thin description.
+
+Two consequences to carry into the plan:
+
+- **Unknown skip rate.** Nothing in `history.jsonl` records how often `REVIEW:` fired,
+  so we cannot say today what share of importable watches this converts into skips.
+  Instrument it in the replay eval (lever K) and report the number before a long run.
+- **Context is now the binding constraint**, not shell quoting. See the note under
+  lever G.
+
+### Divergence from the standalone-agent design — deliberate
+
+`2026-09-15-standalone-olx-agent-design.md` §10 Q7 proposes that only a human adds
+blocklist entries. Decision 4 here says the Haiku session may. These are different
+trust models for different things: a Claude Code session is supervised and its commits
+are reviewable in git, an unattended container is not. **Do not "fix" one to match the
+other** — when the standalone agent is built, blocklist growth reverts to human-only per
+that design, and this decision applies only to the Claude Code runbook.
+
+### Still unconfirmed
+
+**Does this work feed the standalone-agent design, or supersede it?** Assumed
+throughout: it **feeds** it — every rule lands in the Python modules under
+`harness/3ceasuri-import/scripts/` that `contract.py` / `checks.py` / `store.py` will be
+ported from, and lever K's replay harness is step 1 of that design's §7 eval. Nothing in
+the plan depends on the answer, but say so explicitly before Phase 1 of the other design
+starts, so the two do not get built twice.
