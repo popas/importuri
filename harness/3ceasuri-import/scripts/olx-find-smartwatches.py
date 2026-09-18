@@ -162,6 +162,10 @@ def consider(ad):
         "created": ad.get("created_time"),
         "looks_classic": bool(CLASSIC_HINT.search(text)),
         "text": PHONE_RE.sub("", text)[:1500],
+        # The work queue lives in this file: the importer flips this to
+        # imported/skipped/error, so "which watch is next" is a command and not
+        # something the model has to remember across a context checkpoint.
+        "status": "pending",
     }
 
 # --- walk the category ------------------------------------------------------

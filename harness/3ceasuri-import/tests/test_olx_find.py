@@ -221,6 +221,21 @@ m = run(FIND_WATCH, [])
 check("ERROR" in m and "category 1677" in m["ERROR"]["msg"],
       "empty feed must report an explicit error (bot check / wrong category), got %s" % m.get("ERROR"))
 
+# --- queue: discovery seeds every candidate as pending -----------------------
+_doc = json.load(open(m["_out_file"])) if "_out_file" in m else {}
+m_q = run(FIND_WATCH, WATCH_FEED)
+_doc = json.load(open(m_q["_out_file"]))
+check(_doc["candidates"], "queue: discovery wrote no candidates to seed")
+check(all(c.get("status") == "pending" for c in _doc["candidates"]),
+      "queue: discovery must seed status=pending on every candidate")
+# and the work queue can read what discovery wrote, with no adapter in between
+sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
+import candidates as _q
+check(_q.next_pending(m_q["_out_file"]) is not None,
+      "queue: next_pending must understand the file discovery writes")
+check(_q.counts(m_q["_out_file"])["pending"] == len(_doc["candidates"]),
+      "queue: counts must agree with the file discovery writes")
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)

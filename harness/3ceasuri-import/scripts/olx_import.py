@@ -99,6 +99,7 @@ def run(profile, g):
     PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
     sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
     import olx_api, admin_import, infer_fields, price_sanity, contract_draft
+    import candidates
 
     AD_ID       = os.environ.get("AD_ID", "").strip()
     OVERRIDES   = json.loads(os.environ.get("OVERRIDES", "{}"))
@@ -111,7 +112,43 @@ def run(profile, g):
     def emit(tag, obj):
         print(tag + ": " + json.dumps(obj, ensure_ascii=False))
 
+    CANDIDATES_FILE = os.environ.get("CANDIDATES_FILE", "").strip()
+
+    def _mark(status, reason=None):
+        """Record this ad's outcome in the work queue, when one was passed.
+
+        Never fatal: a bookkeeping failure must not lose an import that succeeded.
+        """
+        if not CANDIDATES_FILE:
+            return
+        try:
+            candidates.mark(CANDIDATES_FILE, AD_ID, status, reason)
+        except Exception as e:
+            emit("WARN", {"ad_id": AD_ID, "msg": "could not mark the queue: %s" % e})
+
+    def skip(reason_code, payload):
+        """Emit SKIP:, mark the queue, and stop. One exit, so the two cannot drift."""
+        _mark("skipped", reason_code)
+        emit("SKIP", dict(payload, ad_id=AD_ID))
+        raise SystemExit(0)
+
+    def review_stop(payload):
+        """Emit REVIEW: and stop.
+
+        A reason with action=skip ends the watch (§6 decision 5: the agent never
+        overrides a gate), so the queue records it and moves on. A review whose
+        reasons are ALL action=fix stays pending -- the gate named what to supply
+        and the next pass will answer it.
+        """
+        blocking = [r for r in payload.get("reasons", [])
+                    if isinstance(r, dict) and r.get("action") == "skip"]
+        if blocking:
+            _mark("skipped", blocking[0].get("code"))
+        emit("REVIEW", dict(payload, ad_id=AD_ID))
+        raise SystemExit(0)
+
     def die(msg):
+        _mark("error", msg)
         emit("ERROR", {"ad_id": AD_ID, "msg": msg})
         raise SystemExit(1)
 
@@ -134,8 +171,7 @@ def run(profile, g):
 
     # --- 0. dedup Stage 1: exact listing id ----------------------------------
     if admin_import.already_imported(A, AD_ID, return_to=OLX_TAB):
-        emit("SKIP", {"ad_id": AD_ID, "reason": "already imported (external_listing_id match)"})
-        raise SystemExit(0)
+        skip("already_imported", {"reason": "already imported (external_listing_id match)"})
 
     # --- 1. read the ad ------------------------------------------------------
     switch_tab(OLX_TAB)
@@ -143,8 +179,7 @@ def run(profile, g):
     if not ad:
         die("OLX ad %s did not load — removed, expired, or the bot check is in the way" % AD_ID)
     if ad.get("status") != "active":
-        emit("SKIP", {"ad_id": AD_ID, "reason": "ad is not active (status=%s)" % ad.get("status")})
-        raise SystemExit(0)
+        skip("not_active", {"reason": "ad is not active (status=%s)" % ad.get("status")})
 
     seller = olx_api.seller(ad)
     try:
@@ -154,9 +189,9 @@ def run(profile, g):
     except Exception:
         _block = {}
     if seller["id"] and seller["id"] in _block:
-        emit("SKIP", {"ad_id": AD_ID, "reason": "blocklisted seller",
-                      "seller_id": seller["id"], "seller_name": _block.get(seller["id"])})
-        raise SystemExit(0)
+        skip("blocklisted_seller", {"reason": "blocklisted seller",
+                                    "seller_id": seller["id"],
+                                    "seller_name": _block.get(seller["id"])})
 
     title = ad.get("title") or ""
     description = olx_api.clean_description(ad.get("description"))
@@ -177,10 +212,9 @@ def run(profile, g):
     _cheap = price_sanity.implausible_price(_m.get("price"), _m.get("currency"),
                                             olx_api.brand_param(ad) or "", text)
     if _cheap and os.environ.get("ALLOW_CHEAP", "") != "1":
-        emit("SKIP", {"ad_id": AD_ID, "reason": "suspiciously cheap — %s" % _cheap,
-                      "price": _m.get("price"), "currency": _m.get("currency"),
-                      "title": title[:80]})
-        raise SystemExit(0)
+        skip("suspiciously_cheap", {"reason": "suspiciously cheap — %s" % _cheap,
+                                    "price": _m.get("price"), "currency": _m.get("currency"),
+                                    "title": title[:80]})
 
     # --- 2. what OLX already answers -----------------------------------------
     brand_ids = admin_import.load_brand_ids(HARNESS)
@@ -269,10 +303,9 @@ def run(profile, g):
     if os.path.exists(dpath):
         filled, problems = contract_draft.read(dpath, profile)
         if problems and not OVERRIDES:
-            emit("REVIEW", {"ad_id": AD_ID, "draft": dpath,
-                            "reasons": [{"code": "draft_invalid", "action": "fix",
-                                         "message": p, "field": None} for p in problems]})
-            raise SystemExit(0)
+            review_stop({"draft": dpath,
+                         "reasons": [{"code": "draft_invalid", "action": "fix",
+                                      "message": p, "field": None} for p in problems]})
     if OVERRIDES:
         bad = infer_fields.validate(OVERRIDES)
         if bad:
@@ -295,13 +328,14 @@ def run(profile, g):
         # even when the answer forgets to restate them. An answer that actively
         # disagrees is a routing mistake, not a correction, so it stops instead.
         if data.get("movement") not in (None, "smart"):
-            emit("REVIEW", {"ad_id": AD_ID, "reasons": [{
+            _misroute = {"reasons": [{
                 "code": "misrouted_classic", "action": "skip", "field": "movement",
                 "message": "movement=%r on the smartwatch importer — if this is a "
                            "mechanical/quartz watch, import it with olx-import-watch.py "
-                           "instead" % data.get("movement")}]})
+                           "instead" % data.get("movement")}]}
             if not CONFIRM:
-                raise SystemExit(0)
+                review_stop(_misroute)
+            emit("REVIEW", dict(_misroute, ad_id=AD_ID))
     # setdefault is NOT enough here: the seeded draft carries every contract key, so
     # an unedited forced field arrives as an explicit None rather than being absent.
     # Restoring only on "key missing" would write movement=None for a smartwatch,
@@ -316,13 +350,11 @@ def run(profile, g):
     if _not_a_watch and conf["wall_clock_exempt"] and filled.get("category") == "wall":
         _not_a_watch = False
     if _not_a_watch and not CONFIRM:
-        emit("SKIP", {"ad_id": AD_ID, "reason": conf["not_a_watch_reason"],
-                      "notes": filled.get("notes")})
-        raise SystemExit(0)
+        skip("not_a_watch", {"reason": conf["not_a_watch_reason"],
+                             "notes": filled.get("notes")})
     if filled.get("is_bulk_lot") is True and not CONFIRM:
-        emit("SKIP", {"ad_id": AD_ID, "reason": "bulk lot — one price, several watches; "
-                                                "pass CONFIRM=1 to import anyway"})
-        raise SystemExit(0)
+        skip("bulk_lot", {"reason": "bulk lot — one price, several watches; "
+                                    "pass CONFIRM=1 to import anyway"})
     for k in ("is_wristwatch", "is_bulk_lot", "notes"):   # contract-only, not form fields
         data.pop(k, None)
     if data.get("category") is None:                     # same reason as the forced fields
@@ -396,10 +428,9 @@ def run(profile, g):
                 "description looks thin (%d chars)"
                 % len((data.get("description") or "").strip()))
     if review and not CONFIRM and not DRY_RUN:
-        emit("REVIEW", {"ad_id": AD_ID, "reasons": review, "images": len(images),
-                        "inferred": {k: (v if k != "images" else len(v)) for k, v in data.items()},
-                        "rerun": RERUN})
-        raise SystemExit(0)
+        review_stop({"reasons": review, "images": len(images),
+                     "inferred": {k: (v if k != "images" else len(v)) for k, v in data.items()},
+                     "rerun": RERUN})
 
     # Hard requirements — CONFIRM cannot wave these through, the form would reject them.
     if not data.get("brand"):
@@ -414,15 +445,13 @@ def run(profile, g):
     if repost:
         detail = dict(repost, ad_id=AD_ID, seller_id=seller["id"], seller_name=seller["name"])
         if repost["strong"]:
-            emit("SKIP", dict(detail, reason="repost (%s match)" % repost["matched_via"]))
-            raise SystemExit(0)
+            skip("repost", dict(detail, reason="repost (%s match)" % repost["matched_via"]))
         if not CONFIRM:
-            emit("REVIEW", dict(detail, reasons=[{
+            review_stop(dict(detail, reasons=[{
                 "code": "weak_repost", "action": "skip", "field": None,
                 "message": "possible repost: model '%s' is already on the site, but the "
                            "name is generic and the brand could not be confirmed"
                            % data.get("model")}]))
-            raise SystemExit(0)
 
     # --- 8. ensure the brand exists ------------------------------------------
     switch_tab(ADMIN_TAB)
@@ -458,6 +487,7 @@ def run(profile, g):
         state_entry["category"] = data.get("category")
     state_entry.update({"seller_id": seller["id"], "seller_name": seller["name"],
                         "business": seller["business"]})
+    _mark("imported" if ok else "error", None if ok else "import not verified")
     emit("RESULT", {"ad_id": AD_ID, "ok": bool(ok), "banners": banners,
                     "readback_ok": readback_ok, "expected_images": len(images),
                     "readback": readback,

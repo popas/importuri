@@ -568,6 +568,64 @@ for _label, _mk in (("smart facets", lambda: run(SMART, SMART_AD, {"OVERRIDES": 
     check(all(r.get("code") and r.get("action") in ("fix", "skip") for r in _rs),
           "21: %s: every reason needs a code and a fix/skip action: %s" % (_label, _rs))
 
+# --- 20. the importer marks the queue on every terminal path -----------------
+import tempfile
+import candidates as _q
+
+def _queue(ad_id):
+    _qp = os.path.join(tempfile.mkdtemp(), "q.json")
+    json.dump({"source": "olx", "profile": "smart",
+               "candidates": [{"id": str(ad_id), "status": "pending"}]}, open(_qp, "w"))
+    return _qp
+
+def _fill_smart_draft(**over):
+    _p = contract_draft.draft_path(ROOT, SMART_AD["id"])
+    _d = json.load(open(_p))
+    _d.update({"model": "Fenix 7X Solar", "connectivity": "no_gsm", "compatibility": "both",
+               "is_wristwatch": True, "is_bulk_lot": False})
+    _d.update(over)
+    json.dump(_d, open(_p, "w"))
+
+_fill_smart_draft()
+_qp = _queue(SMART_AD["id"])
+m, _ = run(SMART, SMART_AD, {"CONFIRM": "1", "CANDIDATES_FILE": _qp})
+check(m.get("RESULT", {}).get("ok") is True, "20: should import")
+check(_q.load(_qp)["candidates"][0]["status"] == "imported",
+      "20: a successful import must mark the queue")
+
+# a SKIP marks the queue with the reason code
+_qp = _queue(SMART_AD["id"])
+m, _ = run(SMART, dict(SMART_AD, status="removed_by_user"), {"CANDIDATES_FILE": _qp})
+_c = _q.load(_qp)["candidates"][0]
+check(_c["status"] == "skipped" and _c["reason"] == "not_active",
+      "20: a skip must mark the queue with its reason code, got %s" % _c)
+
+# a REVIEW whose reasons are all action=skip ends the watch, so the queue records it
+_fill_smart_draft(movement="automatic")
+_qp = _queue(SMART_AD["id"])
+m, _ = run(SMART, SMART_AD, {"CANDIDATES_FILE": _qp})
+_c = _q.load(_qp)["candidates"][0]
+check(_c["status"] == "skipped" and _c["reason"] == "misrouted_classic",
+      "20: an action=skip REVIEW must mark the queue with the gate's code, got %s" % _c)
+
+# ...but a REVIEW that is purely action=fix leaves the candidate PENDING: the gate
+# named what to supply, so the queue must still point at it.
+_fill_smart_draft(movement=None, connectivity=None)
+_qp = _queue(SMART_AD["id"])
+m, _ = run(SMART, SMART_AD, {"CANDIDATES_FILE": _qp})
+check("REVIEW" in m, "20: a missing facet must stop for review")
+check(all(r["action"] == "fix" for r in m["REVIEW"]["reasons"]),
+      "20: connectivity/draft reasons are fixable: %s" % m["REVIEW"]["reasons"])
+check(_q.load(_qp)["candidates"][0]["status"] == "pending",
+      "20: a fixable REVIEW must leave the candidate pending")
+_fill_smart_draft()
+
+# bookkeeping must never be fatal: a broken queue path warns and imports anyway
+m, _ = run(SMART, SMART_AD, {"CONFIRM": "1", "CANDIDATES_FILE": "/nonexistent/dir/q.json"})
+check(m.get("RESULT", {}).get("ok") is True,
+      "20: a queue-marking failure must not lose an import that succeeded")
+check("WARN" in m, "20: a queue-marking failure must be reported")
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)
