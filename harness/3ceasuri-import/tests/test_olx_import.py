@@ -154,6 +154,12 @@ def run(script, ad, env=None, admin_rows_for=None):
     return markers, state
 
 
+# Pass 1 now writes a contract draft to .contracts/, and pass 2 reads it -- so a
+# draft left behind by the PREVIOUS run of this file would make check 4 take the
+# pass-2 path. Clear them once, at the start, to keep the suite hermetic.
+import glob as _glob, shutil as _shutil
+_shutil.rmtree(os.path.join(ROOT, "harness/3ceasuri-import/.contracts"), ignore_errors=True)
+
 fails = []
 def check(cond, msg):
     if not cond:
@@ -491,6 +497,61 @@ check(m_s["INFER"]["style"] == "smart" and m_s["INFER"]["displayType"] == "smart
 check(m_c["INFER"].get("connectivity") is None, "16b: classic must not invent connectivity")
 check(m_c["RESULT"]["state_entry"]["category"] == "wrist", "16b: classic state_entry carries category")
 check("category" not in m_s["RESULT"]["state_entry"], "16b: smart state_entry omits category")
+
+# --- 17. pass 1 writes a seeded draft; pass 2 reads it -----------------------
+import contract_draft
+_dp = contract_draft.draft_path(ROOT, SMART_AD["id"])
+if os.path.exists(_dp):
+    os.remove(_dp)
+m, st = run(SMART, SMART_AD)
+check("EXTRACT_PROMPT" in m, "17: pass 1 must still emit the contract")
+check(m["EXTRACT_PROMPT"]["draft"] == _dp, "17: pass 1 must report the draft path")
+check(os.path.exists(_dp), "17: pass 1 must write the draft to disk")
+_d = json.load(open(_dp))
+check(_d["description"].startswith("Ceas in stare foarte buna"),
+      "17: the draft must carry the cleaned description, so it is never retyped")
+check(_d["brand"] == "Garmin" and _d["price"] == 1700, "17: draft missing mapped params")
+check("model" in _d["_todo"] and "connectivity" in _d["_todo"], "17: _todo wrong: %s" % _d["_todo"])
+check(st["imported"] is None, "17: pass 1 must still write nothing")
+# the prompt now asks only about the open fields -- that is what a continuous
+# session stops paying per watch
+_p17 = m["EXTRACT_PROMPT"]["prompt"]
+check("- `connectivity`:" in _p17, "17: an open field must still be described")
+check("- `waterRes`:" not in _p17, "17: a field the baseline settled must not be asked again")
+
+# the model edits the draft, then pass 2 runs with no OVERRIDES at all
+_d.update({"model": "Fenix 7X Solar", "connectivity": "no_gsm", "compatibility": "both",
+           "is_wristwatch": True, "is_bulk_lot": False, "notes": None})
+json.dump(_d, open(_dp, "w"))
+m2, st2 = run(SMART, SMART_AD, {"CONFIRM": "1"})
+check(m2.get("RESULT", {}).get("ok") is True, "17: pass 2 must import from the draft: %s" % m2.get("REVIEW"))
+check(m2["INFER"]["model"] == "Fenix 7X Solar", "17: the edit did not reach the form")
+check(m2["INFER"]["description"].startswith("Ceas in stare foarte buna"),
+      "17: description lost between draft and form")
+
+# --- 18. blanking a field in the draft still clears it -----------------------
+_d["gender"] = None
+json.dump(_d, open(_dp, "w"))
+m3, _ = run(SMART, SMART_AD, {"CONFIRM": "1"})
+check(m3["INFER"].get("gender") is None,
+      "18: a field blanked in the draft must be CLEARED, not restored from the params")
+
+# --- 18b. an unanswered _todo is a REVIEW, never a silent null ---------------
+_d["model"] = None
+json.dump(_d, open(_dp, "w"))
+m3b, st3b = run(SMART, SMART_AD, {"CONFIRM": "1"})
+check("REVIEW" in m3b, "18b: a draft with a null required field must stop")
+check(any(r.get("code") == "draft_invalid" for r in m3b["REVIEW"]["reasons"]),
+      "18b: the stop must carry the draft_invalid code, got %s" % m3b.get("REVIEW"))
+check(st3b["imported"] is None, "18b: an unanswered _todo must not import")
+_d["model"] = "Fenix 7X Solar"
+json.dump(_d, open(_dp, "w"))
+
+# --- 19. OVERRIDES still wins, for a human one-off fix -----------------------
+m4, _ = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps({"model": "Fenix 7"})})
+check(m4["INFER"]["model"] == "Fenix 7", "19: OVERRIDES must override the draft")
+check(m4["INFER"]["description"].startswith("Ceas in stare foarte buna"),
+      "19: a one-field OVERRIDES on top of a draft must keep the rest of the draft")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

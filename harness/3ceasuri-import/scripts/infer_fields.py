@@ -247,12 +247,25 @@ def _known_block(known):
             "out of the answer is cleared.\n\n" + lines + "\n")
 
 
-def build_prompt(text, brands=(), profile="classic", known=None, source_noun="post text"):
+def build_prompt(text, brands=(), profile="classic", known=None, source_noun="post text",
+                 todo=None):
+    """Render the contract. With `todo`, only those fields are described.
+
+    The seeded draft already carries every field the deterministic baseline settled,
+    so re-describing all 25 costs a continuous session context per watch for nothing.
+    """
     rules = PROFILES.get(profile)
     if rules is None:
         raise ValueError("unknown profile %r (have: %s)" % (profile, ", ".join(sorted(PROFILES))))
+    if todo:
+        fields = "\n".join(l for l in _field_lines().splitlines()
+                           if l.split("`")[1] in todo)
+        head = ("**Edit the draft file named above. Change ONLY these fields; everything\n"
+                "else is already filled in and correct. A field you blank is CLEARED.**\n\n")
+    else:
+        fields, head = _field_lines(), ""
     return PROMPT.format(rules=rules,
-                         fields=_field_lines(),
+                         fields=head + fields,
                          brands=", ".join(sorted(brands)) or "(none)",
                          known=_known_block(known),
                          source_noun=source_noun,

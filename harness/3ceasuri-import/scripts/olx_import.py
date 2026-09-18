@@ -26,6 +26,8 @@
 #   CONFIRM       "1" = proceed past the REVIEW/SKIP gates
 #   DRY_RUN       "1" = everything except the DB write
 #   SKIP_PROMPT   "1" = import on the OLX params alone, no contract pass
+#   FRESH         "1" = re-seed the contract draft even if one exists
+#                       (it overwrites the model's answers -- say so on purpose)
 #
 # Emits: EXTRACT: SKIP: EXTRACT_PROMPT: INFER: REVIEW: NEW_BRAND: RESULT: ERROR:
 #
@@ -96,7 +98,7 @@ def run(profile, g):
 
     PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
     sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
-    import olx_api, admin_import, infer_fields, price_sanity
+    import olx_api, admin_import, infer_fields, price_sanity, contract_draft
 
     AD_ID       = os.environ.get("AD_ID", "").strip()
     OVERRIDES   = json.loads(os.environ.get("OVERRIDES", "{}"))
@@ -230,7 +232,13 @@ def run(profile, g):
              if k in infer_fields.SCHEMA_FIELDS and k != "description"}
 
     # --- 3. pass 1: hand the contract out ------------------------------------
-    if not OVERRIDES and not SKIP_PROMPT and not DRY_RUN:
+    # A draft on disk means pass 1 already ran, so this is pass 2 even though no
+    # OVERRIDES were passed -- that is the normal path now. Re-seeding on top of a
+    # draft the model has already filled would silently destroy its answers, so it
+    # takes an explicit FRESH=1.
+    _draft_exists = (os.path.exists(contract_draft.draft_path(PROJECT_ROOT, AD_ID))
+                     and os.environ.get("FRESH", "") != "1")
+    if not OVERRIDES and not _draft_exists and not SKIP_PROMPT and not DRY_RUN:
         photos, failed = olx_api.download_photos(bu, images, PHOTO_DIR)
         # The phone is masked in the JSON and only rendered on click, so it costs a
         # page navigation — do it once here and show it with the contract. SOURCE_URL
@@ -239,25 +247,48 @@ def run(profile, g):
         phone, phone_status = olx_api.reveal_phone(bu, SOURCE_URL)
         if phone:
             known["phone"] = phone
+        draft = contract_draft.build(data, profile)
+        dpath = contract_draft.draft_path(PROJECT_ROOT, AD_ID)
+        contract_draft.write(dpath, draft)
         emit("EXTRACT_PROMPT", {
             "ad_id": AD_ID,
+            "draft": dpath,
+            "todo": draft["_todo"],
             "prompt": infer_fields.build_prompt(text, brand_ids.keys(), profile=profile,
-                                                known=known, source_noun="OLX ad"),
+                                                known=known, source_noun="OLX ad",
+                                                todo=draft["_todo"]),
             "photos": photos, "photos_failed": failed, "phone_status": phone_status,
-            "rerun": RERUN})
+            "rerun": "AD_ID=%s CONFIRM=1 browser-use < .../%s" % (AD_ID, conf["script_name"])})
         raise SystemExit(0)
 
     # --- 4. the filled contract is authoritative -----------------------------
-    problems = infer_fields.validate(OVERRIDES)
-    if problems:
-        die("OVERRIDES are not valid DB values: " + "; ".join(problems))
+    # The draft file is the contract. OVERRIDES stays supported and WINS, because a
+    # human fixing one field from the shell should not have to edit the file.
+    dpath = contract_draft.draft_path(PROJECT_ROOT, AD_ID)
+    filled, problems = ({}, [])
+    if os.path.exists(dpath):
+        filled, problems = contract_draft.read(dpath, profile)
+        if problems and not OVERRIDES:
+            emit("REVIEW", {"ad_id": AD_ID, "draft": dpath,
+                            "reasons": [{"code": "draft_invalid", "action": "fix",
+                                         "message": p, "field": None} for p in problems]})
+            raise SystemExit(0)
+    if OVERRIDES:
+        bad = infer_fields.validate(OVERRIDES)
+        if bad:
+            die("OVERRIDES are not valid DB values: " + "; ".join(bad))
+        filled.update(OVERRIDES)
 
-    IS_CONTRACT = "is_wristwatch" in OVERRIDES
+    # IS_CONTRACT is computed AFTER the merge on purpose: a human patching one field
+    # with OVERRIDES='{"model":"X"}' on top of a full draft must still get the
+    # full-contract clearing behaviour, and checking OVERRIDES alone would silently
+    # downgrade it to a partial merge.
+    IS_CONTRACT = bool(filled) and "is_wristwatch" in filled
     if IS_CONTRACT:
         for f in infer_fields.SCHEMA_FIELDS:
-            if f not in OVERRIDES:
+            if f not in filled:
                 data.pop(f, None)
-    data.update({k: v for k, v in OVERRIDES.items() if k != "force"})
+    data.update({k: v for k, v in filled.items() if k != "force"})
 
     if conf["misroute_check"]:
         # The category facts survive the clearing — a smartwatch stays a smartwatch
@@ -269,25 +300,31 @@ def run(profile, g):
                 "watch, import it with olx-import-watch.py instead" % data.get("movement")]})
             if not CONFIRM:
                 raise SystemExit(0)
+    # setdefault is NOT enough here: the seeded draft carries every contract key, so
+    # an unedited forced field arrives as an explicit None rather than being absent.
+    # Restoring only on "key missing" would write movement=None for a smartwatch,
+    # which is the silent-default failure this gate exists to prevent.
     for f, v in conf["forced"].items():
-        data.setdefault(f, v)
+        if data.get(f) is None:
+            data[f] = v
 
     # A wall clock IS imported (category="wall", since 2026-08-09). Pocket, mantel,
     # table and alarm clocks are not: is_wristwatch false with no category skips.
-    _not_a_watch = OVERRIDES.get("is_wristwatch") is False
-    if _not_a_watch and conf["wall_clock_exempt"] and OVERRIDES.get("category") == "wall":
+    _not_a_watch = filled.get("is_wristwatch") is False
+    if _not_a_watch and conf["wall_clock_exempt"] and filled.get("category") == "wall":
         _not_a_watch = False
     if _not_a_watch and not CONFIRM:
         emit("SKIP", {"ad_id": AD_ID, "reason": conf["not_a_watch_reason"],
-                      "notes": OVERRIDES.get("notes")})
+                      "notes": filled.get("notes")})
         raise SystemExit(0)
-    if OVERRIDES.get("is_bulk_lot") is True and not CONFIRM:
+    if filled.get("is_bulk_lot") is True and not CONFIRM:
         emit("SKIP", {"ad_id": AD_ID, "reason": "bulk lot — one price, several watches; "
                                                 "pass CONFIRM=1 to import anyway"})
         raise SystemExit(0)
     for k in ("is_wristwatch", "is_bulk_lot", "notes"):   # contract-only, not form fields
         data.pop(k, None)
-    data.setdefault("category", "wrist")
+    if data.get("category") is None:                     # same reason as the forced fields
+        data["category"] = "wrist"
 
     # --- 5. provenance -------------------------------------------------------
     # The seller's city and phone are OLX metadata, not claims in the ad text — an
