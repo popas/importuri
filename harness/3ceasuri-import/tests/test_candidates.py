@@ -66,5 +66,52 @@ try:
 except ValueError:
     pass
 
+# --- the logger turns a marker line into a history entry --------------------
+import subprocess, tempfile as _tf
+_dir = _tf.mkdtemp()
+_hist = os.path.join(_dir, "history.jsonl")
+_state = os.path.join(_dir, "state.json")
+json.dump({"session_imported": 4, "session_skipped": 1, "status": "running"},
+          open(_state, "w"))
+_line = ('RESULT: {"ad_id":"307673714","ok":true,"state_entry":'
+         '{"source":"olx","id":"307673714","brand":"Garmin","model":"Fenix 7X Solar",'
+         '"price":1700,"currency":"RON","images":3}}')
+_p = subprocess.run([sys.executable,
+                     os.path.join(ROOT, "harness/3ceasuri-import/scripts/olx-log-result.py"),
+                     "--history", _hist, "--state", _state],
+                    input=_line, capture_output=True, text=True)
+check(_p.returncode == 0, "logger: exit %d, stderr %s" % (_p.returncode, _p.stderr[:200]))
+_rec = json.loads(open(_hist).read().strip())
+check(_rec["event"] == "import", "logger: event not set")
+check(_rec["id"] == "307673714" and _rec["brand"] == "Garmin", "logger: state_entry not copied")
+check(_rec.get("ts"), "logger: ts not set")
+check(json.load(open(_state))["session_imported"] == 5, "logger: counter not bumped")
+
+_skip = 'SKIP: {"ad_id":"111","reason":"thin_description","source":"olx"}'
+subprocess.run([sys.executable,
+                os.path.join(ROOT, "harness/3ceasuri-import/scripts/olx-log-result.py"),
+                "--history", _hist, "--state", _state],
+               input=_skip, capture_output=True, text=True)
+check(len(open(_hist).read().strip().splitlines()) == 2, "logger: skip not appended")
+check(json.load(open(_state))["session_skipped"] == 2, "logger: skip counter not bumped")
+
+# an UNVERIFIED import must never be recorded as a success
+_bad = 'RESULT: {"ad_id":"222","ok":false,"state_entry":{"id":"222","brand":"X"}}'
+_p = subprocess.run([sys.executable,
+                     os.path.join(ROOT, "harness/3ceasuri-import/scripts/olx-log-result.py"),
+                     "--history", _hist, "--state", _state],
+                    input=_bad, capture_output=True, text=True)
+check(len(open(_hist).read().strip().splitlines()) == 2,
+      "logger: an unverified RESULT (ok:false) must append nothing")
+check(json.load(open(_state))["session_imported"] == 5,
+      "logger: an unverified RESULT must not bump the counter")
+
+# a line that is not a marker is a no-op, not a crash
+_p = subprocess.run([sys.executable,
+                     os.path.join(ROOT, "harness/3ceasuri-import/scripts/olx-log-result.py"),
+                     "--history", _hist, "--state", _state],
+                    input="EXTRACT: {}", capture_output=True, text=True)
+check(_p.returncode == 0 and "NOT_LOGGED" in _p.stdout, "logger: a non-marker line must be a no-op")
+
 print("\n".join(fails) if fails else "ALL CHECKS PASSED")
 sys.exit(1 if fails else 0)
