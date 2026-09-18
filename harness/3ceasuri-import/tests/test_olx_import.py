@@ -241,7 +241,7 @@ m, st = run(SMART, SMART_AD, env={"OVERRIDES": json.dumps(
     dict(FILLED_SMART, connectivity=None, compatibility=None))})
 check("REVIEW" in m, "7: missing smart facets must stop for review")
 for f in ("connectivity", "compatibility"):
-    check(any(f in r for r in m["REVIEW"]["reasons"]), "7: %s not flagged" % f)
+    check(any(f in r["message"] for r in m["REVIEW"]["reasons"]), "7: %s not flagged" % f)
 check(st["imported"] is None, "7: must not import")
 
 # --- 8. an accessory is not a watch ----------------------------------------
@@ -252,7 +252,7 @@ check(st["imported"] is None, "8: must not import an accessory")
 
 # --- 9. a mechanical watch on the smartwatch importer is a routing mistake --
 m, st = run(SMART, SMART_AD, env={"OVERRIDES": json.dumps(dict(FILLED_SMART, movement="automatic"))})
-check("REVIEW" in m and any("olx-import-watch.py" in r for r in m["REVIEW"]["reasons"]),
+check("REVIEW" in m and any("olx-import-watch.py" in r["message"] for r in m["REVIEW"]["reasons"]),
       "9: mis-routed ad must be flagged, got %s" % m.get("REVIEW"))
 check(st["imported"] is None, "9: must not import a mis-routed ad")
 
@@ -276,7 +276,7 @@ m, st = run(CLASSIC, NO_MOVEMENT)
 check("EXTRACT_PROMPT" in m, "11: first pass emits the contract")
 m, st = run(CLASSIC, NO_MOVEMENT, env={"OVERRIDES": json.dumps(
     dict(FILLED_CLASSIC, movement=None))})
-check("REVIEW" in m and any("movement" in r for r in m["REVIEW"]["reasons"]),
+check("REVIEW" in m and any("movement" in r["message"] for r in m["REVIEW"]["reasons"]),
       "11: unstated movement must stop for review, got %s" % m.get("REVIEW"))
 check(st["imported"] is None, "11: must not import a movement-guessed watch")
 
@@ -552,6 +552,21 @@ m4, _ = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps({"model": 
 check(m4["INFER"]["model"] == "Fenix 7", "19: OVERRIDES must override the draft")
 check(m4["INFER"]["description"].startswith("Ceas in stare foarte buna"),
       "19: a one-field OVERRIDES on top of a draft must keep the rest of the draft")
+
+# --- 21. every REVIEW reason is machine-readable ----------------------------
+# The runbook routes on `action` alone, so a reason without one is a judgement
+# call handed back to the model -- which is the thing this work removes.
+for _label, _mk in (("smart facets", lambda: run(SMART, SMART_AD, {"OVERRIDES": json.dumps(
+                         dict(FILLED_SMART, connectivity=None, compatibility=None))})),
+                    ("misroute", lambda: run(SMART, SMART_AD, {"OVERRIDES": json.dumps(
+                         dict(FILLED_SMART, movement="automatic"))})),
+                    ("movement", lambda: run(CLASSIC, NO_MOVEMENT, {"OVERRIDES": json.dumps(
+                         dict(FILLED_CLASSIC, movement=None))}))):
+    _m, _ = _mk()
+    _rs = _m.get("REVIEW", {}).get("reasons", [])
+    check(_rs and all(isinstance(r, dict) for r in _rs), "21: %s: reasons must be objects" % _label)
+    check(all(r.get("code") and r.get("action") in ("fix", "skip") for r in _rs),
+          "21: %s: every reason needs a code and a fix/skip action: %s" % (_label, _rs))
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

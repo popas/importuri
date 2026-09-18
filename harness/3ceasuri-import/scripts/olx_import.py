@@ -295,9 +295,11 @@ def run(profile, g):
         # even when the answer forgets to restate them. An answer that actively
         # disagrees is a routing mistake, not a correction, so it stops instead.
         if data.get("movement") not in (None, "smart"):
-            emit("REVIEW", {"ad_id": AD_ID, "reasons": [
-                "movement=%r on the smartwatch importer — if this is a mechanical/quartz "
-                "watch, import it with olx-import-watch.py instead" % data.get("movement")]})
+            emit("REVIEW", {"ad_id": AD_ID, "reasons": [{
+                "code": "misrouted_classic", "action": "skip", "field": "movement",
+                "message": "movement=%r on the smartwatch importer — if this is a "
+                           "mechanical/quartz watch, import it with olx-import-watch.py "
+                           "instead" % data.get("movement")}]})
             if not CONFIRM:
                 raise SystemExit(0)
     # setdefault is NOT enough here: the seeded draft carries every contract key, so
@@ -349,36 +351,50 @@ def run(profile, g):
     emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
 
     # --- 6. confidence gate --------------------------------------------------
+    # Each reason carries a code and an action. `fix` means the gate named exactly
+    # what to supply and the answer is already in hand. `skip` means genuine doubt:
+    # the runbook logs it and takes the next candidate. The agent never overrides a
+    # gate — see §6 decision 5 in the determinism spec.
     review = []
+
+    def _review(code, action, message, field=None):
+        review.append({"code": code, "action": action, "message": message, "field": field})
+
     if not data.get("brand"):
-        review.append("brand not inferred")
+        _review("brand_missing", "fix", "brand not inferred", "brand")
     elif data["brand"] not in brand_ids:
-        review.append("NEW brand '%s' — will be created in the DB" % data["brand"])
+        _review("new_brand", "fix",
+                "NEW brand '%s' — will be created in the DB" % data["brand"], "brand")
     if not data.get("model"):
-        review.append("model not inferred")
+        _review("model_missing", "fix", "model not inferred", "model")
     if data.get("price") is None:
-        review.append("price not inferred")
+        _review("price_missing", "fix", "price not inferred", "price")
     if profile == "classic":
         # movement is NOT optional in the DB, so the harness fills the gap with
         # 'quartz'. That guess mislabelled a 1970s Poljot once already — an ad that
-        # never states its movement must be judged, not defaulted.
+        # never states its movement must be judged, not defaulted, and judging it
+        # from nothing is exactly the doubt this gate exists to stop.
         if not data.get("movement"):
-            review.append("movement not stated in the ad "
-                          "(harness would default it to quartz)")
+            _review("movement_missing", "skip",
+                    "movement not stated in the ad (harness would default it to quartz)",
+                    "movement")
         if data.get("movement") == "smart":
-            review.append("this is a smartwatch — import it with "
-                          "olx-import-smartwatch.py instead")
+            _review("misrouted_smart", "skip",
+                    "this is a smartwatch — import it with olx-import-smartwatch.py instead")
         if data.get("category") == "wall" and not data.get("caseMat"):
-            review.append("wall clock without a case material (usually wood)")
+            _review("wall_no_material", "fix",
+                    "wall clock without a case material (usually wood)", "caseMat")
     else:
         for f in ("connectivity", "compatibility"):
             if not data.get(f):
-                review.append("smartwatch without %s (fill it in OVERRIDES)" % f)
+                _review("%s_missing" % f, "fix",
+                        "smartwatch without %s (fill it in the draft)" % f, f)
     if len(images) < 2:
-        review.append("only %d image(s) on the ad" % len(images))
+        _review("too_few_images", "skip", "only %d image(s) on the ad" % len(images))
     if len((data.get("description") or "").strip()) < 40:
-        review.append("description looks thin (%d chars)"
-                      % len((data.get("description") or "").strip()))
+        _review("thin_description", "skip",
+                "description looks thin (%d chars)"
+                % len((data.get("description") or "").strip()))
     if review and not CONFIRM and not DRY_RUN:
         emit("REVIEW", {"ad_id": AD_ID, "reasons": review, "images": len(images),
                         "inferred": {k: (v if k != "images" else len(v)) for k, v in data.items()},
@@ -401,10 +417,11 @@ def run(profile, g):
             emit("SKIP", dict(detail, reason="repost (%s match)" % repost["matched_via"]))
             raise SystemExit(0)
         if not CONFIRM:
-            emit("REVIEW", dict(detail, reasons=[
-                "possible repost: model '%s' is already on the site, but the name is generic "
-                "and the brand could not be confirmed — check, then CONFIRM=1 to import anyway"
-                % data.get("model")]))
+            emit("REVIEW", dict(detail, reasons=[{
+                "code": "weak_repost", "action": "skip", "field": None,
+                "message": "possible repost: model '%s' is already on the site, but the "
+                           "name is generic and the brand could not be confirmed"
+                           % data.get("model")}]))
             raise SystemExit(0)
 
     # --- 8. ensure the brand exists ------------------------------------------
