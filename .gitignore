@@ -6,3 +6,6 @@ harness/3ceasuri-import/.candidates.json
 .photos/
 harness/3ceasuri-import/.candidates-olx-smart.json
 harness/3ceasuri-import/.candidates-olx-watches.json
+
+# per-ad contract drafts, written by pass 1 and consumed by pass 2
+harness/3ceasuri-import/.contracts/

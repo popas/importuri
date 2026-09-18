@@ -65,6 +65,24 @@ FLAGS = ["is_wristwatch", "is_bulk_lot"]
 
 SCHEMA_FIELDS = TEXT + list(NUMERIC) + list(ENUMS) + FLAGS + ["notes"]
 
+# Fields the filled contract MUST answer non-null, per profile. Everything else in
+# SCHEMA_FIELDS may legitimately be null — a watch with no reference, no year and no
+# notes is the common case, and demanding those would turn honest silence into a gate.
+REQUIRED_BY_PROFILE = {
+    "classic": ["brand", "model", "price", "movement", "is_wristwatch"],
+    "smart":   ["brand", "model", "price", "connectivity", "compatibility", "is_wristwatch"],
+}
+
+# What the model decides, per profile. ALWAYS_ASK is asked even when a regex guessed a
+# value, because copying a guess is how `movement` silently became quartz on a 1970s
+# Poljot. ASK_IF_EMPTY is asked only when the deterministic baseline came up empty.
+ALWAYS_ASK = {
+    "classic": ["model", "movement", "reference", "is_wristwatch", "is_bulk_lot", "notes"],
+    "smart":   ["model", "connectivity", "compatibility", "is_wristwatch", "is_bulk_lot", "notes"],
+}
+ASK_IF_EMPTY = ["category", "year", "diameter", "gender", "condition",
+                "caseMat", "braceletMat", "displayColor"]
+
 PROMPT = """# Extraction contract — fill this from the {source_noun} below
 
 Populate the 3ceasuri DB record. Answer with ONE JSON object and nothing else.
