@@ -79,6 +79,21 @@ ACCESSORY = re.compile(
     r"mecanism|cadran|ace|baterii|baterie)\b"
     r"|curea\s+(?:de\s+)?schimb|set\s+curele|doar\s+(?:cutia|curea|bratara|mecanismul)|"
     r"piese\s+ceas|ceas\s+pentru\s+piese", re.I)
+
+# Activation lock: the watch is unusable to a buyer, so it is not stock we can list.
+# Matched narrowly on purpose — "icloud deconectat" and "cont sters" are the honest
+# opposite claim and must NOT fire, which is why the lock words need a lock CONTEXT.
+ACTIVATION_LOCK = re.compile(
+    r"\bblocat\s+(?:pe\s+)?(?:icloud|cont|id)\b|"
+    r"\bcont\s+(?:apple|icloud|google|mi)\b[^.\n]{0,40}\bnu\s+(?:stiu|am|cunosc)\b|"
+    r"\bnu\s+stiu\s+parola\b|\bactivation\s+lock\b|\bicloud\s+lock\b", re.I)
+
+# Explicit shop stock: an ad offering many identical units is inventory, not a watch.
+# "ultima bucata" and "1 bucata" are single-item ads and must NOT fire.
+EXPLICIT_STOCK = re.compile(
+    r"\bpeste\s+\d+\s+(?:buc|bucati|bucăți)\b|"
+    r"\b\d{2,}\s+(?:buc|bucati|bucăți)\s+(?:disponibil|pe\s+stoc)|"
+    r"\blichidar[ei]\s+de\s+stoc", re.I)
 # Stock / multi-watch ads. Every signal here has to be about WATCHES specifically —
 # the loose version of this rule dropped a Rolex Datejust on 2026-08-09 because the
 # seller accepted "loturi de telefoane" in trade, and a bare numeric range would kill
@@ -133,6 +148,10 @@ def consider(ad):
         drop("replica", ad, snip); return
     if ACCESSORY.search(title):
         drop("accessory", ad, snip); return
+    if ACTIVATION_LOCK.search(text):
+        drop("activation_locked", ad, snip); return
+    if EXPLICIT_STOCK.search(text):
+        drop("explicit_stock", ad, snip); return
     if is_stock_listing(title, text):
         drop("bulk_or_stock", ad, snip); return
 

@@ -236,6 +236,46 @@ check(_q.next_pending(m_q["_out_file"]) is not None,
 check(_q.counts(m_q["_out_file"])["pending"] == len(_doc["candidates"]),
       "queue: counts must agree with the file discovery writes")
 
+# --- new drop rules: activation lock and explicit stock ---------------------
+# These must be near-zero-false-positive (§6 decision 2): each assertion below that a
+# rule does NOT fire is a real historical listing shape that was legitimately imported.
+import re as _re
+SRC_SMART = open(os.path.join(ROOT, "harness/3ceasuri-import/scripts/olx-find-smartwatches.py")).read()
+_ns = {}
+exec(_re.search(r"^ACTIVATION_LOCK = .*?\)\n", SRC_SMART, _re.S | _re.M).group(0), {"re": _re}, _ns)
+exec(_re.search(r"^EXPLICIT_STOCK = .*?\)\n", SRC_SMART, _re.S | _re.M).group(0), {"re": _re}, _ns)
+LOCK, STOCK = _ns["ACTIVATION_LOCK"], _ns["EXPLICIT_STOCK"]
+
+for t in ["Apple Watch blocat icloud, vand pentru piese",
+          "are cont apple si nu stiu parola",
+          "Activation lock activ, nu il pot debloca"]:
+    check(bool(LOCK.search(t)), "lock: should fire on %r" % t)
+for t in ["Apple Watch Series 9, resetat din fabrica, fara cont",
+          "Se vinde cu contul sters, icloud deconectat",
+          "Garmin Fenix, functioneaza impecabil"]:
+    check(not LOCK.search(t), "lock: FALSE POSITIVE on %r" % t)
+
+for t in ["Peste 100 bucati disponibile", "lichidari de stocuri, desigilate",
+          "avem 20 bucati pe stoc"]:
+    check(bool(STOCK.search(t)), "stock: should fire on %r" % t)
+for t in ["Vand 1 bucata, stare buna", "ultima bucata ramasa",
+          "Ceas Seiko automatic, cutie si acte"]:
+    check(not STOCK.search(t), "stock: FALSE POSITIVE on %r" % t)
+
+# the rules are wired into consider(), and report their own drop reason
+_LOCK_AD = dict(SMART_FEED[0], id=901,
+                title="Apple Watch Series 7 45mm",
+                description="Ceasul este blocat icloud, vand pentru piese.")
+_STOCK_AD = dict(SMART_FEED[0], id=902,
+                 title="Apple Watch Series 7 45mm",
+                 description="Peste 30 bucati disponibile, factura si garantie.")
+m_d = run(FIND_SMART, SMART_FEED + [_LOCK_AD, _STOCK_AD])
+check(why(m_d, 901) == "activation_locked",
+      "lock: an activation-locked ad must drop with its own reason (%s)" % why(m_d, 901))
+check(why(m_d, 902) == "explicit_stock",
+      "stock: a stock ad must drop with its own reason (%s)" % why(m_d, 902))
+check("901" not in ids(m_d) and "902" not in ids(m_d), "the new drops must not surface as candidates")
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)
