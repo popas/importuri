@@ -413,7 +413,7 @@ smartwatch category a NEW_BRAND is the normal case, not the exception.
 Earlier that day: Added `Predom Metron`(56), the Polish wall-clock maker, created
 by the script itself now that the lookup works. Added `Fără marcă`(54) — the brand wall clocks and other
 unsigned pieces get; never invent a maker for them. That slug-vs-name lookup bug is now
-FIXED in `import-post.py`: it searches the changelist by *name* and reuses an existing
+FIXED in `admin_import.ensure_brand()`: it searches the changelist by *name* and reuses an existing
 row instead of creating a second one (a stale `BRAND_IDS` had produced a duplicate
 `Fără marcă` with slug `f-r-marc`, since deleted).
 Earlier: 2026-08-08 added `Buchner & Bovalier`(53), which hit that bug and needed the

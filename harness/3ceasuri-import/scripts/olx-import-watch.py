@@ -2,8 +2,7 @@
 # =============================================================================
 # olx-import-watch.py — one-shot importer for a single OLX classic-watch ad.
 #
-# The OLX counterpart of import-post.py, for category 1677 (moda/ceasuri). It
-# runs the whole per-watch flow in one browser-use process:
+# It runs the whole per-watch flow in one browser-use process:
 #   dedup -> GET /api/v1/offers/<id>/ -> blocklist -> map OLX params to DB enums
 #   -> download photos -> EXTRACT_PROMPT (pass 1, writes NOTHING)
 #   ... you fill the contract ...

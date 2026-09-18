@@ -2,8 +2,7 @@
 # =============================================================================
 # olx-find-watches.py — discovery for OLX category 1677 (moda-frumusete/ceasuri).
 #
-# The OLX counterpart of find-posts.py for classic watches. OLX answers its own
-# JSON API from a page already on olx.ro, so there is no feed to scroll and no
+# OLX answers its own JSON API from a page already on olx.ro, so there is no feed to scroll and no
 # hydration to wait out: one paged API loop, objective filters, batched Stage-1
 # dedup, one CANDIDATES: line.
 #

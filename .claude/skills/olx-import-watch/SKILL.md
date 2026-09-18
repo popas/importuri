@@ -1,6 +1,6 @@
 ---
 name: olx-import-watch
-description: Invoke per watch to import ONE OLX ad from category 1677 (classic watches) — pass 1 emits the extraction contract and photos, you fill it, pass 2 imports with CONFIRM=1 OVERRIDES. Use a fresh context per watch.
+description: Invoke PER WATCH to import one OLX classic-watch ad (category 1677) in two passes: contract out, filled back, then import.
 ---
 
 # olx-import-watch

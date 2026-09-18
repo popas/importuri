@@ -4,7 +4,7 @@ canned [role=feed] so every objective filter path is exercised without Chrome.""
 import json, os, re, sys, io, contextlib
 
 ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
-SRC = os.path.join(ROOT, "harness/3ceasuri-import/scripts/find-posts.py")
+SRC = os.path.join(ROOT, "archive/facebook/scripts/find-posts.py")
 
 BLOCKED = "100014204027198"   # Timofeevich Vasilovich, from seller-blocklist.json
 

@@ -1,16 +1,12 @@
 ---
 name: olx-session-setup
-description: Invoke once at the very start of every OLX import session — before any discovery or import — to define environment variables, connect the browser-use CLI, open the admin and olx.ro tabs, load session state, and confirm this session's target number of watches.
+description: Invoke ONCE at the start of every OLX session, before any discovery or import: env vars, browser-use, tabs, state, target.
 ---
 
 # OLX session setup
 
 Run this once per session. It gets the browser-automation environment ready; the
 per-watch loop lives in the discovery and import skills.
-
-This is the OLX sibling of `watch-session-setup`. If you are importing from
-Facebook, use that one instead — the two sources have separate skills all the way
-down, and mixing them is how a session ends up scraping a feed it did not need.
 
 ## Environment variables
 
@@ -36,9 +32,9 @@ site. The same request issued from a page already on `olx.ro` succeeds, because 
 carries the browser's cookies and headers. So every OLX read in these scripts is a
 `fetch()` executed in the page context.
 
-What that buys us, compared with Facebook: no feed scrolling, no hydration waits,
-no carousel walking, and **photo URLs that do not expire**. Ad metadata comes back
-as JSON with the seller's own structured attributes already filled in.
+What that buys us: no feed scrolling, no hydration waits, no carousel walking, and
+**photo URLs that do not expire**. Ad metadata comes back as JSON with the seller's own
+structured attributes already filled in.
 
 ## Log into olx.ro FIRST — it decides whether phones are captured
 

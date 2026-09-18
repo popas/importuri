@@ -1,6 +1,6 @@
 ---
 name: olx-find-watches
-description: Invoke once per OLX watch session to sweep category 1677 (moda-frumusete/ceasuri) with olx-find-watches.py and triage the returned candidates. Not per watch — run it once, then import from the candidates file.
+description: Invoke ONCE per session (not per watch) to sweep OLX category 1677 (classic watches) and triage the candidates it returns.
 ---
 
 # olx-find-watches

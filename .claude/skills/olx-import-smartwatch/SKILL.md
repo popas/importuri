@@ -1,6 +1,6 @@
 ---
 name: olx-import-smartwatch
-description: Invoke per smartwatch to import ONE OLX ad from category 1943 — pass 1 emits the extraction contract and photos, you fill it, pass 2 imports with CONFIRM=1 OVERRIDES. Use a fresh context per watch.
+description: Invoke PER WATCH to import one OLX smartwatch ad (category 1943) in two passes: contract out, filled back, then import.
 ---
 
 # olx-import-smartwatch
@@ -59,10 +59,14 @@ a targeted fix without it still merges over the baseline.
   so the harness can never default `movement` to quartz. An answer that says
   `automatic` is treated as a **routing mistake** and stops: that ad belongs to
   `olx-import-watch.py`.
-- `series`, `connectivity` and `compatibility` are required. Missing any of the
-  three stops for review. Apple Watch → `ios`; Galaxy Watch 4+ → `android`; Garmin,
-  Amazfit, Huawei, Xiaomi, Fitbit → `both`. Cellular models: "LTE"/"Cellular"/"4G"/
-  "eSIM" in the ad, or the red ring/dot on an Apple Watch crown.
+- `connectivity` and `compatibility` are required — missing either stops for review.
+  `compatibility`: Apple Watch → `ios`; Galaxy Watch 4+ → `android`; Galaxy Watch 3 and
+  older, Garmin, Amazfit, Huawei, Xiaomi, Fitbit → `both`. `connectivity`: `gsm` when
+  the ad or a photo shows "LTE"/"Cellular"/"4G"/"eSIM", or the red ring/dot on an Apple
+  Watch crown; otherwise `no_gsm`.
+- **There is no `series` field.** The generation goes in `model` ("Watch Series 9",
+  "Galaxy Watch 6 Classic"). Putting `series` in OVERRIDES fails validation with
+  `series is not a field in the contract` and aborts pass 2.
 - `is_wristwatch: false` means **accessory** here (strap, charger, case, dock, empty
   box) and skips the import. Say which in `notes`.
 - Most smartwatch brands are NOT in `BRAND_IDS` yet, so `NEW_BRAND:` is the normal

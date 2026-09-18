@@ -24,6 +24,6 @@ runs pending migrations on production. No manual migrate step needed on prod.
 - `watches/services.py` — helpers incl. `normalize_ro_phone`.
 
 ## Dedup-relevant note
-Dedup (`admin-import-watch` Step 1) queries this admin by `?q=`. Only fields in
+Dedup (stage 1, in `admin_import.already_imported`) queries this admin by `?q=`. Only fields in
 `WatchAdmin.search_fields` are queryable. To dedup on a new attribute, the attribute
 must be BOTH a model field (migrated) AND listed in `search_fields`.

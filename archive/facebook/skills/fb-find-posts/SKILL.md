@@ -10,7 +10,7 @@ must exist (`watch-session-setup`); `$PROJECT_ROOT` / `$CDP_HOST` are defined th
 
 ```bash
 export BU_CDP_URL="http://$CDP_HOST"
-MAX_CANDIDATES=8 browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/find-posts.py
+MAX_CANDIDATES=8 browser-use < $PROJECT_ROOT/archive/facebook/scripts/find-posts.py
 ```
 
 It hydrates the feed, iterates `[role="feed"]` children, applies the objective filters, scrolls
@@ -65,7 +65,7 @@ watches, rather than guessing from the counts.
 ## When it fails
 
 0 candidates on a feed that visibly has posts, a stall, or an unreadable feed →
-`harness/3ceasuri-import/references/feed-dom.md` (post-ID sources, scroll diagnosis table,
+`archive/facebook/references/feed-dom.md` (post-ID sources, scroll diagnosis table,
 virtualization, proxy-iframe workaround, obfuscated timestamp zone). Persistent friction →
 `watch-troubleshooting` and its backoff ladder. Never scroll with `scroll(x, y)` /
 `browser_scroll`, and never use group search — both are explained there.

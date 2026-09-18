@@ -20,7 +20,7 @@ payload against the enums. The prompt makes the decision repeatable; the
 validator makes a wrong one loud instead of letting the admin form drop it.
 
 Flow per watch:
-    import-post.py emits EXTRACT_PROMPT: with the post text and this contract
+    the importer emits EXTRACT_PROMPT: with the ad text and this contract
       -> the agent fills it and re-runs with OVERRIDES='{...}'
       -> validate() rejects anything that isn't a legal DB value
 
@@ -95,10 +95,9 @@ RULES_CLASSIC = """
   crystal bezel, Roman numerals and a 4:30 date is a "Jacqueline". Read the caseback
   if a photo shows it — that is where the reference lives.
   The photos are saved to disk and their paths are in `EXTRACT_PROMPT.photos` — read
-  them from there, never from a Facebook URL (those are signed and expire mid-session).
-  Read ONE photo by default — the dial answers the model question on its own. Open a
-  second only when you actually need the caseback (for `reference`). Reading all four
-  "to be safe" is the expensive habit, not the reading itself; see references/post-extraction.md.
+  them from there. Read ONE photo by default: the dial answers the model question on its
+  own. Open a second only when you actually need the caseback (for `reference`). Reading
+  every photo "to be safe" is the expensive habit, not the reading itself.
   Still nothing identifiable? Use the defining trait, short and factual:
   "Automatic 21 Jewels", "Vintage anii 1970-1980".
   **Never a filler noun.** "Original", "Clasic", "Ceas", "Dama" are not models — if
@@ -118,9 +117,9 @@ RULES_CLASSIC = """
   it. Only null when brand, model, era and photos genuinely leave it open — that stops
   for review, which beats the harness silently defaulting to `quartz` (it mislabelled a
   1970s Poljot that way).
-- `description` — the seller's text, cleaned: no FB header, no author name or
-  timestamp, no "See more"/"See translation", no comments, no obfuscated timestamp
-  characters. Keep the seller's line breaks.
+- `description` — the seller's text as `clean_description()` already returned it under
+  "OLX ad" below: no marketplace chrome, no phone numbers, no "citește mai mult". Keep
+  the seller's line breaks. Restate it verbatim — it is cleared if you leave it out.
 - `year` — ONE year as an integer. `id_year` is a numeric input, so a decade range
   is silently dropped: if the post only says "anii '70", leave this null and put the
   decade in `model` instead.

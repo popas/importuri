@@ -12,7 +12,7 @@
 #   export BU_CDP_URL="http://127.0.0.1:9222"
 #   POST_ID=2080773889457926 ADMIN_TAB=<id> PHOTO_TAB=<id> \
 #     OVERRIDES='{"model":"Crystal Automatic","caseMat":"steel"}' \
-#     browser-use < harness/3ceasuri-import/scripts/import-post.py
+#     browser-use < archive/facebook/scripts/import-post.py
 #
 # Env:
 #   POST_ID       numeric FB post ID (group post — gated on its pcb photo set)

@@ -2,8 +2,7 @@
 # =============================================================================
 # olx-import-smartwatch.py — one-shot importer for a single OLX smartwatch ad.
 #
-# The OLX counterpart of import-post.py, for category 1943. It runs the whole
-# per-watch flow in one browser-use process:
+# It runs the whole per-watch flow in one browser-use process:
 #   dedup -> GET /api/v1/offers/<id>/ -> blocklist -> map OLX params to DB enums
 #   -> download photos -> EXTRACT_PROMPT (pass 1, writes NOTHING)
 #   ... you fill the contract ...

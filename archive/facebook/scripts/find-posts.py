@@ -11,7 +11,7 @@
 #
 # It is a browser-use *payload*: pipe it on stdin, NOT `python3 find-posts.py`.
 #   export BU_CDP_URL="http://127.0.0.1:9222"
-#   MAX_CANDIDATES=8 browser-use < harness/3ceasuri-import/scripts/find-posts.py
+#   MAX_CANDIDATES=8 browser-use < archive/facebook/scripts/find-posts.py
 #
 # Env:
 #   PROJECT_ROOT    repo root (default: the Mac path below)

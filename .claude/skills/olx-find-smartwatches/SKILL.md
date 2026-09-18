@@ -1,6 +1,6 @@
 ---
 name: olx-find-smartwatches
-description: Invoke once per OLX smartwatch session to sweep category 1943 (smartwatch-uri) with olx-find-smartwatches.py and triage the returned candidates. Not per watch — run it once, then import from the candidates file.
+description: Invoke ONCE per session (not per watch) to sweep OLX category 1943 (smartwatch-uri) and triage the candidates it returns.
 ---
 
 # olx-find-smartwatches

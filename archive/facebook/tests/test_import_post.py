@@ -6,7 +6,7 @@ import json, os, re, sys, io, contextlib, time
 time.sleep = lambda *a, **k: None      # the script's paced waits are irrelevant offline
 
 ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
-SRC = os.path.join(ROOT, "harness/3ceasuri-import/scripts/import-post.py")
+SRC = os.path.join(ROOT, "archive/facebook/scripts/import-post.py")
 
 
 def run(post_text, n_images=5, env=None, admin_rows_for=None, video=None, brand_on_site=None):

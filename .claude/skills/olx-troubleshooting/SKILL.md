@@ -1,6 +1,6 @@
 ---
 name: olx-troubleshooting
-description: Invoke ONLY when an OLX discovery or import step fails — 403s and bot checks, empty categories, ad JSON that won't load, photo download failures, brand creation errors, missing banners.
+description: Invoke ONLY when an OLX step fails: 403s and bot checks, ad JSON or photos that won't load, brand errors, missing banners.
 ---
 
 # olx-troubleshooting
@@ -44,7 +44,7 @@ ads that way, and importing them would list something nobody can buy.
 ## Photos come back empty or short
 
 `EXTRACT_PROMPT.photos_failed > 0` means the CDN fetch returned less than 500 bytes
-of base64. Unlike Facebook, OLX photo URLs are unsigned and do **not** expire, so a
+of base64. OLX photo URLs are unsigned and do **not** expire, so a
 retry is safe and usually works: re-run pass 1. If every photo fails, check the
 CDN host is reachable from the browser (open one URL in a tab).
 
@@ -71,9 +71,8 @@ the row is there, add it to `BRAND_IDS` in `import-watch.js` and
 
 ## No green banners after the import
 
-Same rules as the Facebook path — the CDP exception on `importWatch` is the normal
-path, not a failure, because the submit navigates the tab out from under the
-evaluate. **Never retry on that exception; verify by page content first**, or you
+The CDP exception on `importWatch` is the normal path, not a failure, because the
+submit navigates the tab out from under the evaluate. **Never retry on that exception; verify by page content first**, or you
 double-import the watch. See `import-verify-state` §2.
 
 If the banners are genuinely absent, read `document.body.innerText` for the form's
@@ -117,7 +116,50 @@ fallback (`id_external_listing_id` → `id_facebook_listing_id`), so the id is n
 lost — it lands in the old column and the migration's backfill relabels it by
 `source_url` when the deploy lands. Nothing to fix by hand.
 
-## Everything else
+## Harness injection fails
 
-Failure modes shared with the Facebook path (admin login expired, harness injection,
-image fetch retries, Select2 brand fallback) are in `watch-troubleshooting`.
+`RuntimeError: harness injection failed` means `window.importWatch` was not defined
+after the `<script>` append. Retry once. If it still fails, the CDP expression size
+limit is the usual cause — fall back to filling the form with small `js()` calls:
+
+```javascript
+const set = (id, val) => { if (!val && val !== 0) return;
+  const el = document.getElementById(id); if (!el) return;
+  el.value = String(val); el.dispatchEvent(new Event('change', {bubbles: true})); };
+set('id_model_name', '…'); set('id_price', '…'); set('id_condition', 'good');
+set('id_movement', 'automatic'); set('id_currency', 'RON');
+set('id_source', 'olx'); set('id_external_listing_id', 'AD_ID');
+// … then the images payload, then submit:
+document.querySelector('input[name="_addanother"]').click();
+```
+
+Keep each expression under ~3 KB. Each `images_payload` entry MUST be
+`{"data_url": "…"}`, never a plain string — a plain string raises
+`AttributeError: 'str' object has no attribute 'get'` server-side.
+
+## Brand select fails
+
+The harness sets `#id_brand` directly and falls back to Select2 (`selectBrandSelect2`,
+5 attempts). If both fail it returns `{success:false, error:'BRAND_FAILED'}`. Check the
+brand really exists: `https://3ceasuri.ro/admin/watches/brand/?q=<name>` — by NAME, not
+slug. If it exists, add it to `BRAND_IDS` in `import-watch.js` and
+`references/brand-ids.md`, then re-run pass 2.
+
+## Admin DB outage
+
+`OperationalError: failed to resolve host 'anunturi1-anunturi.h.aivencloud.com'` — a
+Django error page with a traceback on the admin means PostgreSQL is unreachable. This is
+server-side. Wait 30 s and retry; if it persists, stop the session and report.
+
+## Retry / rollback policy
+
+| Failure | Action |
+|---|---|
+| Harness injection fails | Retry once, then manual field filling (above) |
+| `importWatch` timeout / CDP exception | **Do not retry.** Verify by page content — it likely succeeded |
+| No green banners | Re-inject harness → re-run pass 2. Max 2 retries, then log a skip |
+| Ad JSON won't load | Confirm the ad still exists; if gone, drop it and move on |
+| Photos all fail | Re-run pass 1 (OLX URLs don't expire) |
+| Admin DB down | Wait 30 s, retry. If persistent, stop and report |
+| Already imported | Skip, log it, next candidate |
+| WebSocket drops | Reconnect; browser-use uses short-lived connections per call |

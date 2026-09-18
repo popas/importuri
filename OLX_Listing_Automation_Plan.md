@@ -2,8 +2,8 @@
 
 This file only sequences the work. Each step below is a skill — invoke the skill for
 the phase you are in (via the Skill tool) and follow it. Load only the skill for the
-current phase. The Facebook source has its own orchestrator,
-`Watch_Listing_Automation_Plan.md`; do not mix the two in one session.
+current phase. OLX is the only live source; the Facebook path is parked in
+`archive/facebook/` and is not part of this loop.
 
 ## The loop
 
@@ -51,21 +51,21 @@ When anything fails at any step → invoke `olx-troubleshooting`.
    `series`/`connectivity`/`compatibility` get filled. A classic watch in 1943 is
    flagged `looks_classic` and goes the other way.
 
-Rule 2 in the Facebook orchestrator ("never modify image URLs") does **not** apply
-here: OLX links are unsigned and templated, and the importer deliberately rewrites
-`{width}x{height}` to `1000x1000`.
+**Image URLs are rewritten on purpose here.** OLX links are unsigned and templated, so
+the importer rewrites `{width}x{height}` to `1000x1000`. (The archived Facebook path
+forbade touching image URLs — its signed CDN params were required. That rule is FB-only
+and does not apply to OLX.)
 
 ## Assets
 
 - Skills: `.claude/skills/<name>/SKILL.md` — `olx-session-setup`,
   `olx-find-smartwatches`, `olx-find-watches`, `olx-import-smartwatch`,
-  `olx-import-watch`, `olx-troubleshooting`; `import-verify-state` is shared with
-  the Facebook path.
+  `olx-import-watch`, `import-verify-state`, `olx-troubleshooting`.
 - Discovery: `.../scripts/olx-find-smartwatches.py` (cat 1943),
   `.../scripts/olx-find-watches.py` (cat 1677)
 - Importers: `.../scripts/olx-import-smartwatch.py`, `.../scripts/olx-import-watch.py`
 - Shared: `.../scripts/olx_api.py` (API, param map, photos),
-  `.../scripts/admin_import.py` (the admin half, shared with Facebook),
+  `.../scripts/admin_import.py` (the admin half: dedup, brand, submit, verify),
   `.../scripts/infer_fields.py` (the contract, profiles `classic` / `smart`),
   `.../scripts/import-watch.js` (harness v7, authoritative)
 - Brand ID mapping: `.../references/brand-ids.md` · blocklist:

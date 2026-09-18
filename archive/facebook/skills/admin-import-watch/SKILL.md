@@ -9,7 +9,7 @@ The admin side of importing ONE watch. `$PROJECT_ROOT` / `$CDP_HOST` from `watch
 
 ## One-shot importer — THE DEFAULT PATH
 
-`$PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py` collapses this skill +
+`$PROJECT_ROOT/archive/facebook/scripts/import-post.py` collapses this skill +
 `fb-extract-post` + `import-verify-state` into a single `browser-use` call for one post. It
 runs **both dedup stages**, gates on `pcb.<ID>`, **captures the video permalink of
 video-first posts (→ `video_url`) and skips blocklisted sellers**, collects the carousel, infers fields (RO→enum + defaults + the
@@ -18,8 +18,8 @@ verifies both banners, and **reads the saved record back**.
 
 ```bash
 export BU_CDP_URL="http://$CDP_HOST"
-POST_ID=<id>    browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
-LISTING_ID=<id> browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py  # kind:"listing"
+POST_ID=<id>    browser-use < $PROJECT_ROOT/archive/facebook/scripts/import-post.py
+LISTING_ID=<id> browser-use < $PROJECT_ROOT/archive/facebook/scripts/import-post.py  # kind:"listing"
 ```
 
 **Do not run a DRY_RUN pass first.** It doubles the browser work and the output on posts that
@@ -30,7 +30,7 @@ created. Fix what it flagged and re-run:
 
 ```bash
 POST_ID=<id> CONFIRM=1 OVERRIDES='{"brand":"Westbury","model":"Chronograph Valjoux 7733"}' \
-  browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
+  browser-use < $PROJECT_ROOT/archive/facebook/scripts/import-post.py
 ```
 
 `CONFIRM=1` passes the review gate; it cannot wave through a missing brand/model/price — the

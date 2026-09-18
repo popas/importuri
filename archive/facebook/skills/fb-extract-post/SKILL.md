@@ -28,7 +28,7 @@ unsure. Correct it by re-running the same post id with overrides — overrides a
 
 ```bash
 POST_ID=<id> CONFIRM=1 OVERRIDES='{"model":"Bambino Automatic","caseMat":"steel"}' \
-  browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/import-post.py
+  browser-use < $PROJECT_ROOT/archive/facebook/scripts/import-post.py
 ```
 
 Override keys are the `importWatch` field names: `brand model price currency condition movement
@@ -49,7 +49,7 @@ so check these rather than assume:
   fragment or swallowed the whole post, override with a clean descriptive model.
 
 The full RO→enum table, defaults, and the extraction methods live in
-`harness/3ceasuri-import/references/post-extraction.md` — the script mirrors it, so change
+`archive/facebook/references/post-extraction.md` — the script mirrors it, so change
 both together or neither.
 
 ## Rules that still bind you

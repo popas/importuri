@@ -2,7 +2,7 @@
 # =============================================================================
 # olx-find-smartwatches.py — discovery for OLX category 1943 (smartwatch-uri).
 #
-# The OLX counterpart of find-posts.py, and much simpler than it: OLX answers
+# OLX answers
 # its own JSON API from a page already on olx.ro, so there is no feed to scroll,
 # no hydration to wait out and no DOM lore. One paged API loop, objective
 # filters, batched Stage-1 dedup, one CANDIDATES: line.
