@@ -6,6 +6,13 @@
 Paste everything from "## THE PROMPT" down into the new session. Sections 1–6 below it are
 the analysis that prompt refers to — the new session reads them from this file.
 
+> **Updated 2026-09-19.** Commit `d772c3d` archived the Facebook source (`archive/facebook/`)
+> and fixed two of the findings below outright — **3.5** (`import-verify-state` was
+> Facebook-shaped and duplicated the importer's own verification) and **3.6** (the
+> `series` field that does not exist). Both are marked RESOLVED in place rather than
+> deleted, because the next session needs to know they were real. Everything else in §3
+> still stands. Always-on context dropped 11,097 → 6,997 bytes, all of it now OLX.
+
 ---
 
 ## THE PROMPT
@@ -122,13 +129,13 @@ and produce a shell error the model then "fixes" creatively. There is no
 `OVERRIDES_FILE`. Confirmed: `grep -n OVERRIDES *.py` — env var only.
 
 **3.2 Omission deletes data, and the model must retype the whole description.**
-`olx-import-watch.py:184-189`: any `SCHEMA_FIELDS` key absent from `OVERRIDES` is
+`olx-import-watch.py:184-188`: any `SCHEMA_FIELDS` key absent from `OVERRIDES` is
 popped from the baseline. `description` is in `SCHEMA_FIELDS` but is deliberately
-excluded from the "Known from OLX" block (`:160`, `k != "description"`), so the model
+excluded from the "Known from OLX" block (`:158-159`, `k != "description"`), so the model
 has to copy the entire cleaned seller description out of the prompt's ad-text section
 and back into the JSON, verbatim, every time. That is the single largest transcription
 surface in the loop and it is on the critical path of a shell argument. Same trap for
-`phone`: it is in `SCHEMA_FIELDS`, so omitting it clears it, and `:216` then pays a
+`phone`: it is in `SCHEMA_FIELDS`, so omitting it clears it, and `:215` then pays a
 second page navigation (+~25 s) to re-reveal it.
 
 **3.3 Candidate triage is unbounded prose judgement.**
@@ -139,23 +146,26 @@ stock photos and renders, inflated generation claims. No output format, no decis
 table, no threshold. Several of these are regex-able and are not regexed.
 
 **3.4 `REVIEW:` has no decision table, and `CONFIRM=1` is a skeleton key.**
-The review gate (`olx-import-watch.py:230-249`) raises 8 different reasons — new brand,
+The review gate (`olx-import-watch.py:229-248`) raises 8 different reasons — new brand,
 model/price/movement not inferred, wall clock without case material, <2 images, thin
 description, mis-routing to the wrong importer. `CONFIRM=1` passes *all* of them plus
 the `is_wristwatch`/`is_bulk_lot` skip gates at once. A small model that learns
 "REVIEW → add CONFIRM=1" will bulldoze a mis-routed smartwatch and a bulk lot with the
 same reflex it uses for a legitimately-thin description.
 
-**3.5 `import-verify-state` is Facebook-shaped and redundant for OLX.**
+**3.5 `import-verify-state` is Facebook-shaped and redundant for OLX.** — **RESOLVED
+2026-09-19 (`d772c3d`)**: it now reads `RESULT:` first via a decision table and keeps the
+manual JS only for when `RESULT:` is missing or `ok: false`. Described below as it was.
 It tells the model to hand-run three JS snippets for banners, change-link and readback.
 The OLX importers already ran exactly that inside `admin_import.verify()` and returned
-`banners`, `readback`, `readback_ok` on the `RESULT:` line (`olx-import-watch.py:299-302`).
+`banners`, `readback`, `readback_ok` on the `RESULT:` line (`olx-import-watch.py:298-301`).
 A literal reader does the work twice, on whatever tab it happens to be on. What is
 actually left for OLX is: append `RESULT.state_entry` to `history.jsonl` and bump
 `state.json` — two mechanical writes, currently expressed as a hand-assembled
 `python3 -c` one-liner.
 
-**3.6 Doc/code drift that breaks a literal reader.**
+**3.6 Doc/code drift that breaks a literal reader.** — **RESOLVED 2026-09-19 (`d772c3d`)**
+for the two instances found; the audit itself is still worth repeating.
 `.claude/skills/olx-import-smartwatch/SKILL.md:62` says "`series`, `connectivity` and
 `compatibility` are required". `series` is **not** a contract field —
 `infer_fields.validate({"series": …})` returns `['series is not a field in the
@@ -181,10 +191,10 @@ small model, which will either over-weight an anecdote or skip the imperative bu
 next to it.
 
 **3.10 Operational friction.**
-`.claude/settings.local.json` has an empty allowlist, so an unattended run stalls on
-permission prompts for every `browser-use` call. There is no OLX counterpart of
-`archive/facebook/IMPORT_SESSION_PROMPT.md`. Session target and source are asked
-interactively.
+`.claude/settings.local.json` still has an empty allowlist, so an unattended run stalls on
+permission prompts for every `browser-use` call — **still open**. There is still no OLX
+counterpart of `archive/facebook/IMPORT_SESSION_PROMPT.md` — **still open** (lever I).
+Session target and source are still asked interactively.
 The scripts are `browser-use` payloads piped on stdin — a model that "corrects" this to
 `python3 olx-import-watch.py` gets a confusing `NameError` on the CDP helpers.
 

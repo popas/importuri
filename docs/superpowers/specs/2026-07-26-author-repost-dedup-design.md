@@ -1,7 +1,9 @@
 # Author-based repost dedup — design
 
 Date: 2026-07-26
-Status: approved (pending written-spec review)
+Status: IMPLEMENTED (f580729) as `admin_import.find_repost()`. Superseded in part on
+2026-08-20: a model-only match is now weak/REVIEW, not a strong auto-skip — see the
+comment in `find_repost` for why. Kept as the rationale record.
 
 ## Problem
 

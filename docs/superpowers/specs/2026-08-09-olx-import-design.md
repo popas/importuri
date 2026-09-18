@@ -1,7 +1,9 @@
 # OLX import — design
 
 **Date:** 2026-08-09
-**Status:** approved, ready for planning
+**Status:** IMPLEMENTED (f580729) — `olx_api.py`, the two discovery scripts and the two
+importers all ship. Kept as the rationale record; the live loop is
+`OLX_Listing_Automation_Plan.md`.
 
 Add olx.ro as a second import source alongside Facebook, feeding the same
 3ceasuri.ro admin. Smartwatches come from category **1943**
