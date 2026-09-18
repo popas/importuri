@@ -1,138 +1,111 @@
 ---
 name: olx-import-smartwatch
-description: Invoke PER WATCH to import one OLX smartwatch ad (category 1943) in two passes: contract out, filled back, then import.
+description: Invoke PER WATCH to import one OLX smartwatch ad (category 1943) in two passes: seeded contract draft out, edited back, then import.
 ---
 
 # olx-import-smartwatch
 
-Imports ONE OLX smartwatch ad into the 3ceasuri admin. `$PROJECT_ROOT` / `$CDP_HOST`
-come from `olx-session-setup`; the ad id comes from `.candidates-olx-smart.json`.
-
-## Two passes, because YOU do the inference
-
-OLX's structured params answer condition, gender, style and price outright. What
-they never answer is **which watch this is** — the model, the generation, whether
-it is the cellular variant. That is pass 1's job to ask you.
-
-### Pass 1 — the contract (writes NOTHING)
+Imports ONE OLX smartwatch ad. `$PROJECT_ROOT` / `$CDP_HOST` come from
+`olx-session-setup`; the id comes from `candidates.py next`.
 
 ```bash
+CAND=$PROJECT_ROOT/harness/3ceasuri-import/.candidates-olx-smart.json
+SCRIPT=$PROJECT_ROOT/harness/3ceasuri-import/scripts/olx-import-smartwatch.py
 export BU_CDP_URL="http://$CDP_HOST"
-AD_ID=<id> browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/olx-import-smartwatch.py
 ```
 
-It dedups on the ad id, reads `/api/v1/offers/<id>/`, checks the blocklist, maps
-the OLX params, downloads the photos to
-`$PROJECT_ROOT/harness/3ceasuri-import/.photos/olx-<id>/`, and emits:
+## 1. Pass 1 — the contract draft (writes NOTHING)
+
+```bash
+AD_ID=<id> CANDIDATES_FILE=$CAND browser-use < $SCRIPT
+```
+
+Emits:
 
 ```
 EXTRACT: {ad_id, title, images, chars, seller_id, seller_name, business, city}
-EXTRACT_PROMPT: {ad_id, prompt, photos:[paths], photos_failed, rerun}
+EXTRACT_PROMPT: {ad_id, draft, todo, prompt, photos:[paths], photos_failed, phone_status, rerun}
 ```
 
-**Read the prompt AND at least one photo.** The dial and the crown answer the model
-and the cellular question far more often than the ad text does. Read a second photo
-only when you need the back or a box label.
+`draft` is a JSON file holding the **whole contract, already filled in** from the
+OLX params: brand, price, condition, materials, the cleaned description, the phone,
+the location. You never retype any of it.
 
-### Pass 2 — import
+`movement`, `style`, `displayType` and `category` are **not** yours to decide here —
+the category already answered them (`smart`/`smart`/`smart`/`wrist`). They are not
+in `todo`.
+
+## 2. Fill only `todo`
+
+Read the `prompt` and **exactly one photo** from `photos`.
+
+Edit the `draft` file in place. Change only the fields named in `todo`. Save.
+
+| Field | Rule |
+|---|---|
+| `model` | the model NAME only. Short, no brand, never a sentence. Ads routinely inflate the generation — the photo settles it, not the title. |
+| `connectivity` | `gsm` (has its own SIM/eSIM) or `no_gsm`. Required. |
+| `compatibility` | `ios`, `android` or `both`. Required. |
+| `is_wristwatch` | `false` only for an accessory (strap, charger, case, dock, empty box) — that is a skip |
+| `is_bulk_lot` | `true` if one price covers several watches |
+| `notes` | our own classification, if the photos identified a model the seller did not name. Leave `description` as the seller wrote it. |
+
+There is **no `series` field.** `infer_fields.validate()` rejects any key outside
+the contract, which is a hard `ERROR` in pass 2. The generation belongs in `model`.
+
+**A field you blank is CLEARED.** The draft removes the retyping, not the clearing.
+Leave alone anything not in `todo`.
+
+If `phone_status` is `login_required`, sign in to olx.ro and re-run pass 1. Every
+other value is fine — a missing phone never fails an import.
+
+## 3. Pass 2 — import
 
 ```bash
-AD_ID=<id> CONFIRM=1 OVERRIDES='{…the filled contract…}' \
-  browser-use < $PROJECT_ROOT/harness/3ceasuri-import/scripts/olx-import-smartwatch.py
+AD_ID=<id> CANDIDATES_FILE=$CAND CONFIRM=1 browser-use < $SCRIPT
 ```
 
 Validate → repost dedup → ensure brand → inject harness → `importWatch()` → both
-green banners → readback → `RESULT:`.
+banners → readback → `RESULT:`.
 
-## The contract is authoritative, including about silence
+`OVERRIDES='{…}'` still works and wins over the draft — it is for a human patching
+one field from the shell, not for you.
 
-A contract field you leave out is **CLEARED**, not kept from the OLX params. The
-prompt shows you what OLX already answered under "Known from OLX" — restate those
-values in your answer. Answer in full, every time.
+## 4. If `REVIEW:` fires
 
-An `is_wristwatch` key in `OVERRIDES` is what marks the answer as a full contract;
-a targeted fix without it still merges over the baseline.
+Each reason is `{code, action, message, field}`. **You never override a gate.**
 
-## Smartwatch-specific rules
-
-- `movement`, `style` and `displayType` are always `smart` — the script forces them
-  so the harness can never default `movement` to quartz. An answer that says
-  `automatic` is treated as a **routing mistake** and stops: that ad belongs to
-  `olx-import-watch.py`.
-- `connectivity` and `compatibility` are required — missing either stops for review.
-  `compatibility`: Apple Watch → `ios`; Galaxy Watch 4+ → `android`; Galaxy Watch 3 and
-  older, Garmin, Amazfit, Huawei, Xiaomi, Fitbit → `both`. `connectivity`: `gsm` when
-  the ad or a photo shows "LTE"/"Cellular"/"4G"/"eSIM", or the red ring/dot on an Apple
-  Watch crown; otherwise `no_gsm`.
-- **There is no `series` field.** The generation goes in `model` ("Watch Series 9",
-  "Galaxy Watch 6 Classic"). Putting `series` in OVERRIDES fails validation with
-  `series is not a field in the contract` and aborts pass 2.
-- `is_wristwatch: false` means **accessory** here (strap, charger, case, dock, empty
-  box) and skips the import. Say which in `notes`.
-- Most smartwatch brands are NOT in `BRAND_IDS` yet, so `NEW_BRAND:` is the normal
-  case. Follow the new-brand procedure below every time it fires.
-
-## Seller phone numbers
-
-Pass 1 reveals the seller's phone and reports `phone_status`. OLX masks the number
-in its JSON and answers `/api/v1/offers/<id>/phones/` with 400, so the importer
-clicks the page's show-phone button — the one place it reads the ad's HTML rather
-than its JSON.
-
-**Log into olx.ro before the session** (see `olx-session-setup`). Signed in, both
-private and business sellers give up their number; signed out, private ads show a
-login wall instead.
-
-| `phone_status` | meaning |
+| `action` | What you do |
 |---|---|
-| `ok` | number captured — it appears in the "Known from OLX" block |
-| `login_required` | not signed in to olx.ro; sign in and re-run pass 1 |
-| `no_button` | the seller published no number (`contact.phone: false`), chat only — normal, not a failure |
-| `not_revealed` | the click missed; see `olx-troubleshooting` |
+| `fix` | put the field named in `field` into the draft, re-run step 3. ONCE. Still gated → treat as `skip`. |
+| `skip` | the candidate is already marked in the queue. Log it (step 5) and take the next id. |
 
-A missing phone never fails an import — a watch with no number is imported exactly like any other. When a number does come back, restate it in
-your answer like any other contract field — and if you leave it out, pass 2
-re-reveals it rather than clearing it, since a phone is marketplace metadata and
-not a claim in the ad text.
+`CONFIRM=1` is not a skeleton key: it is in the command because the draft is the
+answer, and it cannot wave through a gate you did not satisfy, a suspiciously cheap
+listing, or a missing brand/model/price.
 
-## Suspiciously cheap = fake, never imported
+A draft that sets `movement` to anything but `smart` raises `misrouted_classic`
+(`skip`) — that ad belongs to `olx-import-watch`.
 
-Standing user directive (2026-08-09): **a suspiciously cheap listing is not a
-bargain, it is a fake.** A replica seldom says "replica"; the price is what gives
-it away. Discovery drops these as `suspiciously_cheap`, and the importers refuse
-them outright — before the photos are fetched, and `CONFIRM=1` does **not** wave
-one through.
+## 5. Log the outcome
 
-The floors live in one place, `scripts/price_sanity.py`: a per-brand table
-(Rolex 6000 RON, Omega 1500, Breitling 2500 …) plus model-family floors for
-smartwatches (any Watch Ultra 1200, Apple Watch Series 9-11 700 …). They are the
-lowest price a GENUINE used example plausibly trades at, set generously so the
-rule catches obvious fakes rather than shaving the honest market. Tune them there
-and every script follows.
+```bash
+AD_ID=<id> CANDIDATES_FILE=$CAND CONFIRM=1 browser-use < $SCRIPT \
+  | tee /dev/stderr \
+  | python3 $PROJECT_ROOT/harness/3ceasuri-import/scripts/olx-log-result.py
+```
 
-The brand is matched against the ad's own words as well as the marketplace's brand
-field, because that field is unreliable — OLX offered "Swiss" for a Christophe
-Duchamp. A listing that calls itself a Rolex is judged as one.
-
-## Review gate
-
-`REVIEW:` fires and nothing is written when: the brand is new, the model or price
-did not infer, any of the three smart facets is missing, fewer than 2 photos, or the
-description is thin. Fix what it flagged and re-run with `CONFIRM=1`.
-
-`CONFIRM=1` passes the review and skip gates; it cannot wave through a missing
-brand/model/price — the form would reject those.
+It appends to `history.jsonl` and bumps `state.json`. An unverified `RESULT:` logs
+nothing, by design.
 
 ## New brand procedure
 
-When `NEW_BRAND:` appears, the brand was created in (or found in) the DB, but the
-local map is now stale. Update **both**, then commit:
+On `NEW_BRAND:`, update **both** and commit:
 
 1. `harness/3ceasuri-import/scripts/import-watch.js` → add `"Name":<id>` to `window.BRAND_IDS`
 2. `harness/3ceasuri-import/references/brand-ids.md` → add the same row
 
-## Then
+## Next
 
-Invoke `import-verify-state`, then `/clear` and take the next id.
-
-When anything fails → `olx-troubleshooting`.
+`candidates.py next` for the following id. Anything fails → `olx-troubleshooting`.
+Why any of this is the way it is: `harness/3ceasuri-import/references/olx-lore.md`.

@@ -5,22 +5,26 @@ description: Invoke ONLY when an OLX step fails: 403s and bot checks, ad JSON or
 
 # olx-troubleshooting
 
-Failure modes of the OLX path and what to do about them. Read this only when
-something has actually failed.
+Symptom → cause → action. Read only when something has actually failed. The
+reasoning behind each rule is in `harness/3ceasuri-import/references/olx-lore.md`.
 
-## The API returns nothing / discovery dies on page 0
+## First, the two that cost you a watch if you get them wrong
 
-`ERROR: OLX returned no offers for category …` means the `fetch()` came back
-non-200 or unparseable. In order of likelihood:
+| Situation | Do |
+|---|---|
+| `importWatch` raised `Inspected target navigated or closed` or `Runtime.evaluate timed out` | **Do NOT retry.** That is the success path — the submit navigated the tab out from under CDP. Verify by page content (`import-verify-state` §3). A retry double-imports. |
+| `REVIEW:` fired | **Never override it.** `action: fix` → supply the named field in the draft, re-run pass 2 once. `action: skip` → log the code, take the next id. |
 
-1. **The tab is not on olx.ro.** Same-origin is what makes the API answer at all; a
-   fetch from any other origin gets the same 403 that `curl` gets. Check with
-   `js('(() => location.href)()')` and navigate the tab to the category URL.
-2. **A bot check is in the way.** Open the category URL in the browser and look:
-   if there is a challenge page or a cookie banner covering the content, clear it by
-   hand once. The session cookie then covers subsequent calls.
-3. **The category id changed.** Verify by opening an ad from the category and
-   reading `category.id`:
+## Discovery dies on page 0
+
+`ERROR: OLX returned no offers for category …` — the `fetch()` came back non-200 or
+unparseable.
+
+| Cause | Check | Fix |
+|---|---|---|
+| the tab is not on olx.ro (most likely) | `js('(() => location.href)()')` | navigate it to the category URL — same-origin is what makes the API answer |
+| a bot check or cookie banner | open the category URL and look | clear it by hand once; the cookie covers later calls |
+| the category id changed | read `category.id` off any ad in it | update `CATEGORY_SMARTWATCH` / `CATEGORY_WATCHES` in `scripts/olx_api.py` |
 
 ```python
 print(js('(async () => { const r = await fetch("/api/v1/offers/<AD_ID>/",'
@@ -28,99 +32,91 @@ print(js('(async () => { const r = await fetch("/api/v1/offers/<AD_ID>/",'
          ' return JSON.stringify(d.data.category); })()'))
 ```
 
-   If it differs from 1943 (smartwatches) / 1677 (watches), update
-   `CATEGORY_SMARTWATCH` / `CATEGORY_WATCHES` in `scripts/olx_api.py`.
+## One ad won't load
 
-## An individual ad won't load
+`ERROR: OLX ad <id> did not load` — removed, expired, or the bot check. Confirm by
+opening `https://www.olx.ro/d/oferta/…`. Genuinely gone → mark the candidate
+`skipped` and move on; nothing was written.
 
-`ERROR: OLX ad <id> did not load` — the ad was removed, expired, or the bot check
-is in the way. Confirm by opening `https://www.olx.ro/d/oferta/…` in the tab. If the
-ad is genuinely gone, drop it from the candidates file and move on; nothing was
-written.
+`SKIP: ad is not active` is **not** a failure — OLX marks sold and withdrawn ads
+that way.
 
-`SKIP: ad is not active (status=…)` is not a failure — OLX marks sold and withdrawn
-ads that way, and importing them would list something nobody can buy.
+## Photos empty or short
 
-## Photos come back empty or short
+`photos_failed > 0` means a CDN fetch returned under 500 bytes of base64. OLX photo
+URLs do not expire, so re-running pass 1 is safe and usually works (use `FRESH=1` if
+a draft already exists). All photos failing → check the CDN host is reachable from
+the browser.
 
-`EXTRACT_PROMPT.photos_failed > 0` means the CDN fetch returned less than 500 bytes
-of base64. OLX photo URLs are unsigned and do **not** expire, so a
-retry is safe and usually works: re-run pass 1. If every photo fails, check the
-CDN host is reachable from the browser (open one URL in a tab).
+## `REVIEW: draft_invalid`
 
-The importer rewrites `image;s={width}x{height}` to `1000x1000`. That is the
-intended use of the template, not URL tampering — but if OLX ever rejects the size,
-`olx_api.photo_urls(ad, width=..., height=...)` takes other values.
+The validator caught something the admin form would have silently dropped. Fix the
+draft file (`EXTRACT_PROMPT.draft`) and re-run pass 2. **Do not re-run pass 1** — it
+re-seeds the draft and destroys your answers (`FRESH=1` does that on purpose).
 
-## `OVERRIDES are not valid DB values`
+| Message | Fix |
+|---|---|
+| `model is required and was left null in the draft` | answer it |
+| `series is not a field in the contract` | there is no `series` field; the generation goes in `model` |
+| `connectivity='LTE' is not one of gsm\|no_gsm` | use the legal enum |
+| `year='1970-1980' is not a int` | `year` is an integer; put the decade in `model` |
+| `movement='mecanic'` | `manual` |
 
-The validator caught an enum that the admin form would have silently dropped. The
-message names the field and the legal values. Common ones:
+## Pass 1 runs again instead of pass 2
 
-- `connectivity: "LTE"` → the enum is `gsm` / `no_gsm`
-- `year: "1970-1980"` → `year` is an integer; put the decade in `model`
-- `movement: "mecanic"` → `manual`
+Pass 2 is `CONFIRM=1` with **no** `OVERRIDES` — it reads the draft from disk. If
+pass 1 runs instead, the draft is missing: check
+`harness/3ceasuri-import/.contracts/olx-<id>.json`. It is gitignored, so a clean
+checkout has none.
 
-## `failed to create/find brand`
+## The queue does not advance
 
-The brand row may have been written even though the lookup failed. **Look before
-retrying**, or you get a duplicate with a mangled slug:
-`https://3ceasuri.ro/admin/watches/brand/?q=<name>` — search by NAME, not slug. If
-the row is there, add it to `BRAND_IDS` in `import-watch.js` and
+```bash
+python3 $PROJECT_ROOT/harness/3ceasuri-import/scripts/candidates.py counts <file>
+```
+
+`QUEUE_EMPTY` with everything `imported`/`skipped`/`error` → the sweep really is
+done; re-run discovery. A candidate marked `skipped` by mistake → edit its `status`
+back to `pending` by hand.
+
+`WARN: could not mark the queue` on an otherwise good import → only bookkeeping
+failed; `CANDIDATES_FILE` points at a path that does not exist. The import
+succeeded. Fix the path before the next id.
+
+## `failed to create/find brand` / `BRAND_FAILED`
+
+The row may exist even though the lookup failed. **Look before retrying** or you
+create a duplicate with a mangled slug:
+`https://3ceasuri.ro/admin/watches/brand/?q=<name>` — search by **NAME, not slug**.
+
+Exists → add it to `BRAND_IDS` in `import-watch.js` **and**
 `references/brand-ids.md`, then re-run pass 2.
 
-## No green banners after the import
+## No green banners
 
-The CDP exception on `importWatch` is the normal path, not a failure, because the
-submit navigates the tab out from under the evaluate. **Never retry on that exception; verify by page content first**, or you
-double-import the watch. See `import-verify-state` §2.
+Read the CDP-exception rule at the top first. If the banners are genuinely absent,
+read `document.body.innerText` on the add page for the form's error list — a
+rejected required field (brand, model, price, condition, movement) is the usual
+cause.
 
-If the banners are genuinely absent, read `document.body.innerText` for the form's
-error list. A rejected required field (brand, model, price, condition, movement) is
-the usual cause.
+## `phone_status` is not `ok`
 
-## The phone comes back empty (`phone_status`)
+| Value | Meaning | Action |
+|---|---|---|
+| `login_required` | the CDP Chrome is not signed in to olx.ro | sign in (`olx-session-setup`), re-run pass 1 |
+| `no_button` | the seller published no number; chat-only | none — roughly 1 ad in 5, not a failure |
+| `not_revealed` | a control was clicked, no `tel:` appeared | lore §5: only VISIBLE controls, native `.click()` |
+| `wrong_page` | the tab had not navigated to the target ad yet | re-run pass 1 |
 
-Pass 1 reports how the phone reveal went:
-
-- `ok` — the number was read. Works for **both private and business sellers**, as
-  long as the browser is signed in to olx.ro.
-- `login_required` — the CDP Chrome is not signed in to olx.ro. Private ads then
-  show "Intra in contul tau OLX ... pentru a contacta acest vanzator" where the
-  number would be. Sign in (see `olx-session-setup`) and re-run pass 1.
-  The importer checks for that wall *before* clicking, deliberately: on such an ad
-  the button navigates the tab to `login.olx.ro`, a different origin, and every
-  later `/api/v1/` fetch from that tab 404s with "ad did not load".
-- `no_button` — the seller published no number at all (`contact.phone: false` in
-  the ad JSON); the ad is chat-only. Normal, not a failure — roughly one ad in five.
-- `not_revealed` — a control was clicked but no `tel:` link appeared. If the number
-  is plainly visible in your own browser, the click missed: OLX renders the control
-  twice (sidebar + sticky bar) and the first in DOM order has width 0, so only
-  VISIBLE controls may be clicked, using the native `.click()` — a synthetic
-  MouseEvent does not fire the handler.
-
-A missing phone never fails an import. If the tab did get stranded on
-`login.olx.ro`, `olx_api.ensure_tab` steers it back on the next run — no manual fix.
-
-Do NOT gate the reveal on a "looks logged in" check. Measured 2026-08-09: on a
-private ad the my-account link was present while the session was not authenticated
-for contact details, and the click still redirected. The wall text is the only
-reliable signal.
-
-## The record saved but a field is empty
-
-Read it back (`import-verify-state` §3). If `source`, `external_listing_id`,
-`seller_id` or `seller_name` are missing while everything else saved, the deployed
-admin is still on the pre-2026-08-09 field names. The harness writes through a
-fallback (`id_external_listing_id` → `id_facebook_listing_id`), so the id is not
-lost — it lands in the old column and the migration's backfill relabels it by
-`source_url` when the deploy lands. Nothing to fix by hand.
+A missing phone never fails an import. Do NOT gate the reveal on a "looks logged
+in" check — the wall text is the only reliable signal (lore §5). A tab stranded on
+`login.olx.ro` is steered back automatically on the next run.
 
 ## Harness injection fails
 
-`RuntimeError: harness injection failed` means `window.importWatch` was not defined
-after the `<script>` append. Retry once. If it still fails, the CDP expression size
-limit is the usual cause — fall back to filling the form with small `js()` calls:
+`RuntimeError: harness injection failed` — `window.importWatch` was not defined
+after the `<script>` append. Retry once. Still failing → the CDP expression size
+limit; fall back to small `js()` calls, each under ~3 KB:
 
 ```javascript
 const set = (id, val) => { if (!val && val !== 0) return;
@@ -133,33 +129,37 @@ set('id_source', 'olx'); set('id_external_listing_id', 'AD_ID');
 document.querySelector('input[name="_addanother"]').click();
 ```
 
-Keep each expression under ~3 KB. Each `images_payload` entry MUST be
-`{"data_url": "…"}`, never a plain string — a plain string raises
-`AttributeError: 'str' object has no attribute 'get'` server-side.
+Each `images_payload` entry MUST be `{"data_url": "…"}`, never a plain string — a
+plain string raises `AttributeError: 'str' object has no attribute 'get'`
+server-side.
 
-## Brand select fails
+## A field saved empty
 
-The harness sets `#id_brand` directly and falls back to Select2 (`selectBrandSelect2`,
-5 attempts). If both fail it returns `{success:false, error:'BRAND_FAILED'}`. Check the
-brand really exists: `https://3ceasuri.ro/admin/watches/brand/?q=<name>` — by NAME, not
-slug. If it exists, add it to `BRAND_IDS` in `import-watch.js` and
-`references/brand-ids.md`, then re-run pass 2.
+Read it back (`import-verify-state` §3). `source`, `external_listing_id`,
+`seller_id` or `seller_name` missing while everything else saved → the deployed
+admin is still on the pre-2026-08-09 field names. The harness writes through a
+fallback, so nothing is lost and there is nothing to fix by hand (lore §7).
 
 ## Admin DB outage
 
-`OperationalError: failed to resolve host 'anunturi1-anunturi.h.aivencloud.com'` — a
-Django error page with a traceback on the admin means PostgreSQL is unreachable. This is
-server-side. Wait 30 s and retry; if it persists, stop the session and report.
+`OperationalError: failed to resolve host 'anunturi1-anunturi.h.aivencloud.com'` —
+PostgreSQL is unreachable, server-side. Wait 30 s and retry; persistent → stop the
+session and report.
 
 ## Retry / rollback policy
 
 | Failure | Action |
 |---|---|
-| Harness injection fails | Retry once, then manual field filling (above) |
 | `importWatch` timeout / CDP exception | **Do not retry.** Verify by page content — it likely succeeded |
-| No green banners | Re-inject harness → re-run pass 2. Max 2 retries, then log a skip |
-| Ad JSON won't load | Confirm the ad still exists; if gone, drop it and move on |
+| Harness injection fails | Retry once, then manual field filling |
+| No green banners | Re-inject, re-run pass 2. Max 2 retries, then log a skip |
+| `REVIEW:` `action: fix` | Supply the named field in the draft, re-run pass 2 ONCE |
+| `REVIEW:` `action: skip` | **Never override.** Log the code, take the next id |
+| `draft_invalid` | Fix the draft; never re-run pass 1 (it re-seeds) |
+| Ad JSON won't load | Confirm the ad exists; gone → mark skipped, move on |
 | Photos all fail | Re-run pass 1 (OLX URLs don't expire) |
-| Admin DB down | Wait 30 s, retry. If persistent, stop and report |
+| Admin DB down | Wait 30 s, retry. Persistent → stop and report |
 | Already imported | Skip, log it, next candidate |
 | WebSocket drops | Reconnect; browser-use uses short-lived connections per call |
+
+Why any of this is the way it is: `harness/3ceasuri-import/references/olx-lore.md`.

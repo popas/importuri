@@ -24,10 +24,11 @@ unless you are reactivating that source.
      for a target)
    - `olx-find-smartwatches` (category 1943) or `olx-find-watches` (category 1677) —
      once per session; runs the matching discovery script and returns candidates
-   - `olx-import-smartwatch` / `olx-import-watch` → `import-verify-state` — per watch,
-     in a FRESH context each (`/clear` between watches). Both importers run TWO passes:
-     pass 1 emits the extraction contract + photos and writes nothing, you fill it,
-     pass 2 imports with `CONFIRM=1 OVERRIDES=…`.
+   - `olx-import-smartwatch` / `olx-import-watch` → `import-verify-state` — per watch.
+     Both importers run TWO passes: pass 1 seeds a complete contract draft on disk
+     and writes nothing, you edit only the fields it lists in `_todo`, pass 2 reads
+     the draft with `CONFIRM=1`. The candidates file is a work queue, so a fresh
+     session resumes from it rather than from memory.
    - `olx-troubleshooting` — only when something fails
 
 Do not load multiple skills at once — each is self-contained for its phase and points
@@ -42,19 +43,26 @@ history.jsonl                      ← append-only local log of every import + s
 .claude/skills/                    ← one per phase, invoked with the Skill tool
 harness/3ceasuri-import/
   scripts/import-watch.js          ← THE HARNESS (authoritative, v7) — injected into admin
+  scripts/olx_import.py            ← THE per-ad flow, both profiles (the two importer
+                                     payloads are wrappers that pick one)
   scripts/admin_import.py          ← the admin half: dedup, brand, inject, submit, verify
   scripts/infer_fields.py          ← the extraction contract: DB enums + prompt + validator,
                                      profiles `classic` / `smart` (NO API call — the agent
-                                     in the loop fills it via OVERRIDES)
+                                     in the loop fills it)
+  scripts/contract_draft.py        ← the seeded contract draft: build / write / read, _todo
+  scripts/candidates.py            ← the work queue (python3, NOT a browser payload)
+  scripts/olx-log-result.py        ← history.jsonl + state.json (python3, NOT a payload)
   scripts/olx_api.py               ← in-page API, param→enum map, photo URLs, phone reveal
   scripts/price_sanity.py          ← price floors — suspiciously cheap = fake, dropped
   scripts/olx-find-smartwatches.py ← category 1943 discovery
   scripts/olx-find-watches.py      ← category 1677 discovery
-  scripts/olx-import-smartwatch.py ← per-ad flow, smart profile
-  scripts/olx-import-watch.py      ← per-ad flow, classic profile
-  .candidates-olx-smart.json       ← 1943 discovery output; lets a /clear'd context resume
-  .candidates-olx-watches.json     ← 1677 discovery output
+  scripts/olx-import-smartwatch.py ← wrapper: olx_import.run("smart", globals())
+  scripts/olx-import-watch.py      ← wrapper: olx_import.run("classic", globals())
+  .contracts/olx-<id>.json         ← the per-ad contract draft (gitignored)
+  .candidates-olx-smart.json       ← 1943 discovery output; the work queue
+  .candidates-olx-watches.json     ← 1677 discovery output; the work queue
   references/brand-ids.md          ← brand→ID mapping source of truth
+  references/olx-lore.md           ← why the rules are the rules; read when troubleshooting
   references/seller-blocklist.json ← never-import sellers (`olx_sellers`; `authors` = FB)
   references/django-backend.md     ← where the Django app lives and what it expects
   tests/                           ← offline stubs: python3 tests/test_*.py (no browser)
@@ -65,19 +73,30 @@ docs/superpowers/specs/            ← design docs; read the two newest before c
 Skills live ONLY in `.claude/skills/` (each a `SKILL.md`). `harness/` holds the scripts
 and data they read — it is not itself a skill.
 
-The four numbered `.py` scripts are **browser-use payloads**: pipe them on stdin
-(`AD_ID=… browser-use < olx-import-watch.py`), never `python3 script.py`. They print
-parseable marker lines (`CANDIDATES: STATS: EXTRACT: EXTRACT_PROMPT: INFER: REVIEW:
-RESULT: …`) and keep everything else inside their own process — that is the whole point,
-so don't reimplement their steps as individual `js()` calls. `admin_import.py`,
-`olx_api.py` and `infer_fields.py` are plain modules the payloads import; they take the
-CDP helpers via `bind(globals())`.
+The four hyphenated `olx-find-*.py` / `olx-import-*.py` scripts are **browser-use
+payloads**: pipe them on stdin (`AD_ID=… browser-use < olx-import-watch.py`), never
+`python3 script.py`. They print parseable marker lines (`CANDIDATES: STATS: EXTRACT:
+EXTRACT_PROMPT: INFER: REVIEW: RESULT: WARN: …`) and keep everything else inside their
+own process — that is the whole point, so don't reimplement their steps as individual
+`js()` calls. `olx_import.py`, `admin_import.py`, `olx_api.py`, `infer_fields.py` and
+`contract_draft.py` are plain modules the payloads import; they take the CDP helpers
+via `bind(globals())` or, for `olx_import.run(profile, globals())`, straight from the
+globals dict.
 
-Data flows one direction per watch: **candidate id → pass 1 (dedup → read the ad →
-`EXTRACT_PROMPT` + photos, no DB write) → you fill the contract → pass 2 (`CONFIRM=1
-OVERRIDES=…` → validate → inject harness → `importWatch({...})` → two green banners →
-readback) → append `history.jsonl`.** A contract field you omit is cleared, not
-defaulted — answer it in full.
+**Two scripts are the exception and ARE run with `python3`**: `candidates.py` (the work
+queue) and `olx-log-result.py` (history + counters). Neither touches a browser.
+
+Data flows one direction per watch: **`candidates.py next` → pass 1 (dedup → read the
+ad → seeded draft + `EXTRACT_PROMPT` + photos, no DB write) → you edit the draft's
+`_todo` fields → pass 2 (`CONFIRM=1` → read draft → validate → inject harness →
+`importWatch({...})` → two green banners → readback) → `olx-log-result.py`.** A
+contract field you blank is cleared, not defaulted — the draft removes the retyping,
+not the clearing rule. `OVERRIDES='{…}'` still works and still wins, for a human
+patching one field from the shell.
+
+**Never override a `REVIEW:` gate.** Each reason carries `{code, action, message,
+field}`: `action: fix` means supply the named field and re-run pass 2 once,
+`action: skip` means log the code and take the next id.
 
 ## Facts that bite
 

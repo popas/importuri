@@ -5,15 +5,11 @@ description: Invoke ONCE per session (not per watch) to sweep OLX category 1677 
 
 # olx-find-watches
 
-Discovery for OLX category **1677** — `/moda-frumusete/ceasuri/` (classic watches:
-mechanical, automatic, quartz). `$PROJECT_ROOT` / `$CDP_HOST` come from
-`olx-session-setup`.
+Discovery for OLX category **1677** — `/moda-frumusete/ceasuri/`. Run **once per
+session**, not per watch. It writes a status-bearing work queue, so a stopped
+session resumes without sweeping again.
 
-Run this **once per session**, not per watch. It walks the category through OLX's
-JSON API, applies the objective filters, dedups against the admin, and writes every
-surviving candidate to disk so a `/clear`'d context can import without sweeping again.
-
-## Run it
+## 1. Run it
 
 ```bash
 export BU_CDP_URL="http://$CDP_HOST"
@@ -30,73 +26,58 @@ CANDIDATES: [{id, price, cur, brand, new_brand, business, seller_name, photos, l
 STATS: {candidates, seen, pages, category_total, dropped:{…}, admin_total, out}
 ```
 
-Full records go to `$PROJECT_ROOT/harness/3ceasuri-import/.candidates-olx-watches.json`.
+Full records, each `status: "pending"`, go to
+`$PROJECT_ROOT/harness/3ceasuri-import/.candidates-olx-watches.json`.
 
-## What the script decides vs what YOU decide
+## 2. Report `STATS.admin_total`
 
-It drops only what a regex gets right every time: inactive ads, no price, price
-below the floor, explicit replica wording, accessories (straps, cases, loose
-movements, "pentru piese"), price ranges (a range means several items), blocklisted
-sellers, already-imported ids. Rejects are counts; `DEBUG_DROPS=1` shows them.
+That is the live site count — the only number worth quoting. Never quote a local
+file.
 
-Two things are **flagged, never dropped** — dropping them was how good listings got
-lost:
+## 3. Triage the snippets
 
-- **`looks_smart: true`** — an Apple/Samsung/Garmin watch listed here. Import it
-  with `olx-import-smartwatch.py`, which fills `series` / `connectivity` /
-  `compatibility`. Do not push it through the classic importer.
-- **`looks_wall: true`** — a wall clock. The site lists those since 2026-08-09
-  (`category="wall"`), so import it with `olx-import-watch.py` and answer
-  `is_wristwatch: false` **plus** `category: "wall"`.
+The script already dropped everything a regex gets right every time: inactive, no
+price, below floor, explicit replica wording, accessories, price ranges,
+activation-locked, explicit shop stock, blocklisted sellers, already-imported.
+Drops are counts; `DEBUG_DROPS=1` shows them.
 
-Yours to judge from the snippets:
-
-- **Amanet and reseller stock.** Business sellers are kept by user directive and
-  flagged. They relist the same watch under fresh ad ids constantly — the importer's
-  seller+model dedup catches most of that, but read the snippet anyway.
-- **Bulk in disguise.** "Ceasuri Hugo Boss" plural, or a photo of six watches with
-  one price.
-- **Multiple watches, each its own price, run together in one ad without a bulk
-  keyword.** "Vand ceas Certina ... 450, vand ceas Nixon ... preț 300" reads like
-  one seller's post but is several separate items — the `is_stock_listing` regex
-  only catches ≥3 prices that carry an explicit currency word right next to them,
-  so a run-on paragraph with the unit omitted on some prices slips through as a
-  single candidate (seen 2026-08-11, brand happened to match a category-1677
-  brand yet the ad surfaced in the 1943 sweep — the brand/category match is not
-  a source-routing signal, read the snippet regardless of which sweep found it).
-  Too few photos to attribute to individual watches → skip the whole ad rather
-  than guess a split.
-- **Replicas that do not say replica.** A "Rolex Submariner" at 600 lei is not one.
-- **Parts and non-runners** sold as watches ("nu functioneaza", "pentru piese").
-
-## Suspiciously cheap = fake, never imported
-
-Standing user directive (2026-08-09): **a suspiciously cheap listing is not a
-bargain, it is a fake.** A replica seldom says "replica"; the price is what gives
-it away. Discovery drops these as `suspiciously_cheap`, and the importers refuse
-them outright — before the photos are fetched, and `CONFIRM=1` does **not** wave
-one through.
-
-The floors live in one place, `scripts/price_sanity.py`: a per-brand table
-(Rolex 6000 RON, Omega 1500, Breitling 2500 …) plus model-family floors for
-smartwatches (any Watch Ultra 1200, Apple Watch Series 9-11 700 …). They are the
-lowest price a GENUINE used example plausibly trades at, set generously so the
-rule catches obvious fakes rather than shaving the honest market. Tune them there
-and every script follows.
-
-The brand is matched against the ad's own words as well as the marketplace's brand
-field, because that field is unreliable — OLX offered "Swiss" for a Christophe
-Duchamp. A listing that calls itself a Rolex is judged as one.
-
-## Then
-
-For each id you keep, in a FRESH context (`/clear` between watches):
+Answer with one line per candidate and nothing else:
 
 ```
-invoke `olx-import-watch`     → pass 1 (contract) → you fill it → pass 2 (import)
-invoke `import-verify-state`  → append to history.jsonl, bump the counters
+KEEP <id>
+DROP <id> <reason-code>
 ```
 
-Never re-run discovery mid-session — take the next id from the candidates file.
+Reason codes: `bulk_lot` · `stock_photos` · `parts_only` · `unattributable_photos`
+· `not_a_watch` · `other`.
 
-When anything fails → `olx-troubleshooting`.
+Apply this table. When none of it fires, `KEEP`.
+
+| In the snippet | Verdict |
+|---|---|
+| plural title over one price, or one photo of several watches | `DROP … bulk_lot` |
+| several watches each with its own price, run together in one ad | `DROP … bulk_lot` |
+| "nu functioneaza", "pentru piese", non-runner sold as a watch | `DROP … parts_only` |
+| too few photos to attribute to one watch | `DROP … unattributable_photos` |
+| `looks_smart: true` | `KEEP` — route it to `olx-import-smartwatch` |
+| `looks_wall: true` | `KEEP` — import with `category: "wall"` |
+| `business: true` (amanet, reseller) | `KEEP` — business sellers are wanted |
+| a price that seems too low | `KEEP` — the floors already ran; do not second-guess them |
+
+Stock photos, renders and inflated claims are **not** drops here. The photos arrive
+at import time and settle it.
+
+## Next
+
+Do NOT re-run discovery mid-session. Drive the queue:
+
+```bash
+python3 $PROJECT_ROOT/harness/3ceasuri-import/scripts/candidates.py next \
+  $PROJECT_ROOT/harness/3ceasuri-import/.candidates-olx-watches.json
+```
+
+Then invoke `olx-import-watch` per id (or `olx-import-smartwatch` for a
+`looks_smart` one — route by kind, not by category).
+
+Anything fails → `olx-troubleshooting`.
+Why any of this is the way it is: `harness/3ceasuri-import/references/olx-lore.md`.

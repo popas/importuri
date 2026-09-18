@@ -18,18 +18,23 @@ DISCOVER (once per session, NOT per watch — pick ONE category)
         (objective filters + Stage-1 dedup done inside; you triage the snippets)
         → surviving ids persist to .candidates-olx-smart.json / -watches.json
 
-PER WATCH (repeat until target reached — ONE FRESH CONTEXT EACH)
-  ├── take the next id from the candidates file
+PER WATCH (repeat until the queue is empty or the target is reached)
+  ├── ID=$(candidates.py next <candidates file>)   ← a command, never a memory
   ├── invoke `olx-import-smartwatch` OR `olx-import-watch` → TWO passes:
-  │     pass 1: AD_ID=<id> browser-use < olx-import-*.py
-  │             (dedup → ad JSON → params → photos → EXTRACT_PROMPT, writes NOTHING)
-  │     you:    read the contract AND one photo, fill every field
-  │     pass 2: AD_ID=<id> CONFIRM=1 OVERRIDES='{…}' browser-use < olx-import-*.py
-  │             (validate → repost dedup → import → verify → readback)
-  │     a field you leave out is CLEARED, so answer in full
-  ├── invoke `import-verify-state` → append to history.jsonl, bump session counters
-  └── /clear, then next id
+  │     pass 1: AD_ID=$ID CANDIDATES_FILE=$CAND browser-use < olx-import-*.py
+  │             (dedup → ad JSON → params → photos → seeded contract draft on disk,
+  │              writes NOTHING to the DB)
+  │     you:    read ONE photo, edit ONLY the fields in EXTRACT_PROMPT.todo,
+  │             in the draft file named by EXTRACT_PROMPT.draft
+  │     pass 2: AD_ID=$ID CANDIDATES_FILE=$CAND CONFIRM=1 browser-use < olx-import-*.py
+  │             (read the draft → validate → repost dedup → import → verify → readback)
+  │     a field you BLANK is CLEARED — the draft removes retyping, not the rule
+  ├── invoke `import-verify-state` → pipe RESULT: to olx-log-result.py
+  └── next id (the importer already marked the queue)
 ```
+
+A context checkpoint is a first-class stop: the queue holds the progress, so a fresh
+session resumes exactly where the last one stopped.
 
 When anything fails at any step → invoke `olx-troubleshooting`.
 
@@ -48,8 +53,14 @@ When anything fails at any step → invoke `olx-troubleshooting`.
    and the importers refuse it, `CONFIRM=1` included.
 7. **Route by kind, not by category.** A smartwatch found in category 1677 is
    flagged `looks_smart`, not dropped — import it with the smartwatch script so
-   `series`/`connectivity`/`compatibility` get filled. A classic watch in 1943 is
-   flagged `looks_classic` and goes the other way.
+   `connectivity`/`compatibility` get filled. A classic watch in 1943 is flagged
+   `looks_classic` and goes the other way. (There is no `series` field; the
+   generation goes in `model`.)
+8. **Never override a `REVIEW:` gate.** Each reason carries an `action`: `fix` means
+   supply the field it names and re-run pass 2 once; `skip` means log the code and
+   take the next id. `CONFIRM=1` is a human flag, not a skeleton key.
+9. **`movement` never silently defaults to quartz.** An ad that states no movement
+   stops for review.
 
 **Image URLs are rewritten on purpose here.** OLX links are unsigned and templated, so
 the importer rewrites `{width}x{height}` to `1000x1000`. (The archived Facebook path
@@ -64,10 +75,17 @@ and does not apply to OLX.)
 - Discovery: `.../scripts/olx-find-smartwatches.py` (cat 1943),
   `.../scripts/olx-find-watches.py` (cat 1677)
 - Importers: `.../scripts/olx-import-smartwatch.py`, `.../scripts/olx-import-watch.py`
-- Shared: `.../scripts/olx_api.py` (API, param map, photos),
-  `.../scripts/admin_import.py` (the admin half: dedup, brand, submit, verify),
-  `.../scripts/infer_fields.py` (the contract, profiles `classic` / `smart`),
+- Shared: `.../scripts/olx_import.py` (THE per-ad flow, both profiles — the two
+  importer files are wrappers that pick one), `.../scripts/olx_api.py` (API, param
+  map, photos), `.../scripts/admin_import.py` (the admin half: dedup, brand, submit,
+  verify), `.../scripts/infer_fields.py` (the contract, profiles `classic` /
+  `smart`), `.../scripts/contract_draft.py` (the seeded draft),
   `.../scripts/import-watch.js` (harness v7, authoritative)
+- No-browser CLIs (run with `python3`, unlike the payloads):
+  `.../scripts/candidates.py` (the work queue), `.../scripts/olx-log-result.py`
+  (history + counters)
+- Why the rules are the rules: `.../references/olx-lore.md`
+- Paste-per-session prompts: `OLX_IMPORT_SESSION_PROMPT.md`
 - Brand ID mapping: `.../references/brand-ids.md` · blocklist:
   `.../references/seller-blocklist.json` (`olx_sellers`)
 - Session state: `$PROJECT_ROOT/state.json` (bookkeeping only) · local log:
