@@ -473,6 +473,25 @@ check(st["imported"] is None, "15f: CONFIRM must still write nothing")
 m, _ = run(SMART, dict(SMART_AD, status="removed_by_user"))
 check(m.get("SKIP", {}).get("reason", "").startswith("ad is not active"), "16: inactive ad: %s" % m.get("SKIP"))
 
+# --- 16b. the two profiles stay distinct after the collapse -----------------
+# A characterisation test: it pins the SIX ways the classic and smart paths differ,
+# side by side, so collapsing them onto one shared flow cannot quietly lose one.
+# It passed before the refactor and must pass after — that is the whole contract.
+_ov_c = {"brand": "Seiko", "model": "Prospex MM200", "price": 3500, "currency": "RON",
+         "movement": "automatic", "is_wristwatch": True, "is_bulk_lot": False}
+_ov_s = {"brand": "Garmin", "model": "Fenix 7X Solar", "price": 1700, "currency": "RON",
+         "connectivity": "no_gsm", "compatibility": "both",
+         "is_wristwatch": True, "is_bulk_lot": False}
+m_c, _ = run(CLASSIC, CLASSIC_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(_ov_c)})
+m_s, _ = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(_ov_s)})
+check(m_c["INFER"]["movement"] == "automatic", "16b: classic movement %r" % m_c["INFER"].get("movement"))
+check(m_s["INFER"]["movement"] == "smart", "16b: smart profile must force movement=smart")
+check(m_s["INFER"]["style"] == "smart" and m_s["INFER"]["displayType"] == "smart",
+      "16b: smart profile must force style/displayType")
+check(m_c["INFER"].get("connectivity") is None, "16b: classic must not invent connectivity")
+check(m_c["RESULT"]["state_entry"]["category"] == "wrist", "16b: classic state_entry carries category")
+check("category" not in m_s["RESULT"]["state_entry"], "16b: smart state_entry omits category")
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)
