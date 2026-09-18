@@ -83,6 +83,61 @@ PROFILES = {
 }
 
 
+
+def confidence_review(profile, data, images, brand_ids):
+    """The confidence gate, as a pure function. Returns a list of reasons.
+
+    Each reason carries a code and an action. `fix` means the gate named exactly
+    what to supply and the answer is already in hand. `skip` means genuine doubt:
+    the runbook logs it and takes the next candidate. The agent never overrides a
+    gate — see §6 decision 5 in the determinism spec.
+
+    It is out here, rather than inside run(), so the offline replay eval scores the
+    SAME gate the importer runs instead of a copy of it that can drift.
+    """
+    review = []
+
+    def _review(code, action, message, field=None):
+        review.append({"code": code, "action": action, "message": message, "field": field})
+
+    if not data.get("brand"):
+        _review("brand_missing", "fix", "brand not inferred", "brand")
+    elif data["brand"] not in brand_ids:
+        _review("new_brand", "fix",
+                "NEW brand '%s' — will be created in the DB" % data["brand"], "brand")
+    if not data.get("model"):
+        _review("model_missing", "fix", "model not inferred", "model")
+    if data.get("price") is None:
+        _review("price_missing", "fix", "price not inferred", "price")
+    if profile == "classic":
+        # movement is NOT optional in the DB, so the harness fills the gap with
+        # 'quartz'. That guess mislabelled a 1970s Poljot once already — an ad that
+        # never states its movement must be judged, not defaulted, and judging it
+        # from nothing is exactly the doubt this gate exists to stop.
+        if not data.get("movement"):
+            _review("movement_missing", "skip",
+                    "movement not stated in the ad (harness would default it to quartz)",
+                    "movement")
+        if data.get("movement") == "smart":
+            _review("misrouted_smart", "skip",
+                    "this is a smartwatch — import it with olx-import-smartwatch.py instead")
+        if data.get("category") == "wall" and not data.get("caseMat"):
+            _review("wall_no_material", "fix",
+                    "wall clock without a case material (usually wood)", "caseMat")
+    else:
+        for f in ("connectivity", "compatibility"):
+            if not data.get(f):
+                _review("%s_missing" % f, "fix",
+                        "smartwatch without %s (fill it in the draft)" % f, f)
+    if len(images) < 2:
+        _review("too_few_images", "skip", "only %d image(s) on the ad" % len(images))
+    if len((data.get("description") or "").strip()) < 40:
+        _review("thin_description", "skip",
+                "description looks thin (%d chars)"
+                % len((data.get("description") or "").strip()))
+    return review
+
+
 def run(profile, g):
     """Import one OLX ad. `g` is the payload's globals(), carrying the CDP helpers.
 
@@ -383,50 +438,7 @@ def run(profile, g):
     emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
 
     # --- 6. confidence gate --------------------------------------------------
-    # Each reason carries a code and an action. `fix` means the gate named exactly
-    # what to supply and the answer is already in hand. `skip` means genuine doubt:
-    # the runbook logs it and takes the next candidate. The agent never overrides a
-    # gate — see §6 decision 5 in the determinism spec.
-    review = []
-
-    def _review(code, action, message, field=None):
-        review.append({"code": code, "action": action, "message": message, "field": field})
-
-    if not data.get("brand"):
-        _review("brand_missing", "fix", "brand not inferred", "brand")
-    elif data["brand"] not in brand_ids:
-        _review("new_brand", "fix",
-                "NEW brand '%s' — will be created in the DB" % data["brand"], "brand")
-    if not data.get("model"):
-        _review("model_missing", "fix", "model not inferred", "model")
-    if data.get("price") is None:
-        _review("price_missing", "fix", "price not inferred", "price")
-    if profile == "classic":
-        # movement is NOT optional in the DB, so the harness fills the gap with
-        # 'quartz'. That guess mislabelled a 1970s Poljot once already — an ad that
-        # never states its movement must be judged, not defaulted, and judging it
-        # from nothing is exactly the doubt this gate exists to stop.
-        if not data.get("movement"):
-            _review("movement_missing", "skip",
-                    "movement not stated in the ad (harness would default it to quartz)",
-                    "movement")
-        if data.get("movement") == "smart":
-            _review("misrouted_smart", "skip",
-                    "this is a smartwatch — import it with olx-import-smartwatch.py instead")
-        if data.get("category") == "wall" and not data.get("caseMat"):
-            _review("wall_no_material", "fix",
-                    "wall clock without a case material (usually wood)", "caseMat")
-    else:
-        for f in ("connectivity", "compatibility"):
-            if not data.get(f):
-                _review("%s_missing" % f, "fix",
-                        "smartwatch without %s (fill it in the draft)" % f, f)
-    if len(images) < 2:
-        _review("too_few_images", "skip", "only %d image(s) on the ad" % len(images))
-    if len((data.get("description") or "").strip()) < 40:
-        _review("thin_description", "skip",
-                "description looks thin (%d chars)"
-                % len((data.get("description") or "").strip()))
+    review = confidence_review(profile, data, images, brand_ids)
     if review and not CONFIRM and not DRY_RUN:
         review_stop({"reasons": review, "images": len(images),
                      "inferred": {k: (v if k != "images" else len(v)) for k, v in data.items()},
