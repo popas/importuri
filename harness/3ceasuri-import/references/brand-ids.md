@@ -236,9 +236,18 @@ Steinhart:231
 Sjöö Sandström:233
 Air France:234
 CMF by Nothing:235
+Liu Jo:236
 ```
 
-Last updated: 2026-09-16. Added `CMF by Nothing`(235, ad 309431303 — "Nothing CMF
+Last updated: 2026-09-19. Added `Liu Jo`(236, ad 229491369 — "Ceas LIU-JO unisex",
+new/boxed, ~595 RON, Bucuresti private seller), an Italian fashion brand; box and
+certificate read "LIU·JO" / "LIU·JO Luxury / Time Collection", caseback reads
+"STAINLESS STEEL BACK" / "TLJ.1512"; no OLX brand dropdown was picked at all. No
+specific model name given anywhere (box only names the general "Time Collection"
+line), so the design trait was used instead; movement inferred as quartz (fashion
+brand, no automatic indication).
+
+Previously last updated 2026-09-16. Added `CMF by Nothing`(235, ad 309431303 — "Nothing CMF
 Watch 3 Pro, Garantie 24 luni | #D96156", ~349 RON, Bucuresti business seller
 TotalConvert.ro), Nothing's affordable sub-brand; case rim engraves "cmf by
 NOTHING", box reads "...TCH 3..." (Watch 3 Pro); Bluetooth/GPS smartwatch, no
