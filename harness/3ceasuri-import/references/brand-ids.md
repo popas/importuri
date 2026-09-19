@@ -237,9 +237,18 @@ Sjöö Sandström:233
 Air France:234
 CMF by Nothing:235
 Liu Jo:236
+Squale:237
 ```
 
-Last updated: 2026-09-19. Added `Liu Jo`(236, ad 229491369 — "Ceas LIU-JO unisex",
+Last updated: 2026-09-19. Added `Squale`(237, ad 263638742 — "Ceas Squale 1521 Ocean
+Blue", 939 EUR, Bucuresti private seller), a genuine Swiss dive watch brand; dial
+reads "SQUALE" / "50 ATMOS" / "SQUALE PROFESSIONAL" / "SWISS MADE", blue sunburst
+dial, orange seconds hand, steel mesh bracelet plus two rubber straps included.
+Model = 1521 Ocean Blue; no reference legible (no caseback photo); movement
+inferred as automatic (the Squale 1521 line is a Sellita-based automatic diver,
+not stated in the ad).
+
+Previously (same day, 2026-09-19), added `Liu Jo`(236, ad 229491369 — "Ceas LIU-JO unisex",
 new/boxed, ~595 RON, Bucuresti private seller), an Italian fashion brand; box and
 certificate read "LIU·JO" / "LIU·JO Luxury / Time Collection", caseback reads
 "STAINLESS STEEL BACK" / "TLJ.1512"; no OLX brand dropdown was picked at all. No
