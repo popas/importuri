@@ -238,9 +238,19 @@ Air France:234
 CMF by Nothing:235
 Liu Jo:236
 Squale:237
+Ingersoll:238
 ```
 
-Last updated: 2026-09-19. Added `Squale`(237, ad 263638742 — "Ceas Squale 1521 Ocean
+Last updated: 2026-09-19. Added `Ingersoll`(238, ad 244860599 — "Ingersoll DISCOVERY
+I06202 Mens The Scovill Movement Quartz Case Stain", 1100 RON negociabil, Bucuresti
+private seller), an American fashion-watch brand; dial reads "Ingersoll", box tag
+reads "I06202 - THE SCOVILL". OLX's own brand dropdown had picked the generic "Alt
+brand" (Ingersoll is not one of OLX's own brand options), so the seeded draft's
+brand field was corrected to Ingersoll from the dial/tag/description before import.
+Model = The Scovill; reference = I06202 (readable on the box tag and in the ad
+text); movement quartz per the ad ("ceas cu quartz").
+
+Previously, added `Squale`(237, ad 263638742 — "Ceas Squale 1521 Ocean
 Blue", 939 EUR, Bucuresti private seller), a genuine Swiss dive watch brand; dial
 reads "SQUALE" / "50 ATMOS" / "SQUALE PROFESSIONAL" / "SWISS MADE", blue sunburst
 dial, orange seconds hand, steel mesh bracelet plus two rubber straps included.
