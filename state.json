@@ -1,11 +1,11 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-09-13",
+  "session_date": "2026-09-16",
   "target": 40,
   "session_imported": 20,
-  "session_skipped": 2,
-  "smartwatch_imported": 20,
-  "smartwatch_skipped": 2,
-  "status": "idle",
-  "note": "2026-09-13 (session 19) COMPLETE: target was 20 classic watches + 20 smartwatches, Bucuresti + Ilfov -- both legs hit exactly 20/20. CLASSIC LEG: 20 imported, 2 skipped (1 counterfeit Rolex Datejust at the price_sanity floor with studio-photo/COD-scam pattern -- seller 'Dial' 1380940894 blocklisted; 1 genuine Rolex GMT-Master II 'Bruce Wayne' dropped after two identical import attempts both failed with ALL IMAGES FAILED TO FETCH -- confirmed the photo URLs load fine directly but fetch() from the admin tab's origin gets a deterministic CORS block on that ad's frankfurt.apollo.olxcdn.com shard). New brand added: Honda(230) -- a genuine automaker promotional watch (Seiko VD53 movement) that OLX mismapped to brand Seiko. SMARTWATCH LEG: 20 imported (mix of Apple/Samsung/Huawei/Garmin/Google/Amazfit/Fitbit/Koppel), 2 skipped (one ad was a Hisense mini-projector miscategorized under smartwatches; one ad bundled two distinct Huawei watches at two different prices sharing one photo set, so importing either risked misattached photos). Multiple CDP 'Runtime.evaluate timed out' errors hit during this session's verify-readback step (admin server was sluggish) -- every one of them turned out to be a false negative on manual recheck; the watch had saved correctly every time. Previous session note (18, complete 2026-09-11): both legs hit 20/20; new brands Westfalia(228), Martyn Line(229), Exacta(227); new blocklist entries Gabriel Mihai (1380855796), Tlhu (1380626783). Session 13 (Buzau) status still not confirmed complete; revisit."
+  "session_skipped": 1,
+  "smartwatch_imported": 0,
+  "smartwatch_skipped": 0,
+  "status": "running",
+  "note": "2026-09-16 (session 20) CLASSIC LEG COMPLETE (20/20), starting smartwatch leg. Classic: 20 imported (admin ids 1065-1084), 1 skipped (ad 308928499 'TUDOR Black Bay 41 Burgundy' -- suspected replica: studio-only catalog photos + malformed reference '7941A1A0RU', not a real Tudor ref pattern; seller 'Adi'/1252082 NOT blocklisted, single ad only, not a confirmed repeatable pattern). 4 new brands added: Steinhart(231), Sekonda(232), Sjöö Sandström(233), Air France(234). Discovery swept the whole category nationally (no location filter in the OLX API) then filtered locally by city for Bucuresti/Ilfov -- 2 candidates from the first small discovery batch turned out already-imported; switched to NO_DEDUP=1 wide sweep (250 candidates) + a separate batch admin-dedup pass before spawning import agents, much faster than per-candidate dedup during discovery. Each watch imported via a fresh subagent (Agent tool, general-purpose, sequential -- not parallel, single shared CDP browser) to satisfy the runbook's 'fresh context per watch' rule non-interactively. Previous session (19, complete 2026-09-13): both legs hit 20/20. Session 13 (Buzau) status still not confirmed complete; revisit."
 }

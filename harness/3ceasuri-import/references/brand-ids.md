@@ -235,9 +235,17 @@ Honda:230
 Steinhart:231
 Sjöö Sandström:233
 Air France:234
+CMF by Nothing:235
 ```
 
-Last updated: 2026-09-16. Added `Air France`(234, ad 309459503 — "ceas Air France
+Last updated: 2026-09-16. Added `CMF by Nothing`(235, ad 309431303 — "Nothing CMF
+Watch 3 Pro, Garantie 24 luni | #D96156", ~349 RON, Bucuresti business seller
+TotalConvert.ro), Nothing's affordable sub-brand; case rim engraves "cmf by
+NOTHING", box reads "...TCH 3..." (Watch 3 Pro); Bluetooth/GPS smartwatch, no
+LTE/cellular mentioned, treated as Android+iOS compatible like other
+third-party Android-companion brands (Amazfit, Xiaomi, Garmin).
+
+Previously (same day, 2026-09-16), added `Air France`(234, ad 309459503 — "ceas Air France
 chronograph aniversare 80 ani impecabil", ~500 RON, Bucuresti private seller), a
 corporate/promotional chronograph made for the airline's 80th anniversary; caseback
 engraves "ALL STAINLESS STEEL / 80 ANS YEARS AIRFRANCE / 1933 / 2013 / MADE IN
