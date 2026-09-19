@@ -239,9 +239,16 @@ CMF by Nothing:235
 Liu Jo:236
 Squale:237
 Ingersoll:238
+Alt brand:239
 ```
 
-Last updated: 2026-09-19. Added `Ingersoll`(238, ad 244860599 — "Ingersoll DISCOVERY
+Last updated: 2026-09-19. Added `Alt brand`(239, ad 297101034 — a generic no-name
+"2-in-1" smartwatch with detachable Bluetooth earbuds in the strap; seller's own OLX
+dropdown picked "Alt brand" and no maker mark appears anywhere on the unit, box or
+manual, so it stayed the literal catch-all brand rather than being resolved to a
+real maker as earlier "Alt brand" cases were).
+
+Added `Ingersoll`(238, ad 244860599 — "Ingersoll DISCOVERY
 I06202 Mens The Scovill Movement Quartz Case Stain", 1100 RON negociabil, Bucuresti
 private seller), an American fashion-watch brand; dial reads "Ingersoll", box tag
 reads "I06202 - THE SCOVILL". OLX's own brand dropdown had picked the generic "Alt
