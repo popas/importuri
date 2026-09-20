@@ -242,7 +242,19 @@ Ingersoll:238
 Alt brand:239
 Serge Panchenko:240
 Egard:241
+Tevise:242
 ```
+
+Last updated: 2026-09-20. Added `Tevise`(242, ad 301611227 — "Ceas barbatesc Tevise
+Automat", Bucuresti private seller), a real Chinese maker whose branding appears on
+the dial ("TEVISE AUTOMATIC") and the caseback (stamped ref "T801"); OLX's own
+dropdown had left brand unset entirely, and "Tevise" is not one of OLX's own brand
+options either. A black-PVD, blue-dial Submariner-style homage with an exhibition
+caseback showing the automatic rotor. Model/reference both set to "T801" from the
+caseback stamp (no separate model name given). Seller included a manufacturer stock
+photo of the same T801 case in a different (two-tone) colorway as brand proof; that
+photo's stated 43.5mm case diameter was NOT carried over since it isn't confirmed for
+this exact colorway.
 
 Last updated: 2026-09-20. Added `Egard`(241, ad 308533828 — "Ceas Automat Scheletonizat
 Egard Phantom Stealth", Bucuresti private seller), a real US maker (Égard Watch
