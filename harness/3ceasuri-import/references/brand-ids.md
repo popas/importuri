@@ -241,7 +241,15 @@ Squale:237
 Ingersoll:238
 Alt brand:239
 Serge Panchenko:240
+Egard:241
 ```
+
+Last updated: 2026-09-20. Added `Egard`(241, ad 308533828 — "Ceas Automat Scheletonizat
+Egard Phantom Stealth", Bucuresti private seller), a real US maker (Égard Watch
+Company) whose branding appears on the dial, caseback and box; OLX's own dropdown had
+picked "Alt brand" but the box art clearly reads "ÉGARD WATCH COMPANY" and the dial
+"ÉGARD" — corrected to its own brand per the same Ingersoll/Squale/Vector/Timberland/
+Serge Panchenko pattern rather than left as the generic catch-all.
 
 Last updated: 2026-09-20. Added `Serge Panchenko`(240, ad 303020787 — "Ceas Serge
 Panchenko model 2", Bucuresti Sectorul 6 private seller), a real identifiable
