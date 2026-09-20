@@ -240,7 +240,19 @@ Liu Jo:236
 Squale:237
 Ingersoll:238
 Alt brand:239
+Serge Panchenko:240
 ```
+
+Last updated: 2026-09-20. Added `Serge Panchenko`(240, ad 303020787 — "Ceas Serge
+Panchenko model 2", Bucuresti Sectorul 6 private seller), a real identifiable
+microbrand whose maker name is legible right in the ad title. A prior import (watch
+1144) had left this ad's brand as the generic "Alt brand"(239) catch-all on the
+reasoning that "Serge Panchenko" wasn't in the known brand list — the same mistake
+pattern already corrected for Ingersoll/Squale/Vector/Timberland below: OLX's own
+dropdown saying "Alt brand" only means the name isn't one of OLX's own options, not
+that the watch is unbranded. "Alt brand" is reserved for genuinely anonymous items
+with no maker mark anywhere, as in the 297101034 case. Watch 1144 was corrected to
+this brand after creation.
 
 Last updated: 2026-09-19. Added `Alt brand`(239, ad 297101034 — a generic no-name
 "2-in-1" smartwatch with detachable Bluetooth earbuds in the strap; seller's own OLX
