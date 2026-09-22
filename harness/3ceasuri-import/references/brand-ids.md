@@ -243,6 +243,7 @@ Alt brand:239
 Serge Panchenko:240
 Egard:241
 Tevise:242
+Anker:243
 ```
 
 Last updated: 2026-09-20. Added `Tevise`(242, ad 301611227 — "Ceas barbatesc Tevise
