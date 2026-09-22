@@ -1,11 +1,11 @@
 {
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
-  "session_date": "2026-09-16",
-  "target": 40,
-  "session_imported": 20,
-  "session_skipped": 1,
-  "smartwatch_imported": 0,
-  "smartwatch_skipped": 0,
-  "status": "running",
-  "note": "2026-09-16 (session 20) CLASSIC LEG COMPLETE (20/20), starting smartwatch leg. Classic: 20 imported (admin ids 1065-1084), 1 skipped (ad 308928499 'TUDOR Black Bay 41 Burgundy' -- suspected replica: studio-only catalog photos + malformed reference '7941A1A0RU', not a real Tudor ref pattern; seller 'Adi'/1252082 NOT blocklisted, single ad only, not a confirmed repeatable pattern). 4 new brands added: Steinhart(231), Sekonda(232), Sjöö Sandström(233), Air France(234). Discovery swept the whole category nationally (no location filter in the OLX API) then filtered locally by city for Bucuresti/Ilfov -- 2 candidates from the first small discovery batch turned out already-imported; switched to NO_DEDUP=1 wide sweep (250 candidates) + a separate batch admin-dedup pass before spawning import agents, much faster than per-candidate dedup during discovery. Each watch imported via a fresh subagent (Agent tool, general-purpose, sequential -- not parallel, single shared CDP browser) to satisfy the runbook's 'fresh context per watch' rule non-interactively. Previous session (19, complete 2026-09-13): both legs hit 20/20. Session 13 (Buzau) status still not confirmed complete; revisit."
+  "session_date": "2026-09-22",
+  "target": 10,
+  "queue": "harness/3ceasuri-import/.candidates-olx-watches-bi.json",
+  "profile": "classic",
+  "session_imported": 10,
+  "session_skipped": 4,
+  "status": "idle",
+  "note": ""
 }
