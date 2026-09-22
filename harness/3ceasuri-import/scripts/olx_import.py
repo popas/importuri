@@ -23,7 +23,9 @@
 #   AD_ID         numeric OLX ad id (the `id` from the matching discovery script)
 #   PROJECT_ROOT  repo root (default: the Mac path below)
 #   OVERRIDES     JSON object — the filled extraction contract, authoritative
-#   CONFIRM       "1" = proceed past the REVIEW/SKIP gates
+#   CONFIRM       "1" = set on every pass 2. Waives ONLY the weak_repost review; it
+#                       never waives not_a_watch, bulk_lot, the misroute or the
+#                       confidence gate, a cheap fake, or a missing brand/model/price
 #   DRY_RUN       "1" = everything except the DB write
 #   SKIP_PROMPT   "1" = import on the OLX params alone, no contract pass
 #   FRESH         "1" = re-seed the contract draft even if one exists
@@ -60,8 +62,7 @@ PROFILES = {
         "regex_baseline": True,           # diameter + reference + year + movement
         "misroute_check": False,          # the smart importer owns that gate
         "wall_clock_exempt": True,        # a wall clock IS imported, since 2026-08-09
-        "not_a_watch_reason": "not a wristwatch and not a wall clock; "
-                              "pass CONFIRM=1 to import anyway",
+        "not_a_watch_reason": "not a wristwatch and not a wall clock",
         "state_entry_category": True,
     },
     "smart": {
@@ -76,8 +77,7 @@ PROFILES = {
         "regex_baseline": False,          # only the diameter regex
         "misroute_check": True,
         "wall_clock_exempt": False,
-        "not_a_watch_reason": "not a watch (accessory: strap/charger/case/box); "
-                              "pass CONFIRM=1 to import anyway",
+        "not_a_watch_reason": "not a watch (accessory: strap/charger/case/box)",
         "state_entry_category": False,
     },
 }
@@ -100,11 +100,11 @@ def confidence_review(profile, data, images, brand_ids):
     def _review(code, action, message, field=None):
         review.append({"code": code, "action": action, "message": message, "field": field})
 
+    # A brand missing from BRAND_IDS is NOT a gate: no draft edit can make a new brand
+    # old, so it was a "fix" that only CONFIRM=1 ever got past. ensure_brand() creates
+    # it and NEW_BRAND: hands off to the new-brand procedure.
     if not data.get("brand"):
         _review("brand_missing", "fix", "brand not inferred", "brand")
-    elif data["brand"] not in brand_ids:
-        _review("new_brand", "fix",
-                "NEW brand '%s' — will be created in the DB" % data["brand"], "brand")
     if not data.get("model"):
         _review("model_missing", "fix", "model not inferred", "model")
     if data.get("price") is None:
@@ -388,9 +388,7 @@ def run(profile, g):
                 "message": "movement=%r on the smartwatch importer — if this is a "
                            "mechanical/quartz watch, import it with olx-import-watch.py "
                            "instead" % data.get("movement")}]}
-            if not CONFIRM:
-                review_stop(_misroute)
-            emit("REVIEW", dict(_misroute, ad_id=AD_ID))
+            review_stop(_misroute)
     # setdefault is NOT enough here: the seeded draft carries every contract key, so
     # an unedited forced field arrives as an explicit None rather than being absent.
     # Restoring only on "key missing" would write movement=None for a smartwatch,
@@ -404,12 +402,14 @@ def run(profile, g):
     _not_a_watch = filled.get("is_wristwatch") is False
     if _not_a_watch and conf["wall_clock_exempt"] and filled.get("category") == "wall":
         _not_a_watch = False
-    if _not_a_watch and not CONFIRM:
+    # Neither of these is waived by CONFIRM: every pass 2 sets it, so a CONFIRM guard
+    # made both dead code (ad 309588599 imported with is_wristwatch=false, 2026-09-20).
+    # A human who disagrees edits the verdict in the contract, not the gate.
+    if _not_a_watch:
         skip("not_a_watch", {"reason": conf["not_a_watch_reason"],
                              "notes": filled.get("notes")})
-    if filled.get("is_bulk_lot") is True and not CONFIRM:
-        skip("bulk_lot", {"reason": "bulk lot — one price, several watches; "
-                                    "pass CONFIRM=1 to import anyway"})
+    if filled.get("is_bulk_lot") is True:
+        skip("bulk_lot", {"reason": "bulk lot — one price, several watches"})
     for k in ("is_wristwatch", "is_bulk_lot", "notes"):   # contract-only, not form fields
         data.pop(k, None)
     if data.get("category") is None:                     # same reason as the forced fields
@@ -439,7 +439,8 @@ def run(profile, g):
 
     # --- 6. confidence gate --------------------------------------------------
     review = confidence_review(profile, data, images, brand_ids)
-    if review and not CONFIRM and not DRY_RUN:
+    # Not waived by CONFIRM either (§6 decision 5: nobody overrides a gate).
+    if review and not DRY_RUN:
         review_stop({"reasons": review, "images": len(images),
                      "inferred": {k: (v if k != "images" else len(v)) for k, v in data.items()},
                      "rerun": RERUN})

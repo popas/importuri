@@ -626,6 +626,48 @@ check(m.get("RESULT", {}).get("ok") is True,
       "20: a queue-marking failure must not lose an import that succeeded")
 check("WARN" in m, "20: a queue-marking failure must be reported")
 
+# --- 22. the gates fire under CONFIRM=1, which every documented pass 2 sets ---
+# Every check above ran its gate WITHOUT CONFIRM, so none of them noticed that
+# `and not CONFIRM` made the gates dead in real use: ad 309588599 imported on
+# 2026-09-20 with is_wristwatch=false and one photo.
+for _label, _script, _ad, _ov, _want in (
+        ("not_a_watch smart",   SMART,   SMART_AD,   dict(FILLED_SMART, is_wristwatch=False), "SKIP"),
+        ("not_a_watch classic", CLASSIC, CLASSIC_AD, dict(FILLED_CLASSIC, is_wristwatch=False), "SKIP"),
+        ("bulk_lot",            SMART,   SMART_AD,   dict(FILLED_SMART, is_bulk_lot=True), "SKIP"),
+        ("misrouted_classic",   SMART,   SMART_AD,   dict(FILLED_SMART, movement="automatic"), "REVIEW"),
+        ("movement_missing",    CLASSIC, CLASSIC_AD, dict(FILLED_CLASSIC, movement=None), "REVIEW"),
+        ("misrouted_smart",     CLASSIC, CLASSIC_AD, dict(FILLED_CLASSIC, movement="smart"), "REVIEW"),
+        ("connectivity",        SMART,   SMART_AD,   dict(FILLED_SMART, connectivity=None), "REVIEW"),
+        ("thin_description",    SMART,   SMART_AD,   dict(FILLED_SMART, description="ok"), "REVIEW")):
+    _m, _st = run(_script, _ad, {"CONFIRM": "1", "OVERRIDES": json.dumps(_ov)})
+    check(_want in _m, "22: %s must %s under CONFIRM=1, got %s" % (_label, _want, sorted(_m)))
+    check(_st["imported"] is None, "22: %s must not import under CONFIRM=1" % _label)
+    check("RESULT" not in _m, "22: %s must not reach RESULT: under CONFIRM=1" % _label)
+
+# the real pass 2 reads the draft from disk, with no OVERRIDES
+for _label, _over, _want in (("not_a_watch", {"is_wristwatch": False}, "SKIP"),
+                             ("bulk_lot", {"is_bulk_lot": True}, "SKIP"),
+                             ("misrouted_classic", {"movement": "automatic"}, "REVIEW")):
+    _fill_smart_draft(**_over)
+    _m, _st = run(SMART, SMART_AD, {"CONFIRM": "1"})
+    check(_want in _m and _st["imported"] is None,
+          "22: %s from the draft must %s under CONFIRM=1, got %s" % (_label, _want, sorted(_m)))
+_fill_smart_draft(movement=None)       # the base fill does not reset movement
+
+# too few photos: the exact shape of 309588599
+_m, _st = run(SMART, dict(SMART_AD, photos=SMART_AD["photos"][:1]),
+              {"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED_SMART)})
+check(any(r["code"] == "too_few_images" for r in _m.get("REVIEW", {}).get("reasons", [])),
+      "22: one photo must stop for too_few_images under CONFIRM=1, got %s" % sorted(_m))
+check(_st["imported"] is None, "22: a one-photo ad must not import")
+
+# a new brand is not a gate: it imports and hands off through NEW_BRAND:
+_m, _st = run(SMART, SMART_AD, {"CONFIRM": "1",
+                                "OVERRIDES": json.dumps(dict(FILLED_SMART, brand="Zxcvbnwatch"))})
+check("REVIEW" not in _m, "22: a new brand must not stop for review: %s" % _m.get("REVIEW"))
+check(_m.get("RESULT", {}).get("ok") is True and "NEW_BRAND" in _m,
+      "22: a new brand must import and emit NEW_BRAND:, got %s" % sorted(_m))
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)

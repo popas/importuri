@@ -78,7 +78,9 @@ Each reason is `{code, action, message, field}`. **You never override a gate.**
 
 `CONFIRM=1` is not a skeleton key: it is in the command because the draft is the
 answer, and it cannot wave through a gate you did not satisfy, a suspiciously cheap
-listing, or a missing brand/model/price.
+listing, or a missing brand/model/price. The one gate it still waives is
+`weak_repost` (a model-name match from another seller), which pass 2 lets through.
+A brand not yet in `BRAND_IDS` is not a gate: it imports and emits `NEW_BRAND:`.
 
 `movement` null → `movement_missing` (`skip`). That is deliberate: the harness would
 otherwise write `quartz`, which mislabelled a 1970s Poljot.

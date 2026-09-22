@@ -23,10 +23,14 @@ check(len(codes) >= 8, "2: expected >=8 coded review reasons, found %d" % len(co
 check(len({c for c, _ in codes}) == len(codes), "2: duplicate review codes: %s" % codes)
 
 # 3. the codes the runbook and the logger depend on all exist
-for required in ("new_brand", "model_missing", "price_missing", "movement_missing",
+for required in ("model_missing", "price_missing", "movement_missing",
                  "too_few_images", "thin_description", "misrouted_smart", "weak_repost"):
     check(any(c == required for c, _ in codes) or ('"%s"' % required) in src,
           "3: missing review code %r" % required)
+
+# 3b. a new brand is NOT a gate: no draft edit can make it old, so it was a "fix"
+#     only CONFIRM=1 ever passed. ensure_brand() + NEW_BRAND: own it.
+check(not any(c == "new_brand" for c, _ in codes), "3b: new_brand must not be a review code")
 
 # 4. doubt is never a 'fix' -- these must stop the watch, not be patched
 for code, action in codes:
