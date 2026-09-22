@@ -250,8 +250,8 @@ Pryngeps:246
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
 brand (user directive) -- an item with no maker is `Fără marcă`(54), and the importer
-rewrites a final answer of "Alt brand" to it. The DB row 239 still exists and still
-holds watch 1123 (ad 297101034); merging it into 54 in the admin is pending.
+rewrites a final answer of "Alt brand" to it. Watch 1123 (ad 297101034) was moved to
+`Fără marcă`(54) by the user the same day; the DB row 239 now holds no watches.
 
 Last updated: 2026-09-20. Added `Tevise`(242, ad 301611227 — "Ceas barbatesc Tevise
 Automat", Bucuresti private seller), a real Chinese maker whose branding appears on
