@@ -58,6 +58,10 @@ BRAND_FLOOR_RON = {
 # specific first — the first hit wins.
 FAMILY_FLOOR_RON = [
     (r"watch\s*ultra|ultra\s*[23]\b", 1200, "Apple/Samsung Watch Ultra"),
+    # The Rado Jubile is the most-copied Rado: a two-tone "tungsten" bracelet and a
+    # "jublé" dial at 590 RON (ad 301231574, 2026-09-22) cleared every check, because
+    # Rado has no used floor -- genuine vintage Rados do sell for a few hundred RON.
+    (r"\brado\b.*\bjubil|\bjubil\w*\b.*\brado\b", 1000, "Rado Jubile"),
     # "seria" is Romanian for "series" -- found 2026-09-11: "Apple watch seria 11 nou"
     # at 240 RON matched only the generic 200 RON Apple Watch floor below because
     # \bseries\b never matched "seria", letting an obvious fake clear the check.
@@ -291,4 +295,37 @@ def implausible_price(price, currency, brand=None, text=""):
                 return ("%s at %d RON is below the %d RON floor for a genuine one — "
                         "almost certainly a fake" % (brand or name, ron, floor))
             return None
+    return None
+
+
+# --- a brand-new account selling an expensive watch --------------------------
+# User directive 2026-09-22: a seller whose OLX account is days old and whose first
+# listing is a pricey watch is almost always a scam (ad 309591260: account created
+# 35 minutes before a 5000 RON "Longines original", no photo, never seen again).
+# Like the cheap-fake rule it is a HARD skip, decided before the photos are fetched,
+# and CONFIRM does not wave it through -- only a human's ALLOW_NEW_SELLER=1 does.
+NEW_ACCOUNT_DAYS = 30
+NEW_ACCOUNT_PRICE_RON = 1000
+
+
+def new_seller_risk(price, currency, account_created, now=None):
+    """A reason string when a young account sells above the threshold, else None.
+
+    `account_created` is OLX's `user.created` ISO timestamp. Missing or unparseable
+    dates return None: this gate only ever fires on evidence, never on its absence.
+    """
+    import datetime
+    if price is None or not account_created:
+        return None
+    try:
+        created = datetime.datetime.fromisoformat(str(account_created))
+    except ValueError:
+        return None
+    now = now or datetime.datetime.now(created.tzinfo)
+    age = (now - created).days
+    ron = price_in_ron(price, currency)
+    if age < NEW_ACCOUNT_DAYS and ron >= NEW_ACCOUNT_PRICE_RON:
+        return ("seller account is %d day(s) old and asks %s %s (>= %d RON) - "
+                "the new-account scam pattern" % (age, price, currency or "RON",
+                                                  NEW_ACCOUNT_PRICE_RON))
     return None

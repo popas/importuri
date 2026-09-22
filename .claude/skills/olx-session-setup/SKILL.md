@@ -7,10 +7,15 @@ description: Invoke ONCE at the start of every OLX session, before any discovery
 
 Once per session. The per-watch loop lives in the discovery and import skills.
 
+**Just importing from a queue that has pending ids?** Do not use this skill:
+`python3 harness/3ceasuri-import/scripts/olx-step.py start <queue> --target N` does
+the checks below (Chrome, browser-use, admin login, tabs, a fresh `state.json`).
+See Prompt B in `OLX_IMPORT_SESSION_PROMPT.md`.
+
 ## 1. Set the environment
 
 ```bash
-export PROJECT_ROOT="/Users/stelian/.hermes/proiecte/3ceasuri"
+export PROJECT_ROOT="$(git rev-parse --show-toplevel)"   # run from inside the repo
 export CDP_HOST="127.0.0.1:9222"
 export BU_CDP_URL="http://$CDP_HOST"
 curl -s http://$CDP_HOST/json/version

@@ -5,6 +5,11 @@ description: Invoke PER WATCH to import one OLX smartwatch ad (category 1943) in
 
 # olx-import-smartwatch
 
+**The loop now runs through `scripts/olx-step.py`** (Prompt B in
+`OLX_IMPORT_SESSION_PROMPT.md`): it runs both passes, prints each open field with its
+rule, logs the outcome and enforces fix-once. This skill is the reference for WHY the
+fields are decided the way they are, and for running a pass by hand.
+
 Imports ONE OLX smartwatch ad. `$PROJECT_ROOT` / `$CDP_HOST` come from
 `olx-session-setup`; the id comes from `candidates.py next`.
 

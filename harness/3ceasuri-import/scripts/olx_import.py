@@ -271,6 +271,15 @@ def run(profile, g):
                                     "price": _m.get("price"), "currency": _m.get("currency"),
                                     "title": title[:80]})
 
+    # --- 1d. a days-old account selling an expensive watch = scam ------------
+    _young = price_sanity.new_seller_risk(_m.get("price"), _m.get("currency"),
+                                          (ad.get("user") or {}).get("created"))
+    if _young and os.environ.get("ALLOW_NEW_SELLER", "") != "1":
+        skip("new_seller_expensive", {"reason": "new_seller_expensive: " + _young,
+                                      "seller_id": seller["id"],
+                                      "account_created": (ad.get("user") or {}).get("created"),
+                                      "title": title[:80]})
+
     # --- 2. what OLX already answers -----------------------------------------
     brand_ids = admin_import.load_brand_ids(HARNESS)
     mapped = olx_api.map_params(ad)
@@ -278,6 +287,11 @@ def run(profile, g):
     brand_label = olx_api.brand_param(ad)
     brand = (admin_import.match_brand(brand_label, brand_ids) if brand_label else None) \
             or admin_import.match_brand(title, brand_ids)
+    # A known brand in the OLX param or the title is settled. Anything weaker is only
+    # a guess the model must confirm: a description match can be a brand the seller
+    # says the watch is NOT ("Nu Citizen, Seiko, Breitling..."), and an unknown label
+    # would create a new brand row in the DB.
+    brand_settled = bool(brand)
     if not brand and conf["brand_from_description"]:
         brand = admin_import.match_brand(description, brand_ids)
     brand = brand or (brand_label or None)
@@ -328,6 +342,16 @@ def run(profile, g):
     _draft_exists = (os.path.exists(contract_draft.draft_path(PROJECT_ROOT, AD_ID))
                      and os.environ.get("FRESH", "") != "1")
     if not OVERRIDES and not _draft_exists and not SKIP_PROMPT and not DRY_RUN:
+        # The two confidence-gate reasons that depend only on the ad, never on the
+        # contract. Pass 2 would stop on them anyway -- deciding here saves the photo
+        # download, the phone reveal and the model's whole draft edit. Same thresholds
+        # as confidence_review(), which still runs in pass 2.
+        if len(images) < 2:
+            skip("too_few_images", {"reason": "too_few_images: only %d image(s) on the ad"
+                                              % len(images)})
+        if len(description.strip()) < 40:
+            skip("thin_description", {"reason": "thin_description: %d chars"
+                                                % len(description.strip())})
         photos, failed = olx_api.download_photos(bu, images, PHOTO_DIR)
         # The phone is masked in the JSON and only rendered on click, so it costs a
         # page navigation — do it once here and show it with the contract. SOURCE_URL
@@ -336,7 +360,10 @@ def run(profile, g):
         phone, phone_status = olx_api.reveal_phone(bu, SOURCE_URL)
         if phone:
             known["phone"] = phone
+            data["phone"] = phone      # into the draft, or pass 2 reveals it all over again
         draft = contract_draft.build(data, profile)
+        if not brand_settled and "brand" not in draft["_todo"]:
+            draft["_todo"].insert(0, "brand")
         dpath = contract_draft.draft_path(PROJECT_ROOT, AD_ID)
         contract_draft.write(dpath, draft)
         emit("EXTRACT_PROMPT", {

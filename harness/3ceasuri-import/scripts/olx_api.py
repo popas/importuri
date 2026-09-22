@@ -477,7 +477,29 @@ def brand_param(ad):
     """
     v = param_values(ad).get("brand") or {}
     label = (v.get("label") or "").strip()
+    # "Alt brand" is OLX's "some other brand" dropdown entry, not a maker. Taken
+    # literally it pre-filled the draft (brand is not asked when it is filled), and
+    # Ingersoll, Squale, Vector, Timberland and Serge Panchenko were all imported as
+    # "Alt brand" before being corrected by hand. None sends the brand to the title
+    # match and, failing that, into the draft's _todo.
+    if norm_label(label) in GENERIC_BRAND_LABELS:
+        return None
     return label or None
+
+
+GENERIC_BRAND_LABELS = {"alt brand", "alta marca", "alte branduri", "altele", "alta",
+                        "other", "others", "fara brand", "fara marca", "no brand",
+                        "noname", "no name", "generic",
+                        # a country of origin, not a maker (ad 299906244 was a Nefina)
+                        "swiss", "swiss made", "elvetia", "elvetian"}
+
+
+def norm_label(s):
+    """Lowercase, diacritic-free, single-spaced — for comparing OLX labels."""
+    import unicodedata
+    s = "".join(c for c in unicodedata.normalize("NFKD", s or "")
+                if not unicodedata.combining(c))
+    return " ".join(s.lower().split())
 
 
 # OLX writes region names without diacritics. The județe are a closed list of 41 +

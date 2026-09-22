@@ -14,7 +14,16 @@ orchestrator and the skill for the current phase. The only tests are offline stu
 `archive/facebook/README.md` says what moved and how to bring it back. Do not read it
 unless you are reactivating that source.
 
-## Read-order (every session)
+## Import loop: use the driver, skip the read-order
+
+For importing from a queue that has pending ids, follow **Prompt B in
+`OLX_IMPORT_SESSION_PROMPT.md`** and nothing else: `scripts/olx-step.py` does
+setup, both passes, logging, routing and verification, and prints the literal next
+command. It replaces `olx-session-setup`, the two importer skills and
+`import-verify-state` for that loop — do not load them. The read-order below is for
+discovery, troubleshooting and changing the harness.
+
+## Read-order (discovery / troubleshooting / harness work)
 
 1. `OLX_Listing_Automation_Plan.md` — the orchestrator (≤60 lines): the loop and the
    iron rules.
@@ -52,6 +61,8 @@ harness/3ceasuri-import/
   scripts/contract_draft.py        ← the seeded contract draft: build / write / read, _todo
   scripts/candidates.py            ← the work queue (python3, NOT a browser payload)
   scripts/olx-log-result.py        ← history.jsonl + state.json (python3, NOT a payload)
+  scripts/olx-step.py              ← THE LOOP DRIVER: start/next/finish/skip/stop
+                                     (python3, NOT a payload; it runs the payloads)
   scripts/olx_api.py               ← in-page API, param→enum map, photo URLs, phone reveal
   scripts/price_sanity.py          ← price floors — suspiciously cheap = fake, dropped
   scripts/olx-find-smartwatches.py ← category 1943 discovery
@@ -59,6 +70,7 @@ harness/3ceasuri-import/
   scripts/olx-import-smartwatch.py ← wrapper: olx_import.run("smart", globals())
   scripts/olx-import-watch.py      ← wrapper: olx_import.run("classic", globals())
   .contracts/olx-<id>.json         ← the per-ad contract draft (gitignored)
+  .runs/                           ← olx-step.py: raw payload logs + run state (gitignored)
   .candidates-olx-smart.json       ← 1943 discovery output; the work queue
   .candidates-olx-watches.json     ← 1677 discovery output; the work queue
   references/brand-ids.md          ← brand→ID mapping source of truth
@@ -83,8 +95,9 @@ own process — that is the whole point, so don't reimplement their steps as ind
 via `bind(globals())` or, for `olx_import.run(profile, globals())`, straight from the
 globals dict.
 
-**Two scripts are the exception and ARE run with `python3`**: `candidates.py` (the work
-queue) and `olx-log-result.py` (history + counters). Neither touches a browser.
+**Three scripts are the exception and ARE run with `python3`**: `candidates.py` (the
+work queue), `olx-log-result.py` (history + counters) and `olx-step.py` (the loop
+driver — it pipes the payloads into browser-use for you).
 
 Data flows one direction per watch: **`candidates.py next` → pass 1 (dedup → read the
 ad → seeded draft + `EXTRACT_PROMPT` + photos, no DB write) → you edit the draft's
@@ -102,6 +115,9 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
 
 - **Ground truth for "is this imported / how many are there" is the 3ceasuri.ro admin**,
   never a local file. The old `state.json` counter drifted to 33 while the site held 80+.
+- **A days-old seller account asking a lot is a scam** (user directive 2026-09-22):
+  under 30 days old and >= 1000 RON is a hard skip in pass 1 (`new_seller_expensive`,
+  `price_sanity.new_seller_risk`). Only a human's `ALLOW_NEW_SELLER=1` overrides it.
 - **Never import a suspiciously cheap listing.** Below the floors in
   `scripts/price_sanity.py` a watch is a fake, not a bargain. `CONFIRM=1` does not wave
   one through.

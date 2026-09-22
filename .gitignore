@@ -12,3 +12,6 @@ harness/3ceasuri-import/.contracts/
 
 # replay eval snapshots (fetched once from a browser, then read offline)
 harness/3ceasuri-import/eval/.snapshots/
+
+# olx-step.py: raw payload output per ad + per-ad run state (fix attempts, profile)
+harness/3ceasuri-import/.runs/

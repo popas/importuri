@@ -374,6 +374,19 @@ _READBACK_JS = ('(() => {const g=id=>{const e=document.getElementById(id);'
                 'videoUrl:g("id_video_url"),imgs});})()')
 
 
+def _js_settled(bu, expr, tries=3, wait=3):
+    """bu.js() that survives the post-save redirect. Evaluating while Django is
+    still navigating hangs until CDP's own timeout; 3 of 4 imports on 2026-09-22
+    lost their RESULT: that way although the record had saved. Returns None when
+    the page never answered."""
+    for i in range(tries):
+        try:
+            return bu.js(expr)
+        except RuntimeError:
+            time.sleep(wait)
+    return None
+
+
 def verify(bu, listing_id):
     """Check both banners, then read the saved record back (saved != correct).
 
@@ -381,18 +394,28 @@ def verify(bu, listing_id):
     multi-image saves, so a readback that found the record by its own listing id
     is accepted as equivalent proof the add committed.
     """
-    banners = json.loads(bu.js(_BANNERS_JS))
-    chg = json.loads(bu.js(_CHANGE_LINK_JS))
+    banners = json.loads(_js_settled(bu, _BANNERS_JS) or "{}")
+    chg = json.loads(_js_settled(bu, _CHANGE_LINK_JS) or "{}")
     if not chg.get("url"):
         bu.goto_url("%s/watches/watch/?q=%s" % (ADMIN, urllib.parse.quote(str(listing_id))))
-        time.sleep(3)
-        chg = json.loads(bu.js(_CHANGE_LINK_JS))
+        for _ in range(4):          # the changelist search can take >3s to render
+            time.sleep(3)
+            chg = json.loads(_js_settled(bu, _CHANGE_LINK_JS) or "{}")
+            if chg.get("url"):
+                break
 
     readback = None
     if chg.get("url"):
         bu.goto_url(chg["url"])
         time.sleep(4)
-        readback = json.loads(bu.js(_READBACK_JS))
+        readback = json.loads(_js_settled(bu, _READBACK_JS) or "null")
+        for _ in range(2):
+            # An all-null readback is the change form not rendered yet, not an empty
+            # record: ad 299906244 read back imgs=0 while all 8 photos had saved.
+            if readback and readback.get("extId"):
+                break
+            time.sleep(4)
+            readback = json.loads(_js_settled(bu, _READBACK_JS) or "null")
 
     readback_ok = bool(readback and str(readback.get("extId")) == str(listing_id))
     ok = bool(banners.get("images_ok") and (banners.get("added_ok") or readback_ok))

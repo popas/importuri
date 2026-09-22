@@ -80,7 +80,10 @@ ALWAYS_ASK = {
     "classic": ["model", "movement", "reference", "is_wristwatch", "is_bulk_lot", "notes"],
     "smart":   ["model", "connectivity", "compatibility", "is_wristwatch", "is_bulk_lot", "notes"],
 }
-ASK_IF_EMPTY = ["category", "year", "diameter", "gender", "condition",
+# `brand` is asked only when neither the OLX param nor the title named a known one --
+# otherwise a required field sat null OUTSIDE the todo list, so the only way past the
+# draft check was to edit a field the model had been told to leave alone.
+ASK_IF_EMPTY = ["brand", "category", "year", "diameter", "gender", "condition",
                 "caseMat", "braceletMat", "displayColor"]
 
 PROMPT = """# Extraction contract — fill this from the {source_noun} below
