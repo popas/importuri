@@ -118,6 +118,10 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
 - **A days-old seller account asking a lot is a scam** (user directive 2026-09-22):
   under 30 days old and >= 1000 RON is a hard skip in pass 1 (`new_seller_expensive`,
   `price_sanity.new_seller_risk`). Only a human's `ALLOW_NEW_SELLER=1` overrides it.
+- **"Alt brand" is never a stored brand** (user directive 2026-09-22). An item with no
+  maker mark is stored as `Fără marcă` (id 54); the importer rewrites a final answer of
+  "Alt brand" to it. OLX's own "Alt brand" dropdown label means "a brand OLX does not
+  list", NOT "unbranded" — read the real maker off the dial/caseback/box first.
 - **Never import a suspiciously cheap listing.** Below the floors in
   `scripts/price_sanity.py` a watch is a fake, not a bargain. `CONFIRM=1` does not wave
   one through.

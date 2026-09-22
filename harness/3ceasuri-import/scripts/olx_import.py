@@ -404,6 +404,13 @@ def run(profile, g):
             if f not in filled:
                 data.pop(f, None)
     data.update({k: v for k, v in filled.items() if k != "force"})
+    # User directive 2026-09-22: "Alt brand" is never a stored brand -- an item with no
+    # maker is "Fără marcă". Applied to the FINAL answer only: OLX's "Alt brand" label
+    # means "a brand OLX does not list", so the real maker is still asked for first.
+    if olx_api.norm_label(data.get("brand")) in ("alt brand", "alta marca", "alte branduri",
+                                                  "fara brand", "no brand", "noname",
+                                                  "no name", "generic"):
+        data["brand"] = "Fără marcă"
 
     if conf["misroute_check"]:
         # The category facts survive the clearing — a smartwatch stays a smartwatch

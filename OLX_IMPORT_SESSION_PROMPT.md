@@ -63,7 +63,8 @@ Judging, in one place:
     The script already refuses what is below its price floors — you catch the rest.
   - A new watch still in its box or wrap IS a watch (is_wristwatch=true).
   - brand: the maker on the dial/caseback/box. No mark anywhere -> 'Fără marcă'.
-    Never 'Alt brand', never 'Swiss' — those are OLX labels, not makers.
+    'Alt brand' is NEVER stored — unbranded is always 'Fără marcă'. OLX's 'Alt brand'
+    and 'Swiss' are labels, not makers: find the real maker first.
   - model: the name on the dial or box. None -> the defining trait, short
     ('Tachymetre 100M Automatic', "Precision anii '40").
   - movement: from the ad or dial; or inferred from a model you KNOW (a fashion or
