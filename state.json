@@ -2,10 +2,10 @@
   "_truth": "Session bookkeeping ONLY. This file is NOT a record of what has been imported. Ground truth for 'is this watch already on the site' is the 3ceasuri.ro admin (queried per post via ?q=<id>); ground truth for 'what happened locally' is history.jsonl (append-only). Never derive an import count from this file.",
   "session_date": "2026-09-22",
   "target": 10,
-  "queue": "harness/3ceasuri-import/.candidates-olx-watches-bi.json",
-  "profile": "classic",
+  "queue": "harness/3ceasuri-import/.candidates-olx-smart-cluj.json",
+  "profile": "smart",
   "session_imported": 10,
-  "session_skipped": 4,
+  "session_skipped": 1,
   "status": "idle",
   "note": ""
 }
