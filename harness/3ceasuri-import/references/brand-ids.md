@@ -246,6 +246,7 @@ Anker:243
 Aristocrazy:244
 Nefina:245
 Pryngeps:246
+W. T. Author:247
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
