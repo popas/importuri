@@ -246,6 +246,7 @@ Tevise:242
 Anker:243
 Aristocrazy:244
 Nefina:245
+Pryngeps:246
 ```
 
 Last updated: 2026-09-20. Added `Tevise`(242, ad 301611227 — "Ceas barbatesc Tevise
