@@ -20,6 +20,9 @@
 #   SNIPPET         chars of ad text per emitted candidate (default 180)
 #   NO_DEDUP=1      skip the admin Stage-1 dedup pass
 #   DEBUG_DROPS=1   also emit DROPPED: [{id,why,snip}]
+#   COUNTY          keep only this județ (olx_api.location_county spelling, e.g.
+#                   "Brașov"); no server-side region filter exists, so this walks
+#                   the whole category and drops everything else as wrong_county
 #   OUT             candidates file (default .candidates-olx-smart.json)
 #
 # Emits: CANDIDATES: [...]   STATS: {...}   ERROR: {...}
@@ -47,6 +50,7 @@ MIN_EUR        = int(os.environ.get("MIN_EUR", "30"))
 SNIPPET        = int(os.environ.get("SNIPPET", "180"))
 NO_DEDUP       = os.environ.get("NO_DEDUP", "") == "1"
 DEBUG_DROPS    = os.environ.get("DEBUG_DROPS", "") == "1"
+COUNTY         = os.environ.get("COUNTY", "").strip()
 HARNESS        = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
 OUT            = os.environ.get("OUT", os.path.join(PROJECT_ROOT,
                                 "harness/3ceasuri-import/.candidates-olx-smart.json"))
@@ -139,6 +143,8 @@ def consider(ad):
 
     if ad.get("status") != "active":
         drop("not_active", ad, snip); return
+    if COUNTY and olx_api.location_county(ad) != COUNTY:
+        drop("wrong_county", ad, snip); return
     s = olx_api.seller(ad)
     if s["id"] and s["id"] in BLOCK:
         drop("blocklisted_seller", ad, snip); return
