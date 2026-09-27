@@ -254,6 +254,7 @@ Aragon:251
 ORUSS:252
 Benlydesign:253
 Ming:254
+Christ:255
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
