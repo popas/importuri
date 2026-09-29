@@ -152,6 +152,14 @@ def photo_urls(ad, width=1000, height=1000):
 
 
 def reveal_phone(bu, ad_url, wait=9):
+    """_reveal_phone(), but a CDP timeout costs only the phone, never the import."""
+    try:
+        return _reveal_phone(bu, ad_url, wait)
+    except RuntimeError:
+        return None, "timeout"
+
+
+def _reveal_phone(bu, ad_url, wait=9):
     """The seller's phone number: (number_or_None, status).
 
     OLX renders it masked (`xxx xxx xxx`) behind a `data-testid="show-phone"`
@@ -192,7 +200,12 @@ def reveal_phone(bu, ad_url, wait=9):
     except Exception:
         want = ad_url
     for _ in range(6):
-        here = bu.js('(() => location.pathname)()') or ""
+        try:
+            here = bu.js('(() => location.pathname)()') or ""
+        except RuntimeError:
+            # A page still loading can hang Runtime.evaluate until CDP's own
+            # timeout (2026-09-30, twice in one session) - poll again.
+            here = ""
         if here == want:
             break
         time.sleep(3)
