@@ -295,6 +295,30 @@ def download_photos(bu, urls, dest_dir):
     return paths, failed
 
 
+def photo_data_urls(bu, urls, dest_dir):
+    """The ad's photos as `data:` URLs, for the harness to upload.
+
+    Since 2026-09-29 the CDN answers 403 to any request carrying a foreign Origin,
+    so importWatch() can no longer fetch() the photo URLs from the admin page. It
+    gets the copies pass 1 saved instead; they are re-downloaded (from the olx.ro
+    tab, which the CDN still serves) when any is missing.
+    """
+    import base64
+    import os
+
+    paths = [os.path.join(dest_dir, "%02d.jpg" % i) for i in range(1, len(urls) + 1)]
+    if not all(os.path.exists(p) for p in paths):
+        paths, _ = download_photos(bu, urls, dest_dir)
+    out = []
+    for p in paths:
+        with open(p, "rb") as f:
+            raw = f.read()
+        mime = ("image/png" if raw[:4] == b"\x89PNG" else
+                "image/webp" if raw[8:12] == b"WEBP" else "image/jpeg")
+        out.append("data:%s;base64,%s" % (mime, base64.b64encode(raw).decode()))
+    return out
+
+
 # --- text --------------------------------------------------------------------
 _TAG_RE = re.compile(r"<[^>]+>")
 

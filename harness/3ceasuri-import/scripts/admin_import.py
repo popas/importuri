@@ -337,6 +337,25 @@ def inject_harness(bu, harness_path, brand_name=None, brand_id=None):
               % (json.dumps(brand_name), brand_id))
 
 
+def stage_images(bu, data_urls, chunk=40000):
+    """Load `data:` URLs into the current (add) page as `blob:` URLs.
+
+    browser-use's daemon reads each request with asyncio readline(), capped at
+    64 KB, so the photos go in 40 KB slices; the short blob URLs are what
+    importWatch() then fetch()es. Lost on navigation, like the harness itself.
+    """
+    bu.js("(() => { window.__imgParts = {}; return 1; })()")
+    out = []
+    for i, url in enumerate(data_urls):
+        for off in range(0, len(url), chunk):
+            bu.js("(() => { (window.__imgParts[%d] = window.__imgParts[%d] || []).push(%s);"
+                  " return 1; })()" % (i, i, json.dumps(url[off:off + chunk])))
+        out.append(bu.js("(async () => { const b = await (await fetch("
+                         "window.__imgParts[%d].join(''))).blob(); delete window.__imgParts[%d];"
+                         " return URL.createObjectURL(b); })()" % (i, i)))
+    return [u for u in out if u]
+
+
 def submit(bu, data, image_count):
     """Call importWatch() and wait it out.
 
@@ -344,14 +363,15 @@ def submit(bu, data, image_count):
     that is the *normal* path, because a successful submit navigates the page out
     from under CDP. Verify by page content afterwards, never by return value.
     """
-    call = ("(async () => { try { await importWatch("
+    call = ("(async () => { try { const r = await importWatch("
             + json.dumps(data, ensure_ascii=False)
-            + "); return 'OK'; } catch(e){ return 'ERR:'+e.message; } })()")
+            + "); return JSON.stringify(r); } catch(e){ return 'ERR:'+e.message; } })()")
     try:
-        bu.js(call)
+        ret = bu.js(call)
     except Exception:
-        pass
+        ret = None      # the page navigated away: the normal path
     time.sleep(20 + max(0, image_count - 5) * 2)
+    return ret
 
 
 _BANNERS_JS = ('(() => {const t=document.body.innerText;return JSON.stringify({'

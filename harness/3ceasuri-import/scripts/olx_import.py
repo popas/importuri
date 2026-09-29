@@ -500,6 +500,14 @@ def run(profile, g):
                            "name is generic and the brand could not be confirmed"
                            % data.get("model")}]))
 
+    # --- 7b. photos as data: URLs (the CDN now refuses the admin's Origin) ---
+    if not DRY_RUN:
+        switch_tab(OLX_TAB)
+        local_photos = olx_api.photo_data_urls(bu, images, PHOTO_DIR)
+        if len(local_photos) < len(images):
+            emit("WARN", {"msg": "only %d/%d photos available locally"
+                                 % (len(local_photos), len(images))})
+
     # --- 8. ensure the brand exists ------------------------------------------
     switch_tab(ADMIN_TAB)
     try:
@@ -522,7 +530,10 @@ def run(profile, g):
                         "would_import": {k: (v if k != "images" else len(v)) for k, v in data.items()}})
         raise SystemExit(0)
 
-    admin_import.submit(A, data, len(images))
+    data["images"] = admin_import.stage_images(A, local_photos)
+    ret = admin_import.submit(A, data, len(images))
+    if ret:     # importWatch returned instead of navigating: it bailed before submit
+        emit("WARN", {"msg": "importWatch returned without navigating", "ret": ret[:3000]})
 
     # --- 10. verify ----------------------------------------------------------
     ok, banners, readback, readback_ok = admin_import.verify(A, AD_ID)
