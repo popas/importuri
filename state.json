@@ -4,7 +4,7 @@
   "target": 50,
   "queue": "harness/3ceasuri-import/.candidates-olx-smart-bucuresti-1001.json",
   "profile": "smart",
-  "session_imported": 48,
+  "session_imported": 50,
   "session_skipped": 14,
   "status": "idle",
   "note": ""
