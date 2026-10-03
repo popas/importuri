@@ -356,6 +356,39 @@ _BOILERPLATE_MARKERS = (
 )
 
 
+# Romanian phone numbers as sellers type them: 0722 123 456, 0722-123-456,
+# 0722.123.456, +40 722 123 456, 0040722123456, landlines 021 123 4567 / 0264 123 456.
+# The seller's number is already captured in `phone`; in the public text it is just a
+# way to bypass the site. Anchored on non-digits either side, so a reference like
+# T125.617.17.051.03 or a price never matches.
+_PHONE_RE = re.compile(
+    r"(?<![\d.])(?:(?:\+\s?4\s?0|0040)[\s.\-]?\(?0?|\(?0)"
+    r"(?:7\d{2}|[23]\d{1,2})\)?(?:[\s.\-]?\d){6,7}(?![\d.]*\d)")
+# The label the number leaves behind: "Tel:", "Telefon -", "Nr. contact:", "WhatsApp".
+_PHONE_LABEL_RE = re.compile(
+    r"\b(?:tel(?:efon)?|mobil|nr\.?(?:\s*(?:de\s*)?(?:tel(?:efon)?|contact))?|"
+    r"num[aă]r(?:ul)?(?:\s*(?:de\s*)?(?:tel(?:efon)?|contact))?|contact|whats\s?app|"
+    r"sun(?:a[tț]i|ă)(?:\s*la)?|apela[tț]i(?:\s*la)?)\s*[:.\-]?\s*$", re.I)
+
+
+def strip_phones(text):
+    """Remove phone numbers (and the "Tel:" they leave dangling) from free text."""
+    if not text:
+        return text or ""
+    out = []
+    for line in text.splitlines():
+        if _PHONE_RE.search(line):
+            parts = _PHONE_RE.split(line)
+            line = ""
+            for part in parts:
+                line += _PHONE_LABEL_RE.sub("", part) if part is not parts[-1] else part
+            line = re.sub(r"[ \t]{2,}", " ", line).strip(" \t,;/|-")
+            if not re.search(r"\w", line):
+                continue
+        out.append(line)
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
+
+
 def clean_description(html):
     """OLX descriptions are HTML with <br /> line breaks. Keep the breaks."""
     if not html:
@@ -375,7 +408,7 @@ def clean_description(html):
         m = marker.search(text)
         if m:
             cut = min(cut, m.start())
-    return text[:cut].strip()
+    return strip_phones(text[:cut].strip())
 
 
 # --- params -> DB enums ------------------------------------------------------

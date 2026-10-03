@@ -90,6 +90,11 @@ HINTS = {
     "caseMat": "only what the ad or the photo actually shows.",
     "braceletMat": "only what the ad or the photo actually shows (silicone = rubber).",
     "displayColor": "the dial colour, only when the photo shows it.",
+    "description": "OUR listing text, rewritten - never the seller's pasted back. Romanian "
+                   "with diacritics, 400-1000 chars, plain paragraphs: what it is; looks and "
+                   "materials (ad + photo); condition as the seller states it, defects "
+                   "included; what comes with it. Only facts from the ad, the photo or your "
+                   "fields. NO phone, link, price, 'vând', 'negociabil', contact or hype.",
 }
 KEEP_SHOWN = ("brand", "price", "currency", "condition", "category", "movement", "gender")
 
@@ -296,6 +301,12 @@ def sheet(queue, ad_id, profile, draft, extract, photos, note=None):
     else:
         out.append("PHOTO: none downloaded - decide from the text; is_wristwatch/model "
                    "doubt -> leave it and let the gate decide")
+    if "description" in todo:
+        out.append("DESCRIPTION - write it with the Write tool to %s (plain text, no quotes); "
+                   "finish picks it up. Rule: %s"
+                   % (os.path.relpath(contract_draft.description_path(ROOT, ad_id), ROOT),
+                      hint("description", profile)))
+        todo = [f for f in todo if f != "description"]
     out.append("DECIDE (field = current value | rule):")
     w = max([len(f) for f in todo] + [8])
     required = infer_fields.REQUIRED_BY_PROFILE.get(profile, []) + infer_fields.FLAGS
@@ -420,6 +431,14 @@ def cmd_finish(queue, ad_id, pairs):
     except ValueError as e:
         say("BAD_ANSWER: %s - nothing was run; fix the command and repeat it." % e)
         return 1
+    dfile = contract_draft.description_path(ROOT, ad_id)
+    if "description" not in answers and os.path.exists(dfile):
+        with open(dfile) as f:
+            answers["description"] = f.read().strip() or None
+    if "description" in (draft.get("_todo") or []) and not answers.get("description"):
+        say("BAD_ANSWER: no description - write ours to %s first; nothing was run."
+            % os.path.relpath(dfile, ROOT))
+        return 1
     bad = infer_fields.validate(answers)
     if bad:
         say("BAD_ANSWER: %s - nothing was run; fix the command and repeat it."
@@ -457,6 +476,10 @@ def cmd_finish(queue, ad_id, pairs):
             lines.append("  %s: %s%s" % (r.get("code"), r.get("message"),
                                          (" | %s" % hint(f, profile)) if f else ""))
         fields = [r.get("field") for r in what if r.get("field")]
+        if "description" in fields:
+            fields.remove("description")
+            lines.append("  rewrite %s with the Write tool, then run finish"
+                         % os.path.relpath(contract_draft.description_path(ROOT, ad_id), ROOT))
         lines.append("NEXT: %s finish %s %s %s" % (
             SELF, os.path.relpath(queue, ROOT), ad_id,
             " ".join("'%s=...'" % f for f in fields) or "'<field>=...'"))

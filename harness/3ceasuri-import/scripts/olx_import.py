@@ -84,7 +84,7 @@ PROFILES = {
 
 
 
-def confidence_review(profile, data, images, brand_ids):
+def confidence_review(profile, data, images, brand_ids, seller_text=None):
     """The confidence gate, as a pure function. Returns a list of reasons.
 
     Each reason carries a code and an action. `fix` means the gate named exactly
@@ -94,6 +94,10 @@ def confidence_review(profile, data, images, brand_ids):
 
     It is out here, rather than inside run(), so the offline replay eval scores the
     SAME gate the importer runs instead of a copy of it that can drift.
+
+    `seller_text` is the cleaned OLX description. The listing text is ours to write
+    (user directive 2026-10-03), so the seeded seller text coming back unchanged means
+    the rewrite was skipped — a `fix`, since the answer is one edit away.
     """
     review = []
 
@@ -131,6 +135,11 @@ def confidence_review(profile, data, images, brand_ids):
                         "smartwatch without %s (fill it in the draft)" % f, f)
     if len(images) < 2:
         _review("too_few_images", "skip", "only %d image(s) on the ad" % len(images))
+    if seller_text and " ".join((data.get("description") or "").split()) \
+            == " ".join(seller_text.split()):
+        _review("description_not_rewritten", "fix",
+                "description is still the seller's text - write our own (see the rules)",
+                "description")
     if len((data.get("description") or "").strip()) < 40:
         _review("thin_description", "skip",
                 "description looks thin (%d chars)"
@@ -411,6 +420,9 @@ def run(profile, g):
                                                   "fara brand", "no brand", "noname",
                                                   "no name", "generic"):
         data["brand"] = "Fără marcă"
+    # Contact details never reach the public listing, whoever wrote the text.
+    if data.get("description"):
+        data["description"] = olx_api.strip_phones(data["description"])
 
     if conf["misroute_check"]:
         # The category facts survive the clearing — a smartwatch stays a smartwatch
@@ -472,7 +484,8 @@ def run(profile, g):
     emit("INFER", {k: (v if k != "images" else len(v)) for k, v in data.items()})
 
     # --- 6. confidence gate --------------------------------------------------
-    review = confidence_review(profile, data, images, brand_ids)
+    review = confidence_review(profile, data, images, brand_ids,
+                               seller_text=description if IS_CONTRACT else None)
     # Not waived by CONFIRM either (§6 decision 5: nobody overrides a gate).
     if review and not DRY_RUN:
         review_stop({"reasons": review, "images": len(images),

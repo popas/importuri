@@ -2,7 +2,7 @@
 """Offline tests for the seeded contract draft (no browser, no network)."""
 import json, os, sys, tempfile
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
 import contract_draft, infer_fields
 

@@ -3,7 +3,7 @@
 can follow without judgement. Prose reasons are what made REVIEW: a coin flip."""
 import os, re, sys
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 SRC = os.path.join(ROOT, "harness/3ceasuri-import/scripts/olx_import.py")
 
 fails = []

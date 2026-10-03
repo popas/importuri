@@ -34,7 +34,8 @@ import os
 import re
 import sys
 
-ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+ROOT = os.environ.get("PROJECT_ROOT") or os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
 
 import olx_api

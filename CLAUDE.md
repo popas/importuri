@@ -101,8 +101,9 @@ driver — it pipes the payloads into browser-use for you).
 
 Data flows one direction per watch: **`candidates.py next` → pass 1 (dedup → read the
 ad → seeded draft + `EXTRACT_PROMPT` + photos, no DB write) → you edit the draft's
-`_todo` fields → pass 2 (`CONFIRM=1` → read draft → validate → inject harness →
-`importWatch({...})` → two green banners → readback) → `olx-log-result.py`.** A
+`_todo` fields, `description` always among them → pass 2 (`CONFIRM=1` → read draft →
+validate → inject harness → `importWatch({...})` → two green banners → readback) →
+`olx-log-result.py`.** A
 contract field you blank is cleared, not defaulted — the draft removes the retyping,
 not the clearing rule. `OVERRIDES='{…}'` still works and still wins, for a human
 patching one field from the shell.
@@ -122,6 +123,11 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   maker mark is stored as `Fără marcă` (id 54); the importer rewrites a final answer of
   "Alt brand" to it. OLX's own "Alt brand" dropdown label means "a brand OLX does not
   list", NOT "unbranded" — read the real maker off the dial/caseback/box first.
+- **The listing description is ours, not the seller's** (user directive 2026-10-03):
+  rewritten as descriptively as the ad and photos allow, never invented, never with a
+  phone number or contact. The seller's text only seeds the draft; handing it back
+  unchanged stops as `description_not_rewritten`, and `olx_api.strip_phones` scrubs
+  phone numbers from both texts.
 - **Never import a suspiciously cheap listing.** Below the floors in
   `scripts/price_sanity.py` a watch is a fake, not a bargain. `CONFIRM=1` does not wave
   one through.

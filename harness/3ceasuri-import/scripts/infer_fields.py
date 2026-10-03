@@ -76,9 +76,12 @@ REQUIRED_BY_PROFILE = {
 # What the model decides, per profile. ALWAYS_ASK is asked even when a regex guessed a
 # value, because copying a guess is how `movement` silently became quartz on a 1970s
 # Poljot. ASK_IF_EMPTY is asked only when the deterministic baseline came up empty.
+# `description` is always ours to write (user directive 2026-10-03), so it is always asked.
 ALWAYS_ASK = {
-    "classic": ["model", "movement", "reference", "is_wristwatch", "is_bulk_lot", "notes"],
-    "smart":   ["model", "connectivity", "compatibility", "is_wristwatch", "is_bulk_lot", "notes"],
+    "classic": ["model", "movement", "reference", "is_wristwatch", "is_bulk_lot", "notes",
+                "description"],
+    "smart":   ["model", "connectivity", "compatibility", "is_wristwatch", "is_bulk_lot", "notes",
+                "description"],
 }
 # `brand` is asked only when neither the OLX param nor the title named a known one --
 # otherwise a required field sat null OUTSIDE the todo list, so the only way past the
@@ -129,8 +132,8 @@ RULES_CLASSIC = """
   match identifies a model family, not the exact variant, and a wrong reference on a
   public listing is worse than an empty field.
 - A model identified from photos rather than the ad is OUR classification, not the
-  seller's claim. Put it in `model`, say so in `notes`, and leave `description` as the
-  seller wrote it — do not add the model name into their text.
+  seller's claim. Put it in `model` and say so in `notes`; in `description` say it as
+  what the watch is, without attributing it to the seller.
 - `movement` — infer it, don't just copy it. The ad states it only half the time, but
   the model usually settles it (a Fossil Jacqueline is quartz; a Poljot from the '70s
   is hand-wound), and so does the dial (a running-seconds subdial, a smooth sweep in a
@@ -138,9 +141,22 @@ RULES_CLASSIC = """
   it. Only null when brand, model, era and photos genuinely leave it open — that stops
   for review, which beats the harness silently defaulting to `quartz` (it mislabelled a
   1970s Poljot that way).
-- `description` — the seller's text as `clean_description()` already returned it under
-  "OLX ad" below: no marketplace chrome, no phone numbers, no "citește mai mult". Keep
-  the seller's line breaks. Restate it verbatim — it is cleared if you leave it out.
+- `description` — OUR description, written for the 3ceasuri.ro listing (user directive
+  2026-10-03: as descriptive as possible). The draft is seeded with the seller's cleaned
+  text — REWRITE it, never paste it back. In Romanian with diacritics, neutral third
+  person, plain paragraphs (no markdown, no emoji), roughly 400-1000 characters:
+  1. what it is — brand, model, reference, type (wristwatch or wall clock, movement);
+  2. what it looks like and is made of — case and material, size, dial colour and
+     markings, crystal, bracelet/strap, complications, bezel, dial numerals, from the ad AND the photo you read;
+  3. condition exactly as the seller describes it, defects and wear included — never
+     soften a scratch or a fault, never upgrade "stare bună" to "impecabil";
+  4. what comes with it — box, papers, warranty, invoice, extra straps, spare links.
+  Every claim about THIS watch must come from the ad, the photos, or a field you filled.
+  General facts about the model are allowed only when the model is certain and you are
+  sure of the fact; leave out anything you would have to guess. Never invent provenance,
+  service history or authenticity. NO phone numbers, links, prices, "sunați", "vând",
+  "negociabil", seller names or other contact details — price and contact are fields of
+  their own. No sales hype ("ocazie unică", "super preț").
 - `year` — ONE year as an integer. `id_year` is a numeric input, so a decade range
   is silently dropped: if the post only says "anii '70", leave this null and put the
   decade in `model` instead.
@@ -204,8 +220,22 @@ RULES_SMART = """
 - `caseMat` / `braceletMat` — aluminium and titanium are the common Apple Watch
   cases; steel on the classier Samsung/Garmin models; the strap is usually
   `rubber` (silicone) or `nylon`. Only fill what the ad or photos actually show.
-- `description` — the seller's text, cleaned: no marketplace chrome, no phone
-  numbers pasted twice, no "citește mai mult". Keep the seller's line breaks.
+- `description` — OUR description, written for the 3ceasuri.ro listing (user directive
+  2026-10-03: as descriptive as possible). The draft is seeded with the seller's cleaned
+  text — REWRITE it, never paste it back. In Romanian with diacritics, neutral third
+  person, plain paragraphs (no markdown, no emoji), roughly 400-1000 characters:
+  1. what it is — brand, model, reference, type (GPS or LTE, size);
+  2. what it looks like and is made of — case and material, size, dial colour and
+     markings, crystal, bracelet/strap, screen state, battery health if stated, from the ad AND the photo you read;
+  3. condition exactly as the seller describes it, defects and wear included — never
+     soften a scratch or a fault, never upgrade "stare bună" to "impecabil";
+  4. what comes with it — box, papers, warranty, invoice, charger, extra straps.
+  Every claim about THIS watch must come from the ad, the photos, or a field you filled.
+  General facts about the model are allowed only when the model is certain and you are
+  sure of the fact; leave out anything you would have to guess. Never invent provenance,
+  service history or authenticity. NO phone numbers, links, prices, "sunați", "vând",
+  "negociabil", seller names or other contact details — price and contact are fields of
+  their own. No sales hype ("ocazie unică", "super preț").
 - `year` — ONE year as an integer, and only when stated. A smartwatch generation
   is NOT a year; leave it null and let `model` carry the generation.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.

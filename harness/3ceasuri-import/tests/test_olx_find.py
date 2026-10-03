@@ -9,7 +9,7 @@ import json, os, re, sys, io, contextlib, time, tempfile
 
 time.sleep = lambda *a, **k: None
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 SCRIPTS = os.path.join(ROOT, "harness/3ceasuri-import/scripts")
 FIND_SMART = os.path.join(SCRIPTS, "olx-find-smartwatches.py")
 FIND_WATCH = os.path.join(SCRIPTS, "olx-find-watches.py")

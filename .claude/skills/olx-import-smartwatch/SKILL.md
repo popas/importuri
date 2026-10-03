@@ -53,7 +53,8 @@ Edit the `draft` file in place. Change only the fields named in `todo`. Save.
 | `compatibility` | `ios`, `android` or `both`. Required. |
 | `is_wristwatch` | `false` only for an accessory (strap, charger, case, dock, empty box) — that is a skip |
 | `is_bulk_lot` | `true` if one price covers several watches |
-| `notes` | our own classification, if the photos identified a model the seller did not name. Leave `description` as the seller wrote it. |
+| `notes` | our own classification, if the photos identified a model the seller did not name. |
+| `description` | **ours, rewritten** (user directive 2026-10-03) — the draft holds the seller's text as the source; never hand it back unchanged (`description_not_rewritten`, a fix). Romanian with diacritics, 400–1000 chars, plain paragraphs: what it is; looks and materials (ad + photo); condition as the seller states it, defects included; what comes with it. Only facts from the ad, the photo or your fields. No phone, link, price, contact, "vând"/"negociabil" or hype. Phone numbers are stripped by the script anyway. |
 
 There is **no `series` field.** `infer_fields.validate()` rejects any key outside
 the contract, which is a hard `ERROR` in pass 2. The generation belongs in `model`.

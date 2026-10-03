@@ -4,7 +4,7 @@ watches and nothing external tracking progress, so 'which watch is next' has to 
 command, not something the model remembers."""
 import json, os, sys, tempfile
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
 import candidates
 

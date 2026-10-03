@@ -6,7 +6,7 @@ import json, os, re, sys, io, contextlib, time
 
 time.sleep = lambda *a, **k: None      # the scripts' paced waits are irrelevant offline
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 SCRIPTS = os.path.join(ROOT, "harness/3ceasuri-import/scripts")
 SMART = os.path.join(SCRIPTS, "olx-import-smartwatch.py")
 CLASSIC = os.path.join(SCRIPTS, "olx-import-watch.py")
@@ -197,6 +197,18 @@ d = olx_api.clean_description(SMART_AD["description"])
 check("<br" not in d and "&nbsp;" not in d, "3: html left in the description: %r" % d[:60])
 check(d.startswith("Ceas in stare foarte buna") and "\n" in d, "3: line breaks lost: %r" % d)
 
+# --- 3b. phone numbers never reach the public text (user directive 2026-10-03) ---
+for _raw, _want in (
+        ("Stare buna.<br />Tel: 0722 123 456", "Stare buna."),
+        ("Sunati la 0722-123-456 dupa ora 18", "dupa ora 18"),
+        ("+40 722.123.456 / 021 123 4567<br />Cutie si acte", "Cutie si acte"),
+        ("Ref T125.617.17.051.03, 1500 lei, 42mm, an 2019",
+         "Ref T125.617.17.051.03, 1500 lei, 42mm, an 2019"),
+        ("Serie 2345678901 pe capac, IMEI 356789012345678",
+         "Serie 2345678901 pe capac, IMEI 356789012345678")):
+    _got = olx_api.clean_description(_raw)
+    check(_got == _want, "3b: %r -> %r, want %r" % (_raw, _got, _want))
+
 # --- 4. pass 1 hands out the contract and writes NOTHING -------------------
 m, st = run(SMART, SMART_AD)
 check("EXTRACT_PROMPT" in m, "4: first pass must emit the contract")
@@ -213,7 +225,7 @@ check("Garmin Fenix 7x Solar" in p, "4: ad text missing from the prompt")
 FILLED_SMART = {"brand": "Garmin", "model": "Fenix 7X Solar",
                 "connectivity": "no_gsm", "compatibility": "both", "price": 1700,
                 "currency": "RON", "condition": "good", "gender": "men",
-                "description": "Ceas in stare foarte buna, folosit un an. Vine cu incarcator si cutie.",
+                "description": "Garmin Fenix 7X Solar, ceas smart outdoor cu încărcare solară, folosit aproximativ un an și păstrat în stare foarte bună. Se vinde împreună cu încărcătorul original și cutia.",
                 "is_wristwatch": True, "is_bulk_lot": False}
 m, st = run(SMART, SMART_AD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED_SMART)})
 inf = m["INFER"]
@@ -260,7 +272,7 @@ check(st["imported"] is None, "9: must not import a mis-routed ad")
 FILLED_CLASSIC = {"brand": "Seiko", "model": "Prospex MM200 SPB077", "movement": "automatic",
                   "price": 3500, "currency": "RON", "condition": "excellent",
                   "caseMat": "steel", "diameter": 44, "waterRes": "water_resistant_yes",
-                  "description": "Ceas automatic, cumparat in 2019, stare impecabila. Vine cu cutie si documente.",
+                  "description": "Seiko Prospex MM200 SPB077, ceas de scufundări automatic, cumpărat în 2019, în stare impecabilă. Se vinde cu cutia și documentele originale.",
                   "is_wristwatch": True, "is_bulk_lot": False}
 m, st = run(CLASSIC, CLASSIC_AD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED_CLASSIC)})
 inf = m["INFER"]
@@ -487,6 +499,7 @@ _ov_c = {"brand": "Seiko", "model": "Prospex MM200", "price": 3500, "currency": 
          "movement": "automatic", "is_wristwatch": True, "is_bulk_lot": False}
 _ov_s = {"brand": "Garmin", "model": "Fenix 7X Solar", "price": 1700, "currency": "RON",
          "connectivity": "no_gsm", "compatibility": "both",
+         "description": FILLED_SMART["description"],
          "is_wristwatch": True, "is_bulk_lot": False}
 m_c, _ = run(CLASSIC, CLASSIC_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(_ov_c)})
 m_s, _ = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(_ov_s)})
@@ -521,13 +534,31 @@ check("- `waterRes`:" not in _p17, "17: a field the baseline settled must not be
 
 # the model edits the draft, then pass 2 runs with no OVERRIDES at all
 _d.update({"model": "Fenix 7X Solar", "connectivity": "no_gsm", "compatibility": "both",
-           "is_wristwatch": True, "is_bulk_lot": False, "notes": None})
+           "is_wristwatch": True, "is_bulk_lot": False, "notes": None,
+           "description": FILLED_SMART["description"]})
 json.dump(_d, open(_dp, "w"))
 m2, st2 = run(SMART, SMART_AD, {"CONFIRM": "1"})
 check(m2.get("RESULT", {}).get("ok") is True, "17: pass 2 must import from the draft: %s" % m2.get("REVIEW"))
 check(m2["INFER"]["model"] == "Fenix 7X Solar", "17: the edit did not reach the form")
-check(m2["INFER"]["description"].startswith("Ceas in stare foarte buna"),
+check(m2["INFER"]["description"] == FILLED_SMART["description"],
       "17: description lost between draft and form")
+
+# --- 17b. the seller's text handed back unchanged is a fix, not an import ------
+check("description" in _d["_todo"], "17b: description must always be asked")
+_d["description"] = olx_api.clean_description(SMART_AD["description"])
+json.dump(_d, open(_dp, "w"))
+m2b, st2b = run(SMART, SMART_AD, {"CONFIRM": "1"})
+check(any(r.get("code") == "description_not_rewritten" and r.get("action") == "fix"
+          for r in (m2b.get("REVIEW") or {}).get("reasons", [])),
+      "17b: an unrewritten description must stop as a fix, got %s" % m2b.get("REVIEW"))
+check(st2b["imported"] is None, "17b: an unrewritten description must not import")
+_d["description"] = FILLED_SMART["description"] + " Contact: 0745 123 456"
+json.dump(_d, open(_dp, "w"))
+m2c, _ = run(SMART, SMART_AD, {"CONFIRM": "1"})
+check(m2c["INFER"]["description"] == FILLED_SMART["description"],
+      "17b: a phone in OUR text must be stripped too: %r" % m2c["INFER"]["description"])
+_d["description"] = FILLED_SMART["description"]
+json.dump(_d, open(_dp, "w"))
 
 # --- 18. blanking a field in the draft still clears it -----------------------
 _d["gender"] = None
@@ -550,7 +581,7 @@ json.dump(_d, open(_dp, "w"))
 # --- 19. OVERRIDES still wins, for a human one-off fix -----------------------
 m4, _ = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps({"model": "Fenix 7"})})
 check(m4["INFER"]["model"] == "Fenix 7", "19: OVERRIDES must override the draft")
-check(m4["INFER"]["description"].startswith("Ceas in stare foarte buna"),
+check(m4["INFER"]["description"] == FILLED_SMART["description"],
       "19: a one-field OVERRIDES on top of a draft must keep the rest of the draft")
 
 # --- 21. every REVIEW reason is machine-readable ----------------------------

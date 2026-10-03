@@ -51,7 +51,8 @@ Edit the `draft` file in place. Change only the fields named in `todo`. Save.
 | `is_wristwatch` | `false` for a wall clock, pocket, mantel, table or alarm clock |
 | `category` | `"wall"` for a wall clock — that plus `is_wristwatch: false` is an IMPORT, not a skip. Unbranded → brand `Fără marcă`, `caseMat` usually `wood`, `diameter` in MILLIMETRES (30 cm = `300`). |
 | `is_bulk_lot` | `true` if one price covers several watches |
-| `notes` | our own classification, if the photos identified a model the seller did not name. Leave `description` as the seller wrote it. |
+| `notes` | our own classification, if the photos identified a model the seller did not name. |
+| `description` | **ours, rewritten** (user directive 2026-10-03) — the draft holds the seller's text as the source; never hand it back unchanged (`description_not_rewritten`, a fix). Romanian with diacritics, 400–1000 chars, plain paragraphs: what it is; looks and materials (ad + photo); condition as the seller states it, defects included; what comes with it. Only facts from the ad, the photo or your fields. No phone, link, price, contact, "vând"/"negociabil" or hype. Phone numbers are stripped by the script anyway. |
 
 **A field you blank is CLEARED.** The draft removes the retyping, not the clearing.
 Leave alone anything not in `todo`.

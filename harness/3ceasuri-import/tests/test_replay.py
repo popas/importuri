@@ -7,7 +7,7 @@ reports that wrongly is worse than no tool, so its arithmetic is pinned here.
 """
 import json, os, subprocess, sys, tempfile
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
 import olx_import
 

@@ -40,6 +40,8 @@ Per watch:
      SKIPPED / ERROR  -> nothing to do, run `next` again.
      A sheet (AD ... DECIDE ... NEXT) -> step 2.
   2. Read the ONE photo the sheet names (Read tool). A second only for a caseback.
+     Write OUR description (Write tool) to the .description.txt path the sheet's
+     DESCRIPTION line names — rewritten, never the seller's text pasted back.
   3. $S finish $Q <id> 'field=value' ...
      - pass every field marked MUST ANSWER, plus any other field you change;
        an omitted field keeps the value shown. true/false/null bare, text in quotes.
@@ -73,6 +75,11 @@ Judging, in one place:
   - year: one integer, only when stated. "între 1960 și 1970" -> year=null and the
     decade goes in model.
   - notes: one sentence when the model or movement was inferred; otherwise null.
+  - description: Romanian with diacritics, 400-1000 chars, plain paragraphs — what
+    it is (brand, model, type); case, size, dial, strap, as the ad AND the photo show
+    them; condition exactly as the seller states it, defects included; what comes with
+    it (box, papers, charger). Nothing you would have to guess. No phone, link, price,
+    contact, "vând", "negociabil" or hype.
 
 The script, not you, refuses: suspiciously cheap listings, sellers whose account is
 under 30 days old asking >= 1000 RON, one-photo ads, thin descriptions, repeats.
