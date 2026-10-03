@@ -310,14 +310,17 @@ def probe_report(bu, local_brand_ids):
     try:
         if not available(bu):
             return {"api": "off", "why": "not deployed"}
-        site = brands_all(bu)
+        rows = brand_rows(bu)
     except SessionLost as e:
         return {"api": "lost", "why": str(e)}
     out = {"api": "on"}
-    if site is not None:
+    if rows is not None:
+        # Rows, not brands_all()'s {name: id}: two rows can share a name (the site has
+        # two "Eberhard & Co"), and a dict keeps only one of them.
         have = set(local_brand_ids.values())
-        out["brands"] = {"site": len(site),
-                         "missing": sorted(n for n, i in site.items() if i not in have)}
+        out["brands"] = {"site": len(rows),
+                         "missing": sorted("%s (id %s)" % (b["name"], b["id"])
+                                           for b in rows if b["id"] not in have)}
     return out
 
 
@@ -396,14 +399,26 @@ def reposts(bu, model, seller_id=None, exclude_id=None, tab=None, return_to=None
             for k in ("by_seller", "by_model")}
 
 
-def brands_all(bu, tab=None, return_to=None):
-    """{name: id} for every brand on the site, or None."""
+def brand_rows(bu, tab=None, return_to=None):
+    """[{id, name, slug}] for every brand row on the site, by id, or None."""
     if not available(bu, tab=tab, return_to=return_to):
         return None
     d = _get_json(bu, BRAND + "all/", tab=tab, return_to=return_to)
     if d is None:
         return None
-    return {b["name"]: b["id"] for b in d.get("brands") or [] if b.get("name")}
+    return [b for b in d.get("brands") or [] if isinstance(b, dict) and b.get("name")]
+
+
+def brands_all(bu, tab=None, return_to=None):
+    """{name: id} for every brand on the site, or None. Two rows with one name keep
+    the lower id, as the server's own name lookup does."""
+    rows = brand_rows(bu, tab=tab, return_to=return_to)
+    if rows is None:
+        return None
+    out = {}
+    for b in rows:
+        out.setdefault(b["name"], b["id"])
+    return out
 
 
 def brand_lookup(bu, name, tab=None, return_to=None):

@@ -240,6 +240,8 @@ fresh()
 def brand_route(req):
     if req["path"].startswith("/admin/watches/brand/all/"):
         return jenv({"brands": [{"id": 2, "name": "Casio", "slug": "casio"},
+                                {"id": 31, "name": "Eberhard & Co", "slug": "eberhard-co"},
+                                {"id": 32, "name": "Eberhard & Co", "slug": "eberhard-and-co"},
                                 {"id": 54, "name": "Fără marcă", "slug": "fara-marca"},
                                 {"id": 266, "name": "Zeppelin", "slug": "zeppelin"}]})
     if req["path"].startswith("/admin/watches/brand/lookup/"):
@@ -247,12 +249,15 @@ def brand_route(req):
                      "missing": []})
     return jenv({"existing": {}, "missing": []})
 p = Page(route=brand_route)
-check(site_api.brands_all(p) == {"Casio": 2, "Fără marcă": 54, "Zeppelin": 266},
-      "brands_all: {name: id}")
+check(site_api.brands_all(p) == {"Casio": 2, "Eberhard & Co": 31, "Fără marcă": 54,
+                                 "Zeppelin": 266},
+      "brands_all: {name: id}, a shared name keeps the lower id: %s" % site_api.brands_all(p))
 check(site_api.brand_lookup(p, "Fara Marca")["id"] == 54, "brand_lookup: found by the name asked")
-rep = site_api.probe_report(p, {"Casio": 2, "Fara marca": 54})
-check(rep == {"api": "on", "brands": {"site": 3, "missing": ["Zeppelin"]}},
-      "probe_report: missing by id (aliases count as present), got %s" % rep)
+rep = site_api.probe_report(p, {"Casio": 2, "Fara marca": 54, "Eberhard & Co": 31})
+check(rep == {"api": "on", "brands": {"site": 5, "missing": ["Eberhard & Co (id 32)",
+                                                            "Zeppelin (id 266)"]}},
+      "probe_report: missing by row id (aliases count as present; two rows with one "
+      "name are two rows), got %s" % rep)
 fresh()
 check(site_api.probe_report(Page(route=lambda r: NOT_DEPLOYED), {}) ==
       {"api": "off", "why": "not deployed"}, "probe_report: not deployed")
