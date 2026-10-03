@@ -15,7 +15,8 @@ import os
 import sys
 import time
 
-DEFAULT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+DEFAULT_ROOT = os.environ.get("PROJECT_ROOT") or os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../.."))
 
 
 def parse(line):

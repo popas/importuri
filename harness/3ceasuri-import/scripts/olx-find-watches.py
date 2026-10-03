@@ -11,7 +11,7 @@
 #   MAX_CANDIDATES=8 browser-use < harness/3ceasuri-import/scripts/olx-find-watches.py
 #
 # Env:
-#   PROJECT_ROOT    repo root (default: the Mac path below)
+#   PROJECT_ROOT    repo root (default: found by walking up from the cwd)
 #   MAX_CANDIDATES  stop once this many qualify (default 8)
 #   MAX_PAGES       API pages to walk before giving up (default 5, 40 ads each)
 #   MIN_RON/MIN_EUR price floors (default 100 RON / 20 EUR)
@@ -41,7 +41,12 @@
 # =============================================================================
 import os, re, json, time, sys
 
-PROJECT_ROOT   = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+# browser-use runs this from stdin, so __file__ is not this script: take PROJECT_ROOT,
+# else the nearest directory at or above the cwd that holds the harness.
+PROJECT_ROOT = os.environ.get("PROJECT_ROOT") or os.getcwd()
+while not os.path.isdir(os.path.join(PROJECT_ROOT, "harness/3ceasuri-import")) \
+        and os.path.dirname(PROJECT_ROOT) != PROJECT_ROOT:
+    PROJECT_ROOT = os.path.dirname(PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
 import olx_api, admin_import, price_sanity
 

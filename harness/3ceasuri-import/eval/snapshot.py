@@ -22,7 +22,12 @@ import os
 import json
 import sys
 
-PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+# browser-use runs this from stdin, so __file__ is not this script: take PROJECT_ROOT,
+# else the nearest directory at or above the cwd that holds the harness.
+PROJECT_ROOT = os.environ.get("PROJECT_ROOT") or os.getcwd()
+while not os.path.isdir(os.path.join(PROJECT_ROOT, "harness/3ceasuri-import")) \
+        and os.path.dirname(PROJECT_ROOT) != PROJECT_ROOT:
+    PROJECT_ROOT = os.path.dirname(PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
 import olx_api
 

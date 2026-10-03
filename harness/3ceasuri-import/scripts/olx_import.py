@@ -160,7 +160,8 @@ def run(profile, g):
     list_tabs  = g["list_tabs"]
     switch_tab = g["switch_tab"]
 
-    PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+    PROJECT_ROOT = os.environ.get("PROJECT_ROOT") or os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../.."))
     sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
     import olx_api, admin_import, infer_fields, price_sanity, contract_draft
     import candidates
