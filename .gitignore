@@ -15,3 +15,6 @@ harness/3ceasuri-import/eval/.snapshots/
 
 # olx-step.py: raw payload output per ad + per-ad run state (fix attempts, profile)
 harness/3ceasuri-import/.runs/
+
+# session bookkeeping, rewritten by every olx-step.py start (history.jsonl is the record)
+state.json
