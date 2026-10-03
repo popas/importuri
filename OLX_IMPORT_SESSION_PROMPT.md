@@ -88,6 +88,23 @@ Never argue with a SKIPPED.
 
 ---
 
+## Prompt C — gone listings (weekly; read-only until the endpoint exists)
+
+```
+Check which of 3ceasuri.ro's active OLX listings are gone from OLX. Do not load
+skills or explore the repo. Chrome is on CDP 127.0.0.1:9222 with the admin signed in.
+From the repo root, run in the background (a full sweep takes ~40 minutes):
+
+  BU_CDP_URL=http://127.0.0.1:9222 browser-use < harness/3ceasuri-import/scripts/olx-check-active.py
+
+Report the STATS: line and the REPORT: path. Only if I say so, re-run with APPLY=dry,
+then APPLY=1. APPLY_UNAVAILABLE means the Django deactivate/ endpoint is not deployed
+yet: report it and stop. A STATS "stopped" value means OLX blocked us: wait, never retry
+in a loop.
+```
+
+---
+
 ## Prompt A — discovery (only when no queue has pending ids; stronger model)
 
 ```

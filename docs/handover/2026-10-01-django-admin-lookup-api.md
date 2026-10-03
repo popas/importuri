@@ -283,8 +283,11 @@ serving.
 - `find_repost` → one call to 3.2.
 - `ensure_brand` / `_lookup_brand` → 3.3; the BRAND_IDS cache is refreshed from `all/`.
 - `verify()` readback → 3.1 on the saved id (pictures count included).
-- If any endpoint returns 404 (not deployed yet), the importer falls back to the
-  current scraping, so the deploy order doesn't matter.
+- If an endpoint is not deployed yet, the importer falls back to the current
+  scraping, so the deploy order doesn't matter. Note (checked live 2026-10-04): a
+  missing path under `/admin/watches/watch/` does **not** 404 — the admin's
+  `<path:object_id>/` catch-all redirects to `/admin/` with HTML (a 200), so the
+  importer detects "deployed" by a non-redirected JSON response.
 
 ## 6. Done means
 

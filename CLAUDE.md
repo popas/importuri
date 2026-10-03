@@ -69,6 +69,9 @@ harness/3ceasuri-import/
   scripts/olx-find-watches.py      ← category 1677 discovery
   scripts/olx-import-smartwatch.py ← wrapper: olx_import.run("smart", globals())
   scripts/olx-import-watch.py      ← wrapper: olx_import.run("classic", globals())
+  scripts/olx-check-active.py      ← which active OLX listings are gone from OLX; APPLY=1
+                                     ends them (wrapper: active_check.run(globals()))
+  scripts/active_check.py          ← the gone-listing sweep: list, classify, deactivate
   .contracts/olx-<id>.json         ← the per-ad contract draft (gitignored)
   .runs/                           ← olx-step.py: raw payload logs + run state (gitignored)
   .candidates-olx-smart.json       ← 1943 discovery output; the work queue
@@ -85,7 +88,7 @@ docs/superpowers/specs/            ← design docs; read the two newest before c
 Skills live ONLY in `.claude/skills/` (each a `SKILL.md`). `harness/` holds the scripts
 and data they read — it is not itself a skill.
 
-The four hyphenated `olx-find-*.py` / `olx-import-*.py` scripts are **browser-use
+The hyphenated `olx-find-*.py` / `olx-import-*.py` / `olx-check-active.py` scripts are **browser-use
 payloads**: pipe them on stdin (`AD_ID=… browser-use < olx-import-watch.py`), never
 `python3 script.py`. They print parseable marker lines (`CANDIDATES: STATS: EXTRACT:
 EXTRACT_PROMPT: INFER: REVIEW: RESULT: WARN: …`) and keep everything else inside their
@@ -128,6 +131,11 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   phone number or contact. The seller's text only seeds the draft; handing it back
   unchanged stops as `description_not_rewritten`, and `olx_api.strip_phones` scrubs
   phone numbers from both texts.
+- **About 40% of the site's "active" OLX listings are gone from OLX** (measured
+  2026-10-04: 30 of 72 sampled answered 410/404; none had ever been deactivated).
+  `olx-check-active.py` finds them; ending them needs the `deactivate/` endpoint from
+  `docs/handover/2026-10-04-deactivate-gone-olx-listings.md`. A missing admin endpoint
+  answers **200 + a redirect to /admin/**, not 404 — test for JSON, not for the status.
 - **Never import a suspiciously cheap listing.** Below the floors in
   `scripts/price_sanity.py` a watch is a fake, not a bargain. `CONFIRM=1` does not wave
   one through.
