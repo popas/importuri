@@ -1,6 +1,6 @@
 ---
 name: olx-troubleshooting
-description: Invoke ONLY when an OLX step fails: 403s and bot checks, ad JSON or photos that won't load, brand errors, missing banners.
+description: Invoke ONLY when an OLX step fails: 403s and bot checks, ad JSON or photos that won't load, brand errors, missing banners, import-json errors.
 ---
 
 # olx-troubleshooting
@@ -140,6 +140,29 @@ Read it back (`import-verify-state` §3). `source`, `external_listing_id`,
 admin is still on the pre-2026-08-09 field names. The harness writes through a
 fallback, so nothing is lost and there is nothing to fix by hand (lore §7).
 
+## import-json and the admin's JSON endpoints
+
+`olx-step.py start` prints `API: on` when the admin's JSON endpoints are deployed;
+pass 2 then saves through one `import-json` POST instead of the DOM harness. The
+importer has already routed every answer below — read what it printed, don't redo it.
+
+| You see | Meaning | Do |
+|---|---|---|
+| `API: off (not deployed)` | the endpoints are not live; the DOM harness imports | nothing |
+| `REVIEW: server_invalid`, `action: fix` | the site refused a contract field; `message` is its own text | answer that field with `finish`, ONCE (the FIX sheet names it) |
+| `REVIEW: server_invalid`, `action: skip` | the site refused a field the harness fills (`sourceUrl`, `sellerId`, `county`…) or the record as a whole | log it, take the next id; the same code twice in a session → report it (a harness bug or a new DB rule) |
+| `SKIP: already imported (import-json: duplicate)` | 409: the listing id is already on the site, active or not | nothing |
+| `WARN: the server could not fetch the photos; uploading them` | 422 `no_images`: the CDN refused the server; the photos were uploaded from the local copies | nothing — that is the fallback working |
+| `ERROR: import-json saved nothing: no usable photo…` | the uploaded copies failed too | delete `.photos/olx-<id>/` and re-run `finish` once (the photos re-download) |
+| `ERROR: admin session lost — sign in to 3ceasuri.ro/admin` | the admin redirected to its login page; nothing was written | ask the user to sign in in the CDP Chrome, then re-run the same command |
+| `ERROR: import-json answered 403: …` | an HTML body = CSRF refused; a JSON body = the signed-in user lacks the add permission | HTML: reload the admin tab, re-run once. JSON: tell the user |
+| `ERROR: import-json answered 413 …` | a proxy in front of Django capped the upload (Django and nginx allow 50 MB) | stop and tell the user — no retry fixes it |
+| `ERROR: import-json answered <status> and the listing is not on the site after 45 s` | the server failed (5xx, proxy 504, timeout) and lookup/ found no record over 45 s | check the admin for the id once more; absent → re-run `finish` once; again → stop and report |
+
+**Never** re-send import-json or re-run with `API=off` while a record may still be
+saving — that is a double import. `API=off` (an env var on any command) is the kill
+switch back to the DOM harness for a whole session, after a bad deploy.
+
 ## Admin DB outage
 
 `OperationalError: failed to resolve host 'anunturi1-anunturi.h.aivencloud.com'` —
@@ -151,6 +174,8 @@ session and report.
 | Failure | Action |
 |---|---|
 | `importWatch` timeout / CDP exception | **Do not retry.** Verify by page content — it likely succeeded |
+| import-json 5xx / timeout | Already checked with lookup/ for 45 s; `ERROR` means not found — check the admin once, then re-run `finish` ONCE |
+| `server_invalid` | `fix` → answer the field ONCE; `skip` → log it, next id |
 | Harness injection fails | Retry once, then manual field filling |
 | No green banners | Re-inject, re-run pass 2. Max 2 retries, then log a skip |
 | `REVIEW:` `action: fix` | Supply the named field in the draft, re-run pass 2 ONCE |

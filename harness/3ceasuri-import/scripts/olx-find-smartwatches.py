@@ -46,7 +46,7 @@ while not os.path.isdir(os.path.join(PROJECT_ROOT, "harness/3ceasuri-import")) \
         and os.path.dirname(PROJECT_ROOT) != PROJECT_ROOT:
     PROJECT_ROOT = os.path.dirname(PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
-import olx_api, admin_import, price_sanity
+import olx_api, admin_import, price_sanity, site_api
 
 MAX_CANDIDATES = int(os.environ.get("MAX_CANDIDATES", "8"))
 MAX_PAGES      = int(os.environ.get("MAX_PAGES", "5"))
@@ -229,16 +229,30 @@ if candidates and not NO_DEDUP:
     at = at["targetId"] if isinstance(at, dict) else at
     time.sleep(3)
     admin_total = admin_import.admin_count(A)
+    # One lookup/ request for every id when the endpoints are deployed; the
+    # per-id changelist loop below when they are not (or the request fails).
+    try:
+        found = site_api.lookup_ids(A, [c["id"] for c in ordered], tab=at)
+    except site_api.SessionLost:
+        die("admin session lost - sign in to 3ceasuri.ro/admin")
     kept = []
-    for c in ordered:
-        if len(kept) >= MAX_CANDIDATES:
-            break
-        n = admin_import.admin_count(A, c["id"])
-        if n is None:
-            c["dedup"] = "unverified"                    # never drop on a failed check
-        elif n > 0:
-            drop("already_imported", {"id": c["id"]}, c["title"]); continue
-        kept.append(c)
+    if found is not None:
+        for c in ordered:
+            if len(kept) >= MAX_CANDIDATES:
+                break
+            if c["id"] in found["existing"]:
+                drop("already_imported", {"id": c["id"]}, c["title"]); continue
+            kept.append(c)
+    else:
+        for c in ordered:
+            if len(kept) >= MAX_CANDIDATES:
+                break
+            n = admin_import.admin_count(A, c["id"])
+            if n is None:
+                c["dedup"] = "unverified"                    # never drop on a failed check
+            elif n > 0:
+                drop("already_imported", {"id": c["id"]}, c["title"]); continue
+            kept.append(c)
     ordered = kept
     close_tab(at)
     olx_api.ensure_tab(bu)

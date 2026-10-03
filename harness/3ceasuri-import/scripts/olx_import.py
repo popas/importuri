@@ -16,8 +16,10 @@
 #   dedup -> GET /api/v1/offers/<id>/ -> blocklist -> map OLX params to DB enums
 #   -> download photos -> EXTRACT_PROMPT (pass 1, writes NOTHING)
 #   ... you fill the contract ...
-#   -> validate -> repost dedup -> ensure brand -> inject harness -> importWatch
-#   -> verify both banners -> read the record back (pass 2)
+#   -> validate -> repost dedup -> import-json when the admin endpoints are
+#   deployed (one POST; the server answers with what it saved), else ensure brand
+#   -> inject harness -> importWatch -> verify both banners -> read the record
+#   back (pass 2)
 #
 # Env:
 #   AD_ID         numeric OLX ad id (the `id` from the matching discovery script)
@@ -30,8 +32,11 @@
 #   SKIP_PROMPT   "1" = import on the OLX params alone, no contract pass
 #   FRESH         "1" = re-seed the contract draft even if one exists
 #                       (it overwrites the model's answers -- say so on purpose)
+#   API           "off" = never use the admin's JSON endpoints: the DOM path only
+#   FORCE_IMAGE_UPLOAD "1" = import-json with the photos uploaded as files, not
+#                       fetched by the server (tests the 422 fallback on purpose)
 #
-# Emits: EXTRACT: SKIP: EXTRACT_PROMPT: INFER: REVIEW: NEW_BRAND: RESULT: ERROR:
+# Emits: EXTRACT: SKIP: EXTRACT_PROMPT: INFER: REVIEW: NEW_BRAND: RESULT: ERROR: WARN:
 #
 # TWO PASSES, because YOU do the inference. OLX's structured params answer
 # condition, materials, gender, style and price outright — what they never answer
@@ -47,6 +52,7 @@ import os
 import re
 import json
 import sys
+import time
 
 # --- the profile table -------------------------------------------------------
 # Everything the classic and smart paths do differently, in one place. Anything
@@ -147,6 +153,56 @@ def confidence_review(profile, data, images, brand_ids, seller_text=None):
     return review
 
 
+# --- import-json answers, as the DOM path's shapes -----------------------------
+# history.jsonl, olx-step and the import-verify-state skill read ONE RESULT: shape,
+# whichever path saved the watch. These turn the server's answer into it.
+_READBACK_KEYS = ("brandId", "price", "currency", "ref", "diameter", "source", "extId",
+                  "sellerId", "sellerName", "videoUrl", "desc", "imgs")
+
+
+def readback_from_saved(resp):
+    """A 201's `saved` as the change-form readback: strings like the form's inputs,
+    and only the first 120 chars of the description (history.jsonl logs it)."""
+    saved = resp.get("saved") or {}
+
+    def s(k):
+        return None if saved.get(k) is None else str(saved[k])
+    brand_id = (resp.get("brand") or {}).get("id")
+    return {"brandId": None if brand_id is None else str(brand_id),
+            "price": s("price"), "currency": s("currency"), "ref": s("reference_number"),
+            "diameter": s("case_diameter_mm"), "source": s("source"),
+            "extId": s("external_listing_id"), "sellerId": s("seller_id"),
+            "sellerName": s("seller_name"), "videoUrl": s("video_url"),
+            "desc": (saved.get("description") or "")[:120], "imgs": resp.get("pictures")}
+
+
+def readback_from_lookup(row, ad_id):
+    """What a lookup/ row proves about a watch whose import-json answer was lost."""
+    rb = dict.fromkeys(_READBACK_KEYS)
+    rb.update({"source": row.get("source"), "extId": str(ad_id),
+               "sellerId": row.get("seller_id"), "imgs": row.get("pictures")})
+    return rb
+
+
+def server_reasons(errors):
+    """import-json's 400 field errors as REVIEW reasons.
+
+    `fix` only for a contract key, which the agent can answer with `finish`. An error
+    on a field the harness fills (sourceUrl, sellerId, county...) or a non-field
+    error has no answer there — a `fix` would loop on BAD_ANSWER — so it is `skip`.
+    """
+    import site_api
+    reasons = []
+    for field, msgs in (errors or {}).items():
+        text = "; ".join(str(m) for m in (msgs if isinstance(msgs, list) else [msgs]))
+        key = site_api.from_model_field(field)
+        reasons.append({"code": "server_invalid",
+                        "action": "fix" if site_api.fixable(key) else "skip",
+                        "field": key or (None if field == "__all__" else field),
+                        "message": "the site refused %s: %s" % (key or field, text)})
+    return reasons
+
+
 def run(profile, g):
     """Import one OLX ad. `g` is the payload's globals(), carrying the CDP helpers.
 
@@ -164,7 +220,7 @@ def run(profile, g):
         os.path.join(os.path.dirname(__file__), "../../.."))
     sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
     import olx_api, admin_import, infer_fields, price_sanity, contract_draft
-    import candidates
+    import candidates, site_api
 
     AD_ID       = os.environ.get("AD_ID", "").strip()
     OVERRIDES   = json.loads(os.environ.get("OVERRIDES", "{}"))
@@ -234,8 +290,15 @@ def run(profile, g):
     OLX_TAB = olx_api.ensure_tab(
         bu, olx_api.CATEGORY_URL[getattr(olx_api, conf["category_const"])], tabs)
 
+    # A lost admin session is never "not imported" and never "API not deployed".
+    LOST = "admin session lost — sign in to 3ceasuri.ro/admin"
+
     # --- 0. dedup Stage 1: exact listing id ----------------------------------
-    if admin_import.already_imported(A, AD_ID, return_to=OLX_TAB):
+    try:
+        _dup = admin_import.already_imported(A, AD_ID, return_to=OLX_TAB)
+    except site_api.SessionLost:
+        die(LOST)
+    if _dup:
         skip("already_imported", {"reason": "already imported (external_listing_id match)"})
 
     # --- 1. read the ad ------------------------------------------------------
@@ -502,7 +565,10 @@ def run(profile, g):
         die('could not infer price; pass OVERRIDES {"price":N,"currency":"RON|EUR"}')
 
     # --- 7. dedup Stage 2: the same watch relisted under a new ad id ---------
-    repost = admin_import.find_repost(A, data, AD_ID, return_to=ADMIN_TAB)
+    try:
+        repost = admin_import.find_repost(A, data, AD_ID, return_to=ADMIN_TAB)
+    except site_api.SessionLost:
+        die(LOST)
     if repost:
         detail = dict(repost, ad_id=AD_ID, seller_id=seller["id"], seller_name=seller["name"])
         if repost["strong"]:
@@ -513,6 +579,148 @@ def run(profile, g):
                 "message": "possible repost: model '%s' is already on the site, but the "
                            "name is generic and the brand could not be confirmed"
                            % data.get("model")}]))
+
+    def report(ok, banners, readback, readback_ok, new_brand):
+        """The RESULT: line, one shape for both write paths."""
+        state_entry = {"source": "olx", "id": AD_ID, "url": SOURCE_URL,
+                       "brand": data["brand"], "model": data["model"],
+                       "price": data["price"], "currency": data.get("currency"),
+                       "images": len(images)}
+        if conf["state_entry_category"]:
+            state_entry["category"] = data.get("category")
+        state_entry.update({"seller_id": seller["id"], "seller_name": seller["name"],
+                            "business": seller["business"]})
+        _mark("imported" if ok else "error", None if ok else "import not verified")
+        # Saved != correct: the harness once replaced every description with a spec
+        # template and nothing noticed for months. Compare the start of what was sent
+        # with what the record holds; None when the readback did not load.
+        _sent = " ".join((data.get("description") or "").split())[:60]
+        desc_ok = (None if not (readback and readback.get("desc") is not None and _sent)
+                   else " ".join(readback["desc"].split()).startswith(_sent))
+        emit("RESULT", {"ad_id": AD_ID, "ok": bool(ok), "banners": banners,
+                        "readback_ok": readback_ok, "expected_images": len(images),
+                        "readback": readback, "desc_ok": desc_ok,
+                        "new_brand": new_brand, "state_entry": state_entry})
+
+    # --- 7a. import-json, when the admin endpoints are deployed --------------
+    # One POST replaces steps 7b-10: the server validates, fetches the photos, creates
+    # the brand and answers with what it saved — or exactly why it refused. Once a
+    # POST has been sent this never falls back to the DOM path: the server may have
+    # saved, or may still be saving, and a second writer is a double import.
+    try:
+        _api_on = site_api.available(A, return_to=ADMIN_TAB)
+    except site_api.SessionLost:
+        die(LOST)
+    if _api_on:
+        fields = site_api.to_model_fields(data)
+
+        def post(blobs=None):
+            try:
+                return site_api.import_json(A, fields, data["brand"], image_urls=images,
+                                            blob_urls=blobs, dry_run=DRY_RUN,
+                                            tab=ADMIN_TAB, return_to=ADMIN_TAB)
+            except Exception as e:          # a CDP error: unknown, like a timeout
+                return {"http": 0, "body": "harness: %s" % e}
+
+        def upload():
+            """The photos as files: the server could not fetch them (the CDN may refuse
+            the production host). Staged and posted from the same admin tab with no
+            navigation between — a blob: URL dies with the page that made it."""
+            switch_tab(OLX_TAB)
+            local = olx_api.photo_data_urls(bu, images, PHOTO_DIR)
+            if len(local) < len(images):
+                emit("WARN", {"msg": "only %d/%d photos available locally"
+                                     % (len(local), len(images))})
+            switch_tab(ADMIN_TAB)
+            return post(admin_import.stage_images(A, local))
+
+        def imported(readback, pictures, brand=None):
+            new_brand = None
+            if data["brand"] not in brand_ids:
+                # Also when the server did not create it: the brand exists on the
+                # site but not in the local map, which olx-step writes it into.
+                b = brand
+                if not b:
+                    try:
+                        b = site_api.brand_lookup(A, data["brand"], tab=ADMIN_TAB,
+                                                  return_to=ADMIN_TAB)
+                    except Exception:       # the watch saved; the map can wait
+                        b = None
+                b = b or {}
+                if b.get("id"):
+                    new_brand = {"name": b.get("name") or data["brand"], "id": b["id"]}
+                    emit("NEW_BRAND", dict(new_brand, created=bool(b.get("created")), via="api",
+                                           action="ADD to BRAND_IDS in import-watch.js AND "
+                                                  "references/brand-ids.md, then commit"))
+                else:
+                    emit("WARN", {"msg": "brand %r is not in BRAND_IDS and its id is unknown "
+                                         "- follow the New brand procedure" % data["brand"]})
+            report(True, {"images_ok": bool(pictures), "added_ok": True, "via": "api"},
+                   readback, True, new_brand)
+            raise SystemExit(0)
+
+        force_upload = os.environ.get("FORCE_IMAGE_UPLOAD", "") == "1" and not DRY_RUN
+        env, uploaded = (upload(), True) if force_upload else (post(), False)
+        while True:
+            if site_api.session_lost(env):
+                die(LOST)
+            http = (env or {}).get("http")
+            text = (env or {}).get("body") or ""
+            resp = site_api.body_json(env) if site_api.deployed(env) else None
+            resp = resp if isinstance(resp, dict) else None
+            if DRY_RUN:
+                emit("RESULT", {"ad_id": AD_ID, "dry_run": True, "via": "api",
+                                "images": len(images),
+                                "would_import": {k: (v if k != "images" else len(v))
+                                                 for k, v in data.items()},
+                                "server": {"http": http,
+                                           "answer": resp if resp is not None else text[:300]}})
+                raise SystemExit(0)
+            if resp is not None and http == 201:
+                if resp.get("image_errors"):
+                    emit("WARN", {"msg": "%d photo(s) refused by the server"
+                                         % len(resp["image_errors"]),
+                                  "image_errors": resp["image_errors"][:5]})
+                imported(readback_from_saved(resp), resp.get("pictures"), resp.get("brand"))
+            if resp is not None and http == 422 and resp.get("error") == "no_images":
+                if uploaded:
+                    die("import-json saved nothing: no usable photo, also as uploaded "
+                        "files: %s" % json.dumps(resp.get("image_errors"))[:300])
+                emit("WARN", {"msg": "the server could not fetch the photos; uploading them",
+                              "image_errors": (resp.get("image_errors") or [])[:5]})
+                env, uploaded = upload(), True
+                continue
+            if resp is not None and http == 409:
+                skip("already_imported", {"reason": "already imported (import-json: duplicate)",
+                                          "existing": resp.get("existing")})
+            if resp is not None and http == 400 and isinstance(resp.get("errors"), dict):
+                review_stop({"reasons": server_reasons(resp["errors"]),
+                             "images": len(images), "rerun": RERUN})
+            if http == 400:
+                die("import-json answered 400: %s" % text[:300])
+            if http == 403:
+                # HTML = a CSRF failure; JSON = a staff user without the add permission.
+                die("import-json answered 403: %s" % text[:300])
+            if http == 413:
+                # A proxy refused the body before Django saw it: nothing can have saved.
+                die("import-json answered 413 (a proxy in front of Django capped the "
+                    "upload): %s" % text[:300])
+            # Anything else — a 5xx, a proxy 504, a timeout, a CDP error — is unknown,
+            # and Django can still be fetching photos after nginx gave up. Ask lookup/
+            # over 45 s before calling it an error; never re-send.
+            for wait in (0, 15, 15, 15):
+                time.sleep(wait)
+                try:
+                    found = site_api.lookup_ids(A, [AD_ID], tab=ADMIN_TAB, return_to=ADMIN_TAB)
+                except site_api.SessionLost:
+                    die(LOST)
+                row = ((found or {}).get("existing") or {}).get(AD_ID)
+                if row:
+                    emit("WARN", {"msg": "import-json answered %s, but the listing is on the "
+                                         "site (pk %s)" % (http, row.get("pk"))})
+                    imported(readback_from_lookup(row, AD_ID), row.get("pictures"))
+            die("import-json answered %s and the listing is not on the site after 45 s: %s"
+                % (http, text[:300]))
 
     # --- 7b. photos as data: URLs (the CDN now refuses the admin's Origin) ---
     if not DRY_RUN:
@@ -551,23 +759,5 @@ def run(profile, g):
 
     # --- 10. verify ----------------------------------------------------------
     ok, banners, readback, readback_ok = admin_import.verify(A, AD_ID)
-    state_entry = {"source": "olx", "id": AD_ID, "url": SOURCE_URL,
-                   "brand": data["brand"], "model": data["model"],
-                   "price": data["price"], "currency": data.get("currency"),
-                   "images": len(images)}
-    if conf["state_entry_category"]:
-        state_entry["category"] = data.get("category")
-    state_entry.update({"seller_id": seller["id"], "seller_name": seller["name"],
-                        "business": seller["business"]})
-    _mark("imported" if ok else "error", None if ok else "import not verified")
-    # Saved != correct: the harness once replaced every description with a spec
-    # template and nothing noticed for months. Compare the start of what was sent with
-    # what the change form holds; None when the readback did not load.
-    _sent = " ".join((data.get("description") or "").split())[:60]
-    desc_ok = (None if not (readback and readback.get("desc") is not None and _sent)
-               else " ".join(readback["desc"].split()).startswith(_sent))
-    emit("RESULT", {"ad_id": AD_ID, "ok": bool(ok), "banners": banners,
-                    "readback_ok": readback_ok, "expected_images": len(images),
-                    "readback": readback, "desc_ok": desc_ok,
-                    "new_brand": ({"name": data["brand"], "id": new_brand_id} if new_brand_id else None),
-                    "state_entry": state_entry})
+    report(ok, banners, readback, readback_ok,
+           {"name": data["brand"], "id": new_brand_id} if new_brand_id else None)

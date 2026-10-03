@@ -26,6 +26,8 @@ What it does that a hand-run loop had to remember:
   - enforces "a fix is tried ONCE": the second fix-REVIEW becomes a skip
   - on a missing/unproven RESULT:, asks the admin before anyone can retry
   - on NEW_BRAND:, writes BRAND_IDS and brand-ids.md and prints the commit
+  - on start, says whether the admin's JSON endpoints are on (API: on/off) and
+    which site brands the local map lacks; a lost admin session fails start
 """
 
 import datetime
@@ -401,10 +403,13 @@ def admin_has(ad_id):
     src = ("import os, sys, json\n"
            "sys.path.insert(0, os.path.join(os.environ['PROJECT_ROOT'], "
            "'harness/3ceasuri-import/scripts'))\n"
-           "import admin_import\n"
+           "import admin_import, site_api\n"
            "A = admin_import.bind(globals())\n"
-           "print('FOUND: ' + json.dumps({'found': admin_import.already_imported("
-           "A, os.environ['AD_ID'])}))\n")
+           "try:\n"
+           "    print('FOUND: ' + json.dumps({'found': admin_import.already_imported("
+           "A, os.environ['AD_ID'])}))\n"
+           "except site_api.SessionLost as e:\n"       # a lost session is not "not saved"
+           "    print('FOUND: ' + json.dumps({'found': None, 'error': str(e)}))\n")
     m = parse_markers(run_payload(src, {"AD_ID": str(ad_id)},
                                   os.path.join(RUNS, "olx-%s-verify.log" % ad_id)))
     return m.get("FOUND", {}).get("found") if "FOUND" in m else None
@@ -543,8 +548,12 @@ def imported(queue, ad_id, m, cand, verified_by_admin=False):
                          "New brand procedure in the importer skill" % (nb["name"], nb["id"], ex))
         if changed is not None:
             rel = " ".join(os.path.relpath(c, ROOT) for c in changed)
-            lines.append("  NEW_BRAND %s (id %s) written to BRAND_IDS and brand-ids.md." % (
-                nb["name"], nb["id"]))
+            how = ""
+            if nb.get("via") == "api":
+                how = (", created on the site by import-json" if nb.get("created")
+                       else ", already on the site but missing from the local map")
+            lines.append("  NEW_BRAND %s (id %s%s) written to BRAND_IDS and brand-ids.md." % (
+                nb["name"], nb["id"], how))
             if changed:
                 lines.append("  THEN: git add %s && git commit -m 'harness: add %s as a brand'"
                              % (rel, nb["name"]))
@@ -592,12 +601,48 @@ def preflight(profile):
     return True, {"chrome": chrome}
 
 
+def api_probe():
+    """{"api": "on"|"off"|"lost", "why", "brands"} from one payload, or {} when it
+    printed nothing. Each importer probes again on its own; this is for the human."""
+    src = ("import os, sys, json\n"
+           "sys.path.insert(0, os.path.join(os.environ['PROJECT_ROOT'], "
+           "'harness/3ceasuri-import/scripts'))\n"
+           "import admin_import, site_api\n"
+           "A = admin_import.bind(globals())\n"
+           "ids = admin_import.load_brand_ids(os.path.join(os.environ['PROJECT_ROOT'], "
+           "'harness/3ceasuri-import/scripts/import-watch.js'))\n"
+           "print('API: ' + json.dumps(site_api.probe_report(A, ids), ensure_ascii=False))\n")
+    return parse_markers(run_payload(src, {}, os.path.join(RUNS, "api-probe.log"))).get("API") or {}
+
+
+def api_lines(api):
+    """The `API:` and `BRANDS:` lines `start` prints."""
+    if not api:
+        return ["API: unknown - the probe printed nothing (.runs/api-probe.log); each "
+                "import probes again on its own"]
+    if api.get("api") != "on":
+        return ["API: off (%s)" % api.get("why", "not deployed")]
+    out = ["API: on"]
+    b = api.get("brands")
+    if b is not None:
+        miss = b.get("missing") or []
+        out.append("BRANDS: %d missing from the local map%s" % (
+            len(miss), (" - " + ", ".join(miss[:10]) + (" ..." if len(miss) > 10 else ""))
+            if miss else ""))
+    return out
+
+
 def cmd_start(queue, target):
     doc = candidates.load(queue)
     profile = doc.get("profile") or ("smart" if "smart" in queue else "classic")
     ok, facts = preflight(profile)
     if not ok:
         say("PREFLIGHT_FAILED: " + facts["why"], "NEXT: tell the user; do not continue.")
+        return 2
+    api = api_probe()
+    if api.get("api") == "lost":
+        say("PREFLIGHT_FAILED: the 3ceasuri.ro admin session is lost - ask the user to sign "
+            "in again in that Chrome, then run start again", "NEXT: tell the user; do not continue.")
         return 2
     counts = candidates.counts(queue)
     age = ""
@@ -625,7 +670,7 @@ def cmd_start(queue, target):
         json.dump(state, f, ensure_ascii=False, indent=2)
     say("READY: %s | queue %s %s | profile %s | target %s%s" % (
         facts["chrome"], os.path.relpath(queue, ROOT), json.dumps(counts), profile,
-        target, age), next_cmd(queue))
+        target, age), *(api_lines(api) + [next_cmd(queue)]))
     return 0
 
 

@@ -55,6 +55,8 @@ harness/3ceasuri-import/
   scripts/olx_import.py            ← THE per-ad flow, both profiles (the two importer
                                      payloads are wrappers that pick one)
   scripts/admin_import.py          ← the admin half: dedup, brand, inject, submit, verify
+  scripts/site_api.py              ← the admin's JSON endpoints: lookups + import-json, and
+                                     the one probe that says whether they are deployed
   scripts/infer_fields.py          ← the extraction contract: DB enums + prompt + validator,
                                      profiles `classic` / `smart` (NO API call — the agent
                                      in the loop fills it)
@@ -105,7 +107,8 @@ driver — it pipes the payloads into browser-use for you).
 Data flows one direction per watch: **`candidates.py next` → pass 1 (dedup → read the
 ad → seeded draft + `EXTRACT_PROMPT` + photos, no DB write) → you edit the draft's
 `_todo` fields, `description` always among them → pass 2 (`CONFIRM=1` → read draft →
-validate → inject harness → `importWatch({...})` → two green banners → readback) →
+validate → `import-json` when the admin's JSON endpoints are deployed, else the DOM
+harness: inject → `importWatch({...})` → two green banners → readback) →
 `olx-log-result.py`.** A
 contract field you blank is cleared, not defaulted — the draft removes the retyping,
 not the clearing rule. `OVERRIDES='{…}'` still works and still wins, for a human
@@ -136,6 +139,11 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   `olx-check-active.py` finds them; ending them needs the `deactivate/` endpoint from
   `docs/handover/2026-10-04-deactivate-gone-olx-listings.md`. A missing admin endpoint
   answers **200 + a redirect to /admin/**, not 404 — test for JSON, not for the status.
+- **The admin's JSON endpoints are detected, never assumed** (`scripts/site_api.py`,
+  endpoint list in `references/django-backend.md`): deployed ⇔ the answer is JSON and
+  not redirected — never "not 404". A redirect to `/admin/login/` is a lost session
+  (an ERROR), not "not deployed". `API=off` is the kill switch back to the DOM
+  harness; a POST to import-json never falls back to it (the server may have saved).
 - **Never import a suspiciously cheap listing.** Below the floors in
   `scripts/price_sanity.py` a watch is a fake, not a bargain. `CONFIRM=1` does not wave
   one through.

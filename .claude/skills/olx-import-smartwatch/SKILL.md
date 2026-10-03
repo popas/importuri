@@ -71,8 +71,9 @@ other value is fine — a missing phone never fails an import.
 AD_ID=<id> CANDIDATES_FILE=$CAND CONFIRM=1 browser-use < $SCRIPT
 ```
 
-Validate → repost dedup → ensure brand → inject harness → `importWatch()` → both
-banners → readback → `RESULT:`.
+Validate → repost dedup → one `import-json` POST when the admin's JSON endpoints are
+deployed, else ensure brand → inject harness → `importWatch()` → both banners →
+readback; the same `RESULT:` either way.
 
 `OVERRIDES='{…}'` still works and wins over the draft — it is for a human patching
 one field from the shell, not for you.

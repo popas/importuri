@@ -1,5 +1,7 @@
 # Handover: JSON lookup endpoints in the 3ceasuri.ro Django admin
 
+> **Superseded in part (2026-10-04):** the endpoints, the importer side and "done means" (§§ 3–6) are replaced by what shipped: the endpoint list in `harness/3ceasuri-import/references/django-backend.md` and the harness side in `scripts/site_api.py`. The problem statement and the 4b proposals here still stand.
+
 **For:** an agent working in the Django repo (`../app` next to this repo, GitHub `popas/ceasuri`).
 **From:** the OLX import runbook (`../importuri`, next to the Django repo), 2026-10-01.
 **Goal:** replace HTML scraping of the admin changelists with a few batched JSON

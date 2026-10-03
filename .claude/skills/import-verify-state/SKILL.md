@@ -15,6 +15,9 @@ RESULT: {"ad_id":"…", "ok":true, "banners":{"images_ok":true,"added_ok":true},
          "readback_ok":true, "expected_images":7, "readback":{…}, "state_entry":{…}}
 ```
 
+`banners.via: "api"` means import-json saved it: the server answered with the stored
+record, so `readback` is that answer and the banners are not page text.
+
 | Condition | Meaning | Action |
 |---|---|---|
 | `ok: true`, `readback.imgs == expected_images` | fully imported | §2 |

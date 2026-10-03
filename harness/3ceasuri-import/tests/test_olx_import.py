@@ -72,18 +72,46 @@ CLASSIC_AD = {
 }
 
 
-def run(script, ad, env=None, admin_rows_for=None, saved_description=None):
+# The admin's answer to a path that does not exist: its `<path:object_id>/` catch-all
+# redirects to /admin/ with an HTML page. That is what "not deployed" looks like.
+NOT_DEPLOYED = {"http": 200, "redirected": True, "url": "https://3ceasuri.ro/admin/",
+                "ctype": "text/html; charset=utf-8", "body": "<!doctype html>"}
+
+
+def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=None):
     """Execute an OLX importer against a canned ad; return (markers, trace).
 
     The stub admin saves the description importWatch() was handed, unless
-    `saved_description` says what the form ended up holding instead."""
+    `saved_description` says what the form ended up holding instead. `site(req)`
+    answers the JSON endpoints (an envelope, or "TIMEOUT" for a page that never
+    answers); without it they are not deployed."""
     state = {"url": "", "imported": None, "brand_tab_opened": False, "brand_name": "",
-             "fetched": []}
+             "fetched": [], "site_calls": [], "pending": {}, "injected": 0, "staged": 0,
+             "visited": []}
     admin_rows_for = admin_rows_for or (lambda q: [])
+    import site_api
+    site_api.reset()
 
     def js(e):
         # Order matters: several payloads are `(async ...)` expressions, so match on
         # a string unique to each before falling through to the generic branches.
+        if "/*site_api:start*/" in e:                                   # site_api request
+            req = json.loads(re.search(r"const REQ = (.*?); const K = ", e, re.S).group(1))
+            key = json.loads(re.search(r'const K = ("[^"]+");', e).group(1))
+            state["site_calls"].append(req)
+            answer = (site(req) if site else None) or NOT_DEPLOYED
+            if answer != "TIMEOUT":
+                state["pending"][key] = answer
+            return key
+        if "/*site_api:poll*/" in e:                                    # site_api answer
+            key = json.loads(re.search(r'b\[("[^"]+")\]', e).group(1))
+            answer = state["pending"].pop(key, None)
+            return "" if answer is None else json.dumps(answer)
+        if "__imgParts" in e:                                           # stage_images
+            if "createObjectURL" in e:
+                state["staged"] += 1
+                return "blob:https://3ceasuri.ro/%d" % state["staged"]
+            return 1
         if "String(fr.result)" in e:                                    # photo download
             return "A" * 800
         if 'Accept:"application/json"' in e:                            # the OLX API
@@ -95,6 +123,7 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None):
                 body = json.dumps({"data": [], "metadata": {"total_elements": 0}})
             return json.dumps({"status": 200, "body": body})
         if "createElement('script')" in e:                              # harness injection
+            state["injected"] += 1
             return "OK"
         if e.startswith("(async"):                                      # importWatch call
             state["imported"] = e
@@ -133,10 +162,12 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None):
 
     def new_tab(u):
         state["url"] = u
+        state["visited"].append(u)
         return {"targetId": "T2"}
 
     def goto_url(u):
         state["url"] = u
+        state["visited"].append(u)
 
     g = {"__name__": "__main__", "js": js, "new_tab": new_tab, "goto_url": goto_url,
          "close_tab": lambda t: None, "switch_tab": lambda t: None,
@@ -713,6 +744,218 @@ _m, _st = run(SMART, SMART_AD, {"CONFIRM": "1",
 check("REVIEW" not in _m, "22: a new brand must not stop for review: %s" % _m.get("REVIEW"))
 check(_m.get("RESULT", {}).get("ok") is True and "NEW_BRAND" in _m,
       "22: a new brand must import and emit NEW_BRAND:, got %s" % sorted(_m))
+
+# --- 23. the admin's JSON endpoints, when they are deployed -------------------
+# The same pass 2, written through import-json instead of the DOM. Everything the
+# agent and olx-step read — the marker lines, the RESULT: keys, the routing — must be
+# what the DOM path produces.
+import site_api
+
+def jenv(obj, http=200):
+    return {"http": http, "redirected": False, "url": "https://3ceasuri.ro/admin/x/",
+            "ctype": "application/json", "body": json.dumps(obj, ensure_ascii=False)}
+
+LOGIN = {"http": 200, "redirected": True,
+         "url": "https://3ceasuri.ro/admin/login/?next=/admin/watches/watch/import-json/",
+         "ctype": "text/html; charset=utf-8", "body": "<form id=login-form>"}
+
+def created(pictures=3, brand=None, image_errors=()):
+    """A 201 built from what was posted, stored the way the server stores it."""
+    def answer(req):
+        w = req["json"]["watch"]
+        saved = {f: w.get(f) for f in site_api.CONTRACT_TO_MODEL.values()}
+        saved["price"] = "%.2f" % float(w["price"])
+        return jenv({"pk": 1454, "change_url": "/admin/watches/watch/1454/change/",
+                     "public_url": "/ceas/garmin-fenix-7x-solar-ab12cd/", "pictures": pictures,
+                     "image_errors": list(image_errors),
+                     "brand": brand or {"id": 58, "name": "Garmin", "created": False},
+                     "saved": saved}, 201)
+    return answer
+
+def deployed_site(imports=(), existing=None, reposts=None, appears=None, brand_found=None):
+    """A deployed admin. `imports`: the import-json answers in order. `appears`: the
+    lookup (counted after the first POST) from which the ad id is on the site."""
+    answers, seen = list(imports), {"posted": False, "after": 0}
+    def route(req):
+        path = req["path"]
+        if path.startswith("/admin/watches/watch/lookup/"):
+            ids = re.search(r"ids=([^&]*)", path).group(1).split(",")
+            ex = {i: existing[i] for i in ids if existing and i in existing}
+            if seen["posted"] and ids != ["0"]:
+                seen["after"] += 1
+                if appears and seen["after"] >= appears:
+                    ex.update({i: {"pk": 1454, "source": "olx", "is_active": True,
+                                   "status": "active", "brand": "Garmin",
+                                   "model_name": "Fenix 7X Solar", "seller_id": "529077689",
+                                   "pictures": 3, "change_url": "/x/"} for i in ids})
+            return jenv({"existing": ex, "missing": [i for i in ids if i not in ex]})
+        if path.startswith("/admin/watches/watch/reposts/"):
+            return jenv(reposts or {"by_seller": [], "by_model": []})
+        if path.startswith("/admin/watches/brand/lookup/"):
+            return jenv({"found": brand_found or {}, "missing": []})
+        if path.startswith("/admin/watches/watch/import-json/"):
+            seen["posted"] = True
+            a = answers.pop(0)
+            return a(req) if callable(a) else a
+        return None
+    return route
+
+def posts(st):
+    return [r for r in st["site_calls"] if r["path"].startswith("/admin/watches/watch/import-json/")]
+
+def dom_used(st):
+    return (st["imported"] is not None or st["injected"] > 0
+            or any("3ceasuri.ro/admin/watches/" in u for u in st["visited"]))
+
+_env = {"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED_SMART)}
+_dom, _ = run(SMART, SMART_AD, _env)                     # the DOM path, for the shapes
+
+_qp = _queue(SMART_AD["id"])
+m, st = run(SMART, SMART_AD, dict(_env, CANDIDATES_FILE=_qp), site=deployed_site([created()]))
+r = m.get("RESULT") or {}
+check(r.get("ok") is True, "23: import-json must import: %s" % sorted(m))
+check(not dom_used(st), "23: with the API on, no inject / importWatch / admin page loads")
+check(set(r) == set(_dom["RESULT"]), "23: RESULT keys must equal the DOM path's: %s vs %s"
+      % (sorted(r), sorted(_dom["RESULT"])))
+import admin_import
+_rb_keys = set(re.findall(r"(\w+):", re.search(r"JSON\.stringify\(\{(.*)\}\)",
+                                                admin_import._READBACK_JS).group(1))) - {"id", "i"}
+if ",imgs}" in admin_import._READBACK_JS:               # ES shorthand, no colon
+    _rb_keys.add("imgs")
+check(set(r.get("readback") or {}) == _rb_keys,
+      "23: readback keys must equal the DOM readback's (_READBACK_JS): %s vs %s"
+      % (sorted(r.get("readback") or {}), sorted(_rb_keys)))
+check(r.get("banners") == {"images_ok": True, "added_ok": True, "via": "api"},
+      "23: banners %s" % r.get("banners"))
+check(r.get("readback_ok") is True and r.get("desc_ok") is True, "23: readback_ok / desc_ok")
+check(len(r["readback"]["desc"]) <= 120, "23: history.jsonl gets 120 chars of the description")
+check(r["readback"]["price"] == "1700.00" and r["readback"]["brandId"] == "58"
+      and r["readback"]["imgs"] == 3 and r["readback"]["extId"] == "307673714",
+      "23: readback from `saved`: %s" % r.get("readback"))
+check("NEW_BRAND" not in m, "23: a brand in BRAND_IDS is not a NEW_BRAND")
+check(_q.load(_qp)["candidates"][0]["status"] == "imported", "23: the queue is marked imported")
+_p = posts(st)[0]["json"]
+check(_p["brand"] == {"name": "Garmin"} and _p["create_brand"] is True and _p["dry_run"] is False,
+      "23: brand / create_brand / dry_run: %s" % {k: _p[k] for k in ("brand", "create_brand", "dry_run")})
+check(_p["image_urls"] == olx_api.photo_urls(SMART_AD), "23: the server fetches the OLX photo URLs")
+_w = _p["watch"]
+check(_w["model_name"] == "Fenix 7X Solar" and _w["movement"] == "smart"
+      and _w["external_listing_id"] == "307673714" and _w["source"] == "olx"
+      and _w["seller_id"] == "529077689" and _w["description"] == FILLED_SMART["description"],
+      "23: the watch fields: %s" % _w)
+check("is_wristwatch" not in _w and "brand" not in _w and "images" not in _w,
+      "23: only model fields are sent")
+
+# NEW_BRAND: whenever the contract's brand is not in BRAND_IDS, with the server's name/id
+for _created in (True, False):
+    m, st = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(
+        dict(FILLED_SMART, brand="Zxcvbnwatch"))}, site=deployed_site([created(
+            brand={"id": 266, "name": "ZXCVBN Watch", "created": _created})]))
+    nb = m.get("NEW_BRAND") or {}
+    check(m.get("RESULT", {}).get("ok") is True, "23: new brand (created=%s) imports" % _created)
+    check(nb.get("name") == "ZXCVBN Watch" and nb.get("id") == 266 and nb.get("created") is _created
+          and nb.get("via") == "api", "23: NEW_BRAND (created=%s) carries the server's brand: %s"
+          % (_created, nb))
+    check(m["RESULT"].get("new_brand") == {"name": "ZXCVBN Watch", "id": 266},
+          "23: RESULT new_brand %s" % m["RESULT"].get("new_brand"))
+
+# 422 no_images -> the photos are uploaded from the admin tab, then imported
+_no_images = jenv({"error": "no_images", "image_errors": [{"url": "u", "error": "403"}]}, 422)
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([_no_images, created()]))
+check(m.get("RESULT", {}).get("ok") is True, "23: 422 then multipart must import: %s" % sorted(m))
+_ps = posts(st)
+check(len(_ps) == 2 and "blobs" not in _ps[0] and len(_ps[1].get("blobs") or []) == 3,
+      "23: the retry is multipart with the 3 staged photos: %s" % [sorted(p) for p in _ps])
+check(st["staged"] == 3 and not dom_used(st), "23: staged, never the DOM path")
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([_no_images, _no_images]))
+check("ERROR" in m and "RESULT" not in m and not dom_used(st),
+      "23: a second 422 is an ERROR, got %s" % sorted(m))
+m, st = run(SMART, SMART_AD, dict(_env, FORCE_IMAGE_UPLOAD="1"), site=deployed_site([created()]))
+check(m.get("RESULT", {}).get("ok") is True and posts(st)[0].get("blobs"),
+      "23: FORCE_IMAGE_UPLOAD=1 goes straight to the multipart upload")
+
+# 409 -> already imported
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([jenv(
+    {"error": "duplicate", "existing": {"pk": 9, "change_url": "/x/", "is_active": False}}, 409)]))
+check(m.get("SKIP", {}).get("reason", "").startswith("already imported"),
+      "23: 409 is SKIP already_imported, got %s" % sorted(m))
+
+# 400 -> REVIEW server_invalid: fix only what `finish` can answer
+for _field, _key, _action in (("movement", "movement", "fix"), ("source_url", "sourceUrl", "skip"),
+                              ("__all__", None, "skip"), ("brand", "brand", "fix")):
+    m, st = run(SMART, SMART_AD, _env, site=deployed_site([jenv(
+        {"errors": {_field: ["Select a valid choice."]}}, 400)]))
+    rs = (m.get("REVIEW") or {}).get("reasons") or [{}]
+    check(rs[0].get("code") == "server_invalid" and rs[0].get("field") == _key
+          and rs[0].get("action") == _action and "Select a valid choice." in rs[0].get("message", ""),
+          "23: 400 on %s -> server_invalid field=%r action=%s, got %s" % (_field, _key, _action, rs))
+    check(not dom_used(st), "23: a 400 never falls back to the DOM path")
+
+# a lost session and a 403 are errors, never a fallback
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([LOGIN]))
+check("session lost" in (m.get("ERROR") or {}).get("msg", "") and not dom_used(st),
+      "23: a login redirect is ERROR 'session lost', got %s" % m.get("ERROR"))
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([jenv({"detail": "no add permission"}, 403)]))
+check("403" in (m.get("ERROR") or {}).get("msg", "") and not dom_used(st),
+      "23: a 403 is an ERROR, got %s" % m.get("ERROR"))
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([{
+    "http": 413, "redirected": False, "url": "https://3ceasuri.ro/admin/watches/watch/import-json/",
+    "ctype": "text/html", "body": "<h1>413 Request Entity Too Large</h1>"}]))
+_lk = [r for r in st["site_calls"] if "lookup/?ids=%s" % SMART_AD["id"] in r["path"]]
+check("413" in (m.get("ERROR") or {}).get("msg", "") and len(_lk) == 1 and not dom_used(st),
+      "23: a 413 is an immediate ERROR (the proxy refused it; no lookup wait): %s" % m.get("ERROR"))
+def _lost_probe(req):
+    return LOGIN
+m, st = run(SMART, SMART_AD, _env, site=_lost_probe)
+check("session lost" in (m.get("ERROR") or {}).get("msg", "") and not dom_used(st),
+      "23: a lost session at the probe is ERROR, not 'not deployed': %s" % sorted(m))
+
+# anything else: ask lookup/ over 45 s, never re-send, never the DOM path
+_500 = {"http": 500, "redirected": False, "url": "https://3ceasuri.ro/admin/watches/watch/import-json/",
+        "ctype": "text/html", "body": "<h1>Server Error (500)</h1>"}
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([_500], appears=2))
+check(m.get("RESULT", {}).get("ok") is True, "23: a 500, then lookup finds it: RESULT ok, got %s"
+      % sorted(m))
+check(m["RESULT"]["readback"]["imgs"] == 3 and m["RESULT"]["readback_ok"] is True,
+      "23: the readback comes from the lookup row: %s" % m["RESULT"].get("readback"))
+check(len(posts(st)) == 1 and not dom_used(st), "23: never re-sent, never the DOM path")
+m, st = run(SMART, SMART_AD, _env, site=deployed_site([_500]))
+_lk = [r for r in st["site_calls"] if "lookup/?ids=%s" % SMART_AD["id"] in r["path"]]
+check("ERROR" in m and "500" in m["ERROR"]["msg"] and "RESULT" not in m,
+      "23: never found -> ERROR with the status, got %s" % sorted(m))
+check(len(_lk) == 1 + 4, "23: lookup is asked 4 times after the POST (0/15/30/45 s), got %d"
+      % (len(_lk) - 1))
+check(len(posts(st)) == 1 and not dom_used(st), "23: never re-sent, never the DOM path")
+m, st = run(SMART, SMART_AD, _env, site=deployed_site(["TIMEOUT"], appears=1))
+check(m.get("RESULT", {}).get("ok") is True and not dom_used(st),
+      "23: a page that never answers is checked with lookup too, got %s" % sorted(m))
+
+# DRY_RUN=1 asks the server for its verdict and writes nothing
+m, st = run(SMART, SMART_AD, dict(_env, DRY_RUN="1"),
+            site=deployed_site([jenv({"valid": True, "would_create_brand": False})]))
+r = m.get("RESULT") or {}
+check(r.get("dry_run") is True and r.get("server", {}).get("answer", {}).get("valid") is True,
+      "23: DRY_RUN prints the server's verdict: %s" % r)
+check(posts(st)[0]["json"]["dry_run"] is True and not dom_used(st), "23: DRY_RUN sends dry_run")
+
+# the lookups replace the changelist searches
+m, st = run(SMART, SMART_AD, _env, site=deployed_site(existing={str(SMART_AD["id"]): {"pk": 5}}))
+check(m.get("SKIP", {}).get("reason", "").startswith("already imported") and not st["fetched"],
+      "23: stage-1 dedup through lookup/, before any OLX read: %s" % sorted(m))
+check(not dom_used(st), "23: no changelist search for the stage-1 dedup")
+m, st = run(SMART, SMART_AD, _env, site=deployed_site(reposts={"by_seller": [
+    {"pk": 3, "external_listing_id": "999", "source": "olx", "is_active": True,
+     "brand": "Garmin", "model_name": "Fenix 7X Solar", "seller_id": "529077689"}], "by_model": []}))
+check(m.get("SKIP", {}).get("reason", "").startswith("repost") and not posts(st),
+      "23: a same-seller row from reposts/ is a strong repost: %s" % sorted(m))
+_rq = [r["path"] for r in st["site_calls"] if r["path"].startswith("/admin/watches/watch/reposts/")]
+check(_rq and "exclude_id=%s" % SMART_AD["id"] in _rq[0] and "seller_id=529077689" in _rq[0],
+      "23: reposts/ is asked with the seller and this ad excluded: %s" % _rq)
+
+# API=off keeps the DOM path even with the endpoints deployed
+m, st = run(SMART, SMART_AD, dict(_env, API="off"), site=deployed_site([created()]))
+check(m.get("RESULT", {}).get("ok") is True and st["imported"] is not None and not st["site_calls"],
+      "23: API=off is the kill switch back to the DOM path")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

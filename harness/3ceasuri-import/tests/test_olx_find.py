@@ -13,6 +13,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 SCRIPTS = os.path.join(ROOT, "harness/3ceasuri-import/scripts")
 FIND_SMART = os.path.join(SCRIPTS, "olx-find-smartwatches.py")
 FIND_WATCH = os.path.join(SCRIPTS, "olx-find-watches.py")
+sys.path.insert(0, SCRIPTS)
 
 
 def ad(aid, title, price=500, desc="", state_label="Utilizat", status="active",
@@ -32,12 +33,37 @@ def ad(aid, title, price=500, desc="", state_label="Utilizat", status="active",
             "location": {"city": {"name": "Cluj-Napoca"}, "region": {"name": "Cluj"}}}
 
 
-def run(script, offers, env=None, admin_counts=None):
-    """Execute a discovery script against a canned API page; return markers."""
-    state = {"url": ""}
+def run(script, offers, env=None, admin_counts=None, lookup=None):
+    """Execute a discovery script against a canned API page; return markers.
+
+    `lookup(ids) -> {id: row}` deploys the admin's lookup/ endpoint; without it the
+    endpoints are not deployed (the admin's catch-all redirects to /admin/)."""
+    state = {"url": "", "site_calls": [], "pending": {}, "q_counts": 0}
     admin_counts = admin_counts or {}
+    import site_api
+    site_api.reset()
+
+    def site(req):
+        if lookup is None or not req["path"].startswith("/admin/watches/watch/lookup/"):
+            return {"http": 200, "redirected": True, "url": "https://3ceasuri.ro/admin/",
+                    "ctype": "text/html", "body": "<!doctype html>"}
+        ids = re.search(r"ids=([^&]*)", req["path"]).group(1).split(",")
+        ex = {i: r for i, r in lookup(ids).items() if i in ids}
+        return {"http": 200, "redirected": False, "url": "https://3ceasuri.ro" + req["path"],
+                "ctype": "application/json",
+                "body": json.dumps({"existing": ex, "missing": [i for i in ids if i not in ex]})}
 
     def js(e):
+        if "/*site_api:start*/" in e:
+            req = json.loads(re.search(r"const REQ = (.*?); const K = ", e, re.S).group(1))
+            key = json.loads(re.search(r'const K = ("[^"]+");', e).group(1))
+            state["site_calls"].append(req)
+            state["pending"][key] = site(req)
+            return key
+        if "/*site_api:poll*/" in e:
+            key = json.loads(re.search(r'b\[("[^"]+")\]', e).group(1))
+            answer = state["pending"].pop(key, None)
+            return "" if answer is None else json.dumps(answer)
         if 'Accept:"application/json"' in e:
             path = re.search(r'fetch\("([^"]+)"', e).group(1)
             m = re.search(r"offset=(\d+)", path)
@@ -49,6 +75,7 @@ def run(script, offers, env=None, admin_counts=None):
             q = re.search(r"[?&]q=([^&\"]+)", state["url"])
             if not q:
                 return "83 watchs"
+            state["q_counts"] += 1
             return "%d watchs" % admin_counts.get(q.group(1), 0)
         if "location.href" in e:
             return state["url"] or "https://www.olx.ro/"
@@ -84,6 +111,7 @@ def run(script, offers, env=None, admin_counts=None):
         if m:
             markers[m.group(1)] = json.loads(m.group(2))
     markers["_out_file"] = out_file
+    markers["_state"] = state
     return markers
 
 
@@ -275,6 +303,32 @@ check(why(m_d, 901) == "activation_locked",
 check(why(m_d, 902) == "explicit_stock",
       "stock: a stock ad must drop with its own reason (%s)" % why(m_d, 902))
 check("901" not in ids(m_d) and "902" not in ids(m_d), "the new drops must not surface as candidates")
+
+# --- Stage-1 dedup through lookup/ when it is deployed ------------------------
+# One request for every candidate id replaces the page-per-id changelist search; it
+# must drop exactly the same ids, keep the order and still stop at MAX_CANDIDATES.
+m_dom = run(FIND_SMART, SMART_FEED, admin_counts={"12": 1, "9": 1})
+m_api = run(FIND_SMART, SMART_FEED, lookup=lambda ids: {"12": {"pk": 1}, "9": {"pk": 2}})
+st = m_api["_state"]
+batches = [r for r in st["site_calls"] if "ids=0" not in r["path"]]
+check(len(batches) == 1, "lookup: one batched request, got %d" % len(batches))
+check(st["q_counts"] == 0, "lookup: no per-id changelist search when lookup/ is deployed")
+check(ids(m_api) == ids(m_dom), "lookup: the same survivors in the same order: %s vs %s"
+      % (ids(m_api), ids(m_dom)))
+check(why(m_api, 12) == "already_imported" and why(m_api, 9) == "already_imported",
+      "lookup: an id on the site drops as already_imported")
+check(m_dom["_state"]["q_counts"] > 0 and not [r for r in m_dom["_state"]["site_calls"]
+                                               if "ids=0" not in r["path"]],
+      "lookup: not deployed -> the per-id loop, unchanged")
+m_cap = run(FIND_SMART, SMART_FEED, env={"MAX_CANDIDATES": "2"},
+            lookup=lambda ids: {"1": {"pk": 1}})
+m_cap_dom = run(FIND_SMART, SMART_FEED, env={"MAX_CANDIDATES": "2"}, admin_counts={"1": 1})
+check(len(ids(m_cap)) == 2 and ids(m_cap) == ids(m_cap_dom) and "1" not in ids(m_cap),
+      "lookup: still stops at MAX_CANDIDATES survivors, got %s (per-id loop: %s)"
+      % (ids(m_cap), ids(m_cap_dom)))
+m_w = run(FIND_WATCH, WATCH_FEED, lookup=lambda ids: {"20": {"pk": 1}})
+check("20" not in ids(m_w) and why(m_w, 20) == "already_imported"
+      and m_w["_state"]["q_counts"] == 0, "lookup: classic discovery uses it too")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

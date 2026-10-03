@@ -26,6 +26,8 @@ import time
 import unicodedata
 import urllib.parse
 
+import site_api
+
 
 class Bound:
     """The CDP helpers of a browser-use payload, passed around as one object."""
@@ -37,6 +39,7 @@ class Bound:
         self.switch_tab = g["switch_tab"]
         self.goto_url = g["goto_url"]
         self.list_tabs = g["list_tabs"]
+        self.current_tab = g.get("current_tab")     # optional: site_api restores it
 
 
 def bind(g):
@@ -173,7 +176,15 @@ def admin_count(bu, query=None):
 
 
 def already_imported(bu, listing_id, return_to=None):
-    """Stage-1 dedup: has this exact listing id been imported already?"""
+    """Stage-1 dedup: has this exact listing id been imported already?
+
+    One lookup/ request when the endpoints are deployed, else the changelist search.
+    A lost admin session raises site_api.SessionLost: "not imported" would be a lie.
+    """
+    if site_api.available(bu, return_to=return_to):
+        found = site_api.lookup_ids(bu, [listing_id], return_to=return_to)
+        if found is not None:
+            return str(listing_id) in found["existing"]
     return bool(admin_rows(bu, listing_id, return_to=return_to))
 
 
@@ -194,10 +205,17 @@ def find_repost(bu, data, listing_id, return_to=None):
         return None
     seller_id = data.get("sellerId")
 
+    # The endpoint only replaces where the rows come from; the rule below is unchanged.
+    api = (site_api.reposts(bu, data["model"], seller_id, listing_id, return_to=return_to)
+           if site_api.available(bu, return_to=return_to) else None)
     hits = []
-    if seller_id:
-        hits += [(r, "seller") for r in admin_rows(bu, seller_id, return_to=return_to)]
-    hits += [(r, "model") for r in admin_rows(bu, data["model"], return_to=return_to)]
+    if api is not None:
+        hits += [(r, "seller") for r in api["by_seller"]]
+        hits += [(r, "model") for r in api["by_model"]]
+    else:
+        if seller_id:
+            hits += [(r, "seller") for r in admin_rows(bu, seller_id, return_to=return_to)]
+        hits += [(r, "model") for r in admin_rows(bu, data["model"], return_to=return_to)]
 
     for row, via in hits:
         if norm(row.get("model")) != my_model:
