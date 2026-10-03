@@ -391,7 +391,7 @@ _READBACK_JS = ('(() => {const g=id=>{const e=document.getElementById(id);'
                 'extId:any(["id_external_listing_id","id_facebook_listing_id"]),'
                 'sellerId:any(["id_seller_id","id_facebook_author_id"]),'
                 'sellerName:any(["id_seller_name","id_facebook_author_name"]),'
-                'videoUrl:g("id_video_url"),imgs});})()')
+                'videoUrl:g("id_video_url"),desc:(g("id_description")||"").slice(0,120),imgs});})()')
 
 
 def _js_settled(bu, expr, tries=3, wait=3):

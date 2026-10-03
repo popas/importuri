@@ -80,7 +80,7 @@ and does not apply to OLX.)
   map, photos), `.../scripts/admin_import.py` (the admin half: dedup, brand, submit,
   verify), `.../scripts/infer_fields.py` (the contract, profiles `classic` /
   `smart`), `.../scripts/contract_draft.py` (the seeded draft),
-  `.../scripts/import-watch.js` (harness v7, authoritative)
+  `.../scripts/import-watch.js` (harness v8, authoritative)
 - No-browser CLIs (run with `python3`, unlike the payloads):
   `.../scripts/candidates.py` (the work queue), `.../scripts/olx-log-result.py`
   (history + counters)

@@ -560,8 +560,14 @@ def run(profile, g):
     state_entry.update({"seller_id": seller["id"], "seller_name": seller["name"],
                         "business": seller["business"]})
     _mark("imported" if ok else "error", None if ok else "import not verified")
+    # Saved != correct: the harness once replaced every description with a spec
+    # template and nothing noticed for months. Compare the start of what was sent with
+    # what the change form holds; None when the readback did not load.
+    _sent = " ".join((data.get("description") or "").split())[:60]
+    desc_ok = (None if not (readback and readback.get("desc") is not None and _sent)
+               else " ".join(readback["desc"].split()).startswith(_sent))
     emit("RESULT", {"ad_id": AD_ID, "ok": bool(ok), "banners": banners,
                     "readback_ok": readback_ok, "expected_images": len(images),
-                    "readback": readback,
+                    "readback": readback, "desc_ok": desc_ok,
                     "new_brand": ({"name": data["brand"], "id": new_brand_id} if new_brand_id else None),
                     "state_entry": state_entry})

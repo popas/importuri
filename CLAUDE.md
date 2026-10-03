@@ -51,7 +51,7 @@ state.json                         ← SESSION bookkeeping only (no cumulative t
 history.jsonl                      ← append-only local log of every import + skip
 .claude/skills/                    ← one per phase, invoked with the Skill tool
 harness/3ceasuri-import/
-  scripts/import-watch.js          ← THE HARNESS (authoritative, v7) — injected into admin
+  scripts/import-watch.js          ← THE HARNESS (authoritative, v8) — injected into admin
   scripts/olx_import.py            ← THE per-ad flow, both profiles (the two importer
                                      payloads are wrappers that pick one)
   scripts/admin_import.py          ← the admin half: dedup, brand, inject, submit, verify

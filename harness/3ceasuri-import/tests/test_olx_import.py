@@ -72,8 +72,11 @@ CLASSIC_AD = {
 }
 
 
-def run(script, ad, env=None, admin_rows_for=None):
-    """Execute an OLX importer against a canned ad; return (markers, trace)."""
+def run(script, ad, env=None, admin_rows_for=None, saved_description=None):
+    """Execute an OLX importer against a canned ad; return (markers, trace).
+
+    The stub admin saves the description importWatch() was handed, unless
+    `saved_description` says what the form ended up holding instead."""
     state = {"url": "", "imported": None, "brand_tab_opened": False, "brand_name": "",
              "fetched": []}
     admin_rows_for = admin_rows_for or (lambda q: [])
@@ -115,10 +118,15 @@ def run(script, ad, env=None, admin_rows_for=None):
         if "/change/" in e and "result_list" in e:
             return json.dumps({"url": "https://3ceasuri.ro/admin/watches/watch/5/change/"})
         if "id_reference_number" in e or "id_case_diameter_mm" in e:
+            _sent = re.search(r"importWatch\((\{.*\})\); return", state["imported"] or "", re.S)
+            _desc = (json.loads(_sent.group(1)).get("description") if _sent else None) or ""
+            if saved_description is not None:
+                _desc = saved_description
             return json.dumps({"brandId": "1", "price": "1700", "currency": "RON",
                                "ref": None, "diameter": None, "source": "olx",
                                "extId": str(ad["id"]), "sellerId": str(ad["user"]["id"]),
-                               "sellerName": ad["user"]["name"], "imgs": len(ad["photos"])})
+                               "sellerName": ad["user"]["name"], "imgs": len(ad["photos"]),
+                               "desc": _desc[:120]})
         if "location.href" in e:
             return state["url"] or "https://www.olx.ro/"
         return ""
@@ -542,6 +550,13 @@ check(m2.get("RESULT", {}).get("ok") is True, "17: pass 2 must import from the d
 check(m2["INFER"]["model"] == "Fenix 7X Solar", "17: the edit did not reach the form")
 check(m2["INFER"]["description"] == FILLED_SMART["description"],
       "17: description lost between draft and form")
+check(m2["RESULT"].get("desc_ok") is True,
+      "17: the readback must confirm the description saved: %s" % m2["RESULT"].get("desc_ok"))
+# the v7 harness bug: the form held a spec template instead of the text sent
+m2t, _ = run(SMART, SMART_AD, {"CONFIRM": "1"},
+             saved_description="Garmin Fenix 7X Solar\n\nSpecificații:\n- Mecanism: smart")
+check(m2t["RESULT"].get("desc_ok") is False,
+      "17: a description the form did not keep must read back desc_ok=False")
 
 # --- 17b. the seller's text handed back unchanged is a fix, not an import ------
 check("description" in _d["_todo"], "17b: description must always be asked")

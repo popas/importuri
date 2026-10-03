@@ -529,6 +529,10 @@ def imported(queue, ad_id, m, cand, verified_by_admin=False):
             and rb["imgs"] < r["expected_images"]:
         lines.append("  NOTE: %s of %s photos saved - still a success, never re-import"
                      % (rb["imgs"], r["expected_images"]))
+    if r.get("desc_ok") is False:
+        lines.append("  NOTE: the saved description is NOT the one sent (readback: %s) - "
+                     "the record saved, fix the text in the admin; never re-import"
+                     % quote((rb.get("desc") or "")[:80]))
     nb = m.get("NEW_BRAND")
     if nb and nb.get("name") and nb.get("id"):
         try:

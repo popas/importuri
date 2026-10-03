@@ -156,7 +156,7 @@ function detectCurrency(text) {
   return 'RON';
 }
 
-// === WATCH IMPORT HARNESS v7 ===
+// === WATCH IMPORT HARNESS v8 ===
 // Uses brand ID mapping, auto-formats descriptions, extracts phone/location/seller/year/ref.
 // Stores the marketplace listing id and seller (source/externalId/sellerId/sellerName)
 // for repost dedup — same three columns for Facebook and OLX.
@@ -194,8 +194,15 @@ async function importWatch(data) {
     if (!result) return {success: false, error: 'BRAND_FAILED', log};
   }
 
-  // === 2. BUILD PROFESSIONAL DESCRIPTION ===
-  const professionalDesc = buildProfessionalDescription(data);
+  // === 2. DESCRIPTION ===
+  // The contract's `description` is the listing text (rewritten by the agent since
+  // 2026-10-03) and is saved as-is. Until then this only ever read `rawDescription`,
+  // which no importer sent, so every record got the spec template below instead —
+  // English enum values, price and location included. The template is now only the
+  // fallback for a caller that sends no description at all.
+  const professionalDesc = (typeof data.description === 'string' && data.description.trim())
+    ? data.description.trim()
+    : buildProfessionalDescription(data);
   
   // === 3. GENERATE SLUG ===
   const slug = data.modelSlug || generateSlug(data.brand, data.model);
@@ -361,4 +368,4 @@ window.extractYear = extractYear;
 window.extractReference = extractReference;
 window.generateSlug = generateSlug;
 window.detectCurrency = detectCurrency;
-'Harness v7 ready. Writes location/county/city to id_location/id_county/id_city (was description-only), source-agnostic provenance fields, professional descriptions, phone/location/seller extraction, auto-slug, retry images.';
+'Harness v8 ready. Saves the contract description as-is (v7 overwrote it with a spec template). Writes location/county/city to id_location/id_county/id_city (was description-only), source-agnostic provenance fields, professional descriptions, phone/location/seller extraction, auto-slug, retry images.';
