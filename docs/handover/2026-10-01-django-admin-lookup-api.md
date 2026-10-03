@@ -1,7 +1,7 @@
 # Handover: JSON lookup endpoints in the 3ceasuri.ro Django admin
 
-**For:** an agent working in the Django repo (`~/projects/anunturi/app`, GitHub `popas/ceasuri`).
-**From:** the OLX import runbook (`~/projects/anunturi/importuri`), 2026-10-01.
+**For:** an agent working in the Django repo (`../app` next to this repo, GitHub `popas/ceasuri`).
+**From:** the OLX import runbook (`../importuri`, next to the Django repo), 2026-10-01.
 **Goal:** replace HTML scraping of the admin changelists with a few batched JSON
 endpoints, so the importer asks the database directly instead of loading one admin
 page per question.

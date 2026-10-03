@@ -12,9 +12,8 @@ per-watch loop (find → extract → import → verify) lives in the other skill
 
 Define these first — every other skill references them.
 
-- `$PROJECT_ROOT` = `/Users/stelian/.hermes/proiecte/3ceasuri`
-  (the old container environment used `/opt/data/proiecte/3ceasuri`; if the repo is
-  mounted elsewhere, use that path instead).
+- `$PROJECT_ROOT` = the root of this repo (the directory holding `harness/`), as an
+  absolute path: `PROJECT_ROOT=$(git rev-parse --show-toplevel)`.
 - `$CDP_HOST` = **`127.0.0.1:9222` on the user's local Mac** (verified 2026-07-17c; Chrome
   launched with `--remote-debugging-port=9222`). `192.168.65.254:9222` was the old
   container-era host. Verify at setup — the host may differ per environment:

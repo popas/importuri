@@ -31,7 +31,7 @@ not explore the repo, do not run browser-use yourself. Every output ends with th
 literal NEXT: command — run it. Only on PREFLIGHT_FAILED, BROWSER_FAILURE, or three
 ERROR/NOT_SAVED in a row: stop and invoke the olx-troubleshooting skill.
 
-  cd ~/projects/anunturi/importuri
+  # run everything from the root of this repo
   S="python3 harness/3ceasuri-import/scripts/olx-step.py"; Q=harness/3ceasuri-import/<queue file>
   $S start $Q --target <N>        # once
 

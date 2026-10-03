@@ -138,7 +138,7 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   fallback to the old `facebook_*` element ids, so imports work either side of that deploy.
 - `$PROJECT_ROOT` and `$CDP_HOST` are placeholders defined once in `olx-session-setup`;
   every skill uses them, so no environment-specific path is baked into any skill.
-- The Django app is a **separate repo**: `~/projects/anunturi/ceasuri`. See
+- The Django app is a **separate repo**: `../ceasuri` (the sibling checkout of `github.com:popas/ceasuri`; named `../app` on the Linux machine). See
   `references/django-backend.md`.
 
 ## Adding a new brand

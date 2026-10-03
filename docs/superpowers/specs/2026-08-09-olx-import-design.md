@@ -164,7 +164,7 @@ filled contract.
 
 `ENUMS`, `SCHEMA_FIELDS` and `validate()` are shared unchanged — the DB is the same.
 
-## Django changes (separate repo: `~/projects/anunturi/ceasuri`)
+## Django changes (separate repo: `../ceasuri`, `../app` on Linux)
 
 The three FB-shaped columns are referenced only by `models.py`, `admin.py` and one
 test — no templates, no public views — so generalising them is cheap.

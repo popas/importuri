@@ -35,9 +35,9 @@ Rejected alternatives:
 
 Two repos change:
 
-1. **Django backend** — `/Users/stelian/projects/anunturi/ceasuri`
+1. **Django backend** — `../ceasuri` (the sibling checkout of `github.com:popas/ceasuri`; named `../app` on the Linux machine)
    (see `harness/3ceasuri-import/references/django-backend.md`).
-2. **Harness runbook** — this repo (`~/.hermes/proiecte/3ceasuri`).
+2. **Harness runbook** — this repo.
 
 ## 1. Django backend changes
 

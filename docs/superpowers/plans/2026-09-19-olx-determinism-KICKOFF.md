@@ -1,7 +1,7 @@
 # Kickoff prompt — execute the OLX determinism plan
 
 Paste the block below into a fresh Claude Code session in
-`/Users/stelian/.hermes/proiecte/3ceasuri`. Nothing else is needed; the session
+the root of this repo. Nothing else is needed; the session
 reads the rest from the repo.
 
 Edit the one bracketed line to pick your execution style before pasting.

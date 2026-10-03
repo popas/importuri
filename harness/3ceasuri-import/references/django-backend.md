@@ -1,8 +1,9 @@
 # Django backend (the 3ceasuri.ro source)
 
-The live site this runbook imports into is a Django project whose source lives at:
+The live site this runbook imports into is a Django project in its own repo,
+`github.com:popas/ceasuri`, checked out next to this one:
 
-    /Users/stelian/projects/anunturi/ceasuri
+    ../ceasuri        (relative to this repo's root; the Linux checkout is ../app)
 
 This harness repo is only the browser-automation runbook. When a change requires
 touching the actual database schema, admin config, or import view (i.e. not just the

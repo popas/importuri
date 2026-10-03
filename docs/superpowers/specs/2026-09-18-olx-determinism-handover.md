@@ -1,7 +1,7 @@
 # Handover prompt — make the OLX harness deterministic enough for Haiku
 
 **Date:** 2026-09-18 · **For:** a fresh Claude Code (Opus) session in
-`/Users/stelian/.hermes/proiecte/3ceasuri` · **Status:** analysis done; §6 decisions answered 2026-09-19; nothing implemented yet.
+the root of this repo · **Status:** analysis done; §6 decisions answered 2026-09-19; nothing implemented yet.
 Next step: superpowers:writing-plans against §5.
 
 Paste everything from "## THE PROMPT" down into the new session. Sections 1–6 below it are
@@ -57,7 +57,7 @@ HOW TO WORK:
   Every new deterministic rule gets a test there BEFORE it gets an implementation.
   That suite is the only reason this refactor is safe to do at all.
 - Commit straight to main, no branches, no PRs (main is what Coolify deploys).
-- The Django backend is a SEPARATE repo at ~/projects/anunturi/ceasuri. Prefer changes
+- The Django backend is a SEPARATE repo at ../ceasuri (../app on Linux). Prefer changes
   that need no backend deploy; if one is unavoidable, say so and stop for the user.
 
 DEFINITION OF DONE: a Haiku session, given one pasted prompt per watch (the OLX

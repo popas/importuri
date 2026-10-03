@@ -18,7 +18,7 @@ brainstorm. Everything decided is in this file. Before planning:
      (the per-ad flow, gates, merge rules)
    - `olx-find-watches.py` / `olx-find-smartwatches.py` (discovery filters)
    - `olx_api.py`, `admin_import.py`, `infer_fields.py`, `price_sanity.py`
-3. The Django backend is a separate repo: `~/projects/anunturi/ceasuri`
+3. The Django backend is a separate repo: `../ceasuri` (the sibling checkout of `github.com:popas/ceasuri`; named `../app` on the Linux machine)
    (`watches/models.py`, `watches/admin.py`).
 
 Do not implement anything the user has not approved. The open questions in §10
@@ -329,7 +329,7 @@ model string does not appear in the ad text.
 Acceptance bar (propose to the user): auto-published precision ≥ 98 % on critical
 fields (`brand`, `model`, `movement`, `price`), review share ≤ ~40 %.
 
-## 8. Django backend changes (`~/projects/anunturi/ceasuri`)
+## 8. Django backend changes (`../ceasuri`)
 
 The user owns the backend; browser-driven admin form filling is replaced by a small
 authenticated API. Relevant existing facts:

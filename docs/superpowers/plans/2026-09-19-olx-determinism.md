@@ -157,7 +157,7 @@ Replace `harness/3ceasuri-import/scripts/olx-import-watch.py` entirely with:
 # =============================================================================
 import os, sys
 
-PROJECT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+PROJECT_ROOT = os.environ.get("PROJECT_ROOT") or os.getcwd()   # walks up to the repo root in the real script
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
 import olx_import
 
@@ -215,7 +215,7 @@ Create `harness/3ceasuri-import/tests/test_contract_draft.py`:
 """Offline tests for the seeded contract draft (no browser, no network)."""
 import json, os, sys, tempfile
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
 import contract_draft, infer_fields
 
@@ -634,7 +634,7 @@ Create `harness/3ceasuri-import/tests/test_review_codes.py`:
 can follow without judgement. Prose reasons are what made REVIEW: a coin flip."""
 import os, re, sys
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 SRC = os.path.join(ROOT, "harness/3ceasuri-import/scripts/olx_import.py")
 
 fails = []
@@ -785,7 +785,7 @@ watches and nothing external tracking progress, so 'which watch is next' has to 
 command, not something the model remembers."""
 import json, os, sys, tempfile
 
-ROOT = "/Users/stelian/.hermes/proiecte/3ceasuri"
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
 sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
 import candidates
 
@@ -1121,7 +1121,8 @@ import os
 import sys
 import time
 
-DEFAULT_ROOT = os.environ.get("PROJECT_ROOT", "/Users/stelian/.hermes/proiecte/3ceasuri")
+DEFAULT_ROOT = os.environ.get("PROJECT_ROOT") or os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "../../.."))
 
 
 def parse(line):
