@@ -280,6 +280,11 @@ check(inf["externalId"] == "307673714", "6: externalId %r" % inf.get("externalId
 check(inf["sellerId"] == "529077689", "6: sellerId %r" % inf.get("sellerId"))
 check(inf["sellerName"] == "Stanciu Adrian", "6: sellerName %r" % inf.get("sellerName"))
 check(inf["sourceUrl"].startswith("https://www.olx.ro/d/oferta/"), "6: sourceUrl %r" % inf.get("sourceUrl"))
+# The site writes "București" / "Voluntari, jud. Ilfov" from these two; the old
+# free-text "Județul X, localitatea Y" is no longer sent (2026-10-05).
+check(inf["county"] == "București" and inf["city"] == "București",
+      "6: county/city %r/%r" % (inf.get("county"), inf.get("city")))
+check(not inf.get("location"), "6: location must not be filled, got %r" % inf.get("location"))
 check("is_wristwatch" not in inf, "6: contract-only flags must not reach the form")
 # `style` was answered by OLX but left out of the contract -> it is a forced smart
 # field, while `stil`-derived values on other fields must NOT survive silently:
@@ -845,6 +850,8 @@ check(_w["model_name"] == "Fenix 7X Solar" and _w["movement"] == "smart"
       "23: the watch fields: %s" % _w)
 check("is_wristwatch" not in _w and "brand" not in _w and "images" not in _w,
       "23: only model fields are sent")
+check("location" not in _w and _w.get("county") == "București",
+      "23: county/city are sent, the free-text location is not: %s" % _w)
 
 # NEW_BRAND: whenever the contract's brand is not in BRAND_IDS, with the server's name/id
 for _created in (True, False):

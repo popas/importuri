@@ -526,12 +526,13 @@ def run(profile, g):
         data["category"] = "wrist"
 
     # --- 5. provenance -------------------------------------------------------
-    # The seller's city and phone are OLX metadata, not claims in the ad text — an
-    # answer that omits them is silent, not authoritative, so they are restored rather
-    # than cleared. The phone costs a page navigation (it is masked until clicked), so
-    # it is only fetched when the contract did not already carry it.
-    if not data.get("location"):
-        data["location"] = olx_api.location_str(ad)
+    # The seller's județ, city and phone are OLX metadata, not claims in the ad text —
+    # an answer that omits them is silent, not authoritative, so they are restored
+    # rather than cleared. The phone costs a page navigation (it is masked until
+    # clicked), so it is only fetched when the contract did not already carry it.
+    # No free-text `location`: the site writes the place from county/city itself
+    # ("Voluntari, jud. Ilfov"), so it is not sent (2026-10-05).
+    data.pop("location", None)
     data["county"] = olx_api.location_county(ad)
     data["city"] = olx_api.location_city(ad)
     if not data.get("phone"):

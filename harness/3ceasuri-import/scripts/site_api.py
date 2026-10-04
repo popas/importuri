@@ -78,7 +78,6 @@ CONTRACT_TO_MODEL = {
     "currency": "currency",
     "description": "description",
     "phone": "phone",
-    "location": "location",
     "county": "county",
     "city": "city",
     "source": "source",

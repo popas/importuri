@@ -320,6 +320,8 @@ m = site_api.to_model_fields({"model": "Fenix 7", "reference": "", "diameter": 0
 check(m.get("condition") == "good", "to_model_fields: condition defaults to good (parity with the JS)")
 check("movement" not in m, "to_model_fields: NO movement default")
 check("reference_number" not in m and "year" not in m, "to_model_fields: None and '' are dropped")
+check("location" not in site_api.to_model_fields({"location": "Cluj", "county": "Cluj"}),
+      "to_model_fields: location is not sent; the site builds it from county/city")
 check(m.get("case_diameter_mm") == 0, "to_model_fields: 0 is kept")
 check(m.get("description") == "text", "to_model_fields: description stripped, got %r" % m.get("description"))
 check("brand" not in m and "images" not in m and "priceNote" not in m,

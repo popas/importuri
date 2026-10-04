@@ -251,7 +251,6 @@ async function importWatch(data) {
   setAny(['id_seller_id', 'id_facebook_author_id'], data.sellerId);
   setAny(['id_seller_name', 'id_facebook_author_name'], data.sellerName);
   set('id_phone', data.phone);
-  set('id_location', data.location);
   set('id_county', data.county);
   set('id_city', data.city);
 
@@ -260,7 +259,7 @@ async function importWatch(data) {
     data.gender&&'gender', data.style&&'style',
     data.connectivity&&'connectivity', data.compatibility&&'compatibility',
     data.year&&'year', data.waterRes&&'WR', data.displayMat&&'glass',
-    data.reference&&'ref', data.phone&&'phone', data.seller&&'seller', data.location&&'location',
+    data.reference&&'ref', data.phone&&'phone', data.seller&&'seller',
     data.county&&'county', data.city&&'city',
     data.sellerId&&'seller_id', data.videoUrl&&'video', data.source&&data.source
   ].filter(Boolean);
