@@ -271,6 +271,7 @@ D1 Milano:268
 Yema:269
 Motorola:270
 Lilo:271
+Pelvini:272
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
