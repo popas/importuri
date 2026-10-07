@@ -40,8 +40,8 @@ Per watch:
      SKIPPED / ERROR  -> nothing to do, run `next` again.
      A sheet (AD ... DECIDE ... NEXT) -> step 2.
   2. Read the ONE photo the sheet names (Read tool). A second only for a caseback.
-     Write OUR description (Write tool) to the .description.txt path the sheet's
-     DESCRIPTION line names — rewritten, never the seller's text pasted back.
+     Write the description (Write tool) to the .description.txt path the sheet's
+     DESCRIPTION line names — the seller's text, lightly corrected, in their voice.
   3. $S finish $Q <id> 'field=value' ...
      - pass every field marked MUST ANSWER, plus any other field you change;
        an omitted field keeps the value shown. true/false/null bare, text in quotes.
@@ -75,11 +75,12 @@ Judging, in one place:
   - year: one integer, only when stated. "între 1960 și 1970" -> year=null and the
     decade goes in model.
   - notes: one sentence when the model or movement was inferred; otherwise null.
-  - description: Romanian with diacritics, 400-1000 chars, plain paragraphs — what
-    it is (brand, model, type); case, size, dial, strap, as the ad AND the photo show
-    them; condition exactly as the seller states it, defects included; what comes with
-    it (box, papers, charger). Nothing you would have to guess. No phone, link, price,
-    contact, "vând", "negociabil" or hype.
+  - description: the SELLER's text, lightly corrected — it must read as if they wrote
+    it and still look like the OLX ad. Keep their sentences, order, person and facts,
+    defects included; fix only diacritics, typos, punctuation, ALL CAPS; drop price,
+    negotiation, shipping, contact, sign-offs and copied filler. Add nothing but a
+    brand/model they left out. Never write about the seller, the ad or the photos
+    ("vânzătorul precizează", "fotografiile prezintă") — not even when they did.
 
 The script, not you, refuses: suspiciously cheap listings, sellers whose account is
 under 30 days old asking >= 1000 RON, one-photo ads, thin descriptions, repeats.

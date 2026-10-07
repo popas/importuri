@@ -92,11 +92,12 @@ HINTS = {
     "caseMat": "only what the ad or the photo actually shows.",
     "braceletMat": "only what the ad or the photo actually shows (silicone = rubber).",
     "displayColor": "the dial colour, only when the photo shows it.",
-    "description": "OUR listing text, rewritten - never the seller's pasted back. Romanian "
-                   "with diacritics, 400-1000 chars, plain paragraphs: what it is; looks and "
-                   "materials (ad + photo); condition as the seller states it, defects "
-                   "included; what comes with it. Only facts from the ad, the photo or your "
-                   "fields. NO phone, link, price, 'vând', 'negociabil', contact or hype.",
+    "description": "the SELLER's text, lightly corrected - it must read as if they wrote it "
+                   "and still look like the OLX ad. Keep their sentences, order, person and "
+                   "facts (defects too); fix only diacritics, typos, punctuation, ALL CAPS; "
+                   "drop price, negotiation, shipping, contact, sign-offs, copied filler. Add "
+                   "nothing but a brand/model they left out. NEVER mention the seller, the ad "
+                   "or the photos ('vânzătorul precizează', 'fotografiile prezintă').",
 }
 KEEP_SHOWN = ("brand", "price", "currency", "condition", "category", "movement", "gender")
 
@@ -506,7 +507,7 @@ def cmd_finish(queue, ad_id, pairs):
         fields = [r.get("field") for r in what if r.get("field")]
         if "description" in fields:
             fields.remove("description")
-            lines.append("  rewrite %s with the Write tool, then run finish"
+            lines.append("  edit %s with the Write tool, then run finish"
                          % os.path.relpath(contract_draft.description_path(ROOT, ad_id), ROOT))
         lines.append("NEXT: %s finish %s %s %s" % (
             SELF, os.path.relpath(queue, ROOT), ad_id,

@@ -96,8 +96,55 @@ _CONDITION_MECANIC = re.compile(
     r"(?:estetic|vizual|optic)\w*\W+(?:\w+\W+){0,3}?mecanic\w*|"
     r"mecanic\w*\W+(?:\w+\W+){0,3}?(?:estetic|vizual|optic)\w*")
 
+# --- the description stays the seller's (user directive 2026-10-04) ----------
+# The 2026-10-03 "rewrite it, 400-1000 chars" rule produced listings in a third
+# voice: "Vânzătorul precizează că funcționează foarte bine", "Fotografiile prezintă
+# ceasul în cutie, iar în anunț sunt disponibile și alte imagini" — on a 178-char ad
+# that said none of it that way. The listing text is the seller's own, lightly
+# corrected, and these two checks are what keep it that way.
 
-def confidence_review(profile, data, images, brand_ids, seller_text=None):
+# Talking ABOUT the seller, the ad or the photos is never the author's voice. It is
+# flagged even when the seller wrote it ("Fotografiile sunt reale") — user directive.
+DESCRIPTION_META_RE = re.compile(
+    r"\b(vanzat\w*|anunt\w*|fotografi\w*|imagin\w*|poz(a|e|ele|ei))\b")
+# Words of ours that the seller never used. A light edit adds a handful (a brand the
+# seller left out, a connective, "oțel" for "Stainless Steel"); a rewrite adds dozens
+# (44-70 on the 2026-10-04 listings, at 11-41% of the text being the seller's).
+DESCRIPTION_MAX_NEW_WORDS = 10
+DESCRIPTION_MIN_SELLER_SHARE = 0.75
+
+
+def _plain(text):
+    """Lowercase, diacritics off: "Funcționează" and "functioneaza" are one word."""
+    import unicodedata
+    text = unicodedata.normalize("NFKD", (text or "").lower())
+    return "".join(c for c in text if not unicodedata.combining(c))
+
+
+def _words(text):
+    return [w for w in re.findall(r"[a-z0-9]+", _plain(text)) if len(w) >= 3]
+
+
+def _same_word(a, b):
+    """Romanian inflects at the end (cutie/cutia, încărcător/încărcătorul), so two
+    words match when they differ only in their last two letters."""
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return a == b or n >= max(3, min(len(a), len(b)) - 2)
+
+
+def description_drift(description, source):
+    """(words of ours the seller never used, share of the text that is the seller's)."""
+    vocab = set(_words(source))
+    words = _words(description)
+    new = [w for w in words if not any(_same_word(w, v) for v in vocab)]
+    return new, (1 - float(len(new)) / len(words)) if words else 1.0
+
+
+def confidence_review(profile, data, images, brand_ids, seller_text=None, seller_title=None):
     """The confidence gate, as a pure function. Returns a list of reasons.
 
     Each reason carries a code and an action. `fix` means the gate named exactly
@@ -108,9 +155,11 @@ def confidence_review(profile, data, images, brand_ids, seller_text=None):
     It is out here, rather than inside run(), so the offline replay eval scores the
     SAME gate the importer runs instead of a copy of it that can drift.
 
-    `seller_text` is the cleaned OLX description. The listing text is ours to write
-    (user directive 2026-10-03), so the seeded seller text coming back unchanged means
-    the rewrite was skipped — a `fix`, since the answer is one edit away.
+    `seller_text` is the cleaned OLX description and `seller_title` the ad's title.
+    The listing text is the seller's own, lightly corrected (user directive
+    2026-10-04), so three things are a `fix`, each one edit away: the seeded text
+    back untouched, a text that talks about the seller/ad/photos, and a text that is
+    mostly not the seller's words.
     """
     review = []
 
@@ -148,11 +197,28 @@ def confidence_review(profile, data, images, brand_ids, seller_text=None):
                         "smartwatch without %s (fill it in the draft)" % f, f)
     if len(images) < 2:
         _review("too_few_images", "skip", "only %d image(s) on the ad" % len(images))
-    if seller_text and " ".join((data.get("description") or "").split()) \
-            == " ".join(seller_text.split()):
-        _review("description_not_rewritten", "fix",
-                "description is still the seller's text - write our own (see the rules)",
+    ours = data.get("description") or ""
+    if seller_text and " ".join(ours.split()) == " ".join(seller_text.split()):
+        _review("description_unedited", "fix",
+                "description is the seller's text untouched - correct it lightly "
+                "(diacritics, typos, punctuation) and drop price/contact, keeping their words",
                 "description")
+    elif seller_text:
+        meta = sorted({m.group(0) for m in DESCRIPTION_META_RE.finditer(_plain(ours))})
+        if meta:
+            _review("description_meta", "fix",
+                    "description talks about the seller/ad/photos (%s) - remove those "
+                    "sentences; the text is the seller's own voice" % ", ".join(meta),
+                    "description")
+        new, share = description_drift(ours, "\n".join(
+            [seller_title or "", seller_text] +
+            [str(data.get(k) or "") for k in ("brand", "model", "reference")]))
+        if len(new) > DESCRIPTION_MAX_NEW_WORDS and share < DESCRIPTION_MIN_SELLER_SHARE:
+            _review("description_drifted", "fix",
+                    "description is rewritten, only %d%% of it is the seller's words "
+                    "(%d new: %s) - start again from their text and correct it lightly"
+                    % (round(share * 100), len(new), " ".join(new[:12])),
+                    "description")
     if len((data.get("description") or "").strip()) < 40:
         _review("thin_description", "skip",
                 "description looks thin (%d chars)"
@@ -579,7 +645,8 @@ def run(profile, g):
 
     # --- 6. confidence gate --------------------------------------------------
     review = confidence_review(profile, data, images, brand_ids,
-                               seller_text=description if IS_CONTRACT else None)
+                               seller_text=description if IS_CONTRACT else None,
+                               seller_title=title if IS_CONTRACT else None)
     # Not waived by CONFIRM either (§6 decision 5: nobody overrides a gate).
     if review and not DRY_RUN:
         review_stop({"reasons": review, "images": len(images),

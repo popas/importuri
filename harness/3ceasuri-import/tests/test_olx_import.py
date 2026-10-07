@@ -78,6 +78,24 @@ NOT_DEPLOYED = {"http": 200, "redirected": True, "url": "https://3ceasuri.ro/adm
                 "ctype": "text/html; charset=utf-8", "body": "<!doctype html>"}
 
 
+# Pass 1 now writes a contract draft to .contracts/, and pass 2 reads it -- so a
+# draft left behind by the PREVIOUS run of this file would make check 4 take the
+# pass-2 path. Each fixture ad's draft is cleared the first time it runs. Only the
+# fixtures': .contracts/ is the REAL drafts folder (this used to rmtree all of it,
+# and running the suite mid-session wiped the live drafts on 2026-10-04).
+import glob as _glob
+_CLEARED = set()
+
+
+def _clear_drafts_once(ad_id):
+    if ad_id in _CLEARED:
+        return
+    _CLEARED.add(ad_id)
+    for f in _glob.glob(os.path.join(ROOT, "harness/3ceasuri-import/.contracts",
+                                     "olx-%s.*" % ad_id)):
+        os.remove(f)
+
+
 # Stub photos go to a scratch folder: the fixture ids are real ads, and the real
 # .photos/olx-<id>/ folders hold their photos.
 import tempfile as _tempfile
@@ -182,6 +200,7 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=
              {"targetId": "A", "url": "https://3ceasuri.ro/admin/watches/watch/add/", "title": "add"},
              {"targetId": "O", "url": "https://www.olx.ro/moda-frumusete/ceasuri/", "title": "olx"}]}
 
+    _clear_drafts_once(ad["id"])
     os.environ.clear()
     os.environ.update({"PROJECT_ROOT": ROOT, "AD_ID": str(ad["id"]), "PATH": "/usr/bin:/bin",
                        "PHOTO_ROOT": _PHOTO_ROOT})
@@ -201,11 +220,6 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=
     return markers, state
 
 
-# Pass 1 now writes a contract draft to .contracts/, and pass 2 reads it -- so a
-# draft left behind by the PREVIOUS run of this file would make check 4 take the
-# pass-2 path. Clear them once, at the start, to keep the suite hermetic.
-import glob as _glob, shutil as _shutil
-_shutil.rmtree(os.path.join(ROOT, "harness/3ceasuri-import/.contracts"), ignore_errors=True)
 
 fails = []
 def check(cond, msg):
@@ -272,7 +286,7 @@ check("Garmin Fenix 7x Solar" in p, "4: ad text missing from the prompt")
 FILLED_SMART = {"brand": "Garmin", "model": "Fenix 7X Solar",
                 "connectivity": "no_gsm", "compatibility": "both", "price": 1700,
                 "currency": "RON", "condition": "good", "gender": "men",
-                "description": "Garmin Fenix 7X Solar, ceas smart outdoor cu încărcare solară, folosit aproximativ un an și păstrat în stare foarte bună. Se vinde împreună cu încărcătorul original și cutia.",
+                "description": "Ceas Garmin Fenix 7X Solar în stare foarte bună, folosit un an.\nVine cu încărcător și cutie.\n\nAre GPS și hărți, autonomie excelentă.",
                 "is_wristwatch": True, "is_bulk_lot": False}
 m, st = run(SMART, SMART_AD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED_SMART)})
 inf = m["INFER"]
@@ -324,7 +338,7 @@ check(st["imported"] is None, "9: must not import a mis-routed ad")
 FILLED_CLASSIC = {"brand": "Seiko", "model": "Prospex MM200 SPB077", "movement": "automatic",
                   "price": 3500, "currency": "RON", "condition": "excellent",
                   "caseMat": "steel", "diameter": 44, "waterRes": "water_resistant_yes",
-                  "description": "Seiko Prospex MM200 SPB077, ceas de scufundări automatic, cumpărat în 2019, în stare impecabilă. Se vinde cu cutia și documentele originale.",
+                  "description": "Ceas Seiko Prospex automatic, cumpărat în 2019, stare impecabilă.\nVine cu cutie și documente, brățară de oțel plus curea de cauciuc.",
                   "is_wristwatch": True, "is_bulk_lot": False}
 m, st = run(CLASSIC, CLASSIC_AD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(FILLED_CLASSIC)})
 inf = m["INFER"]
@@ -607,10 +621,34 @@ check("description" in _d["_todo"], "17b: description must always be asked")
 _d["description"] = olx_api.clean_description(SMART_AD["description"])
 json.dump(_d, open(_dp, "w"))
 m2b, st2b = run(SMART, SMART_AD, {"CONFIRM": "1"})
-check(any(r.get("code") == "description_not_rewritten" and r.get("action") == "fix"
+check(any(r.get("code") == "description_unedited" and r.get("action") == "fix"
           for r in (m2b.get("REVIEW") or {}).get("reasons", [])),
-      "17b: an unrewritten description must stop as a fix, got %s" % m2b.get("REVIEW"))
-check(st2b["imported"] is None, "17b: an unrewritten description must not import")
+      "17b: an unedited description must stop as a fix, got %s" % m2b.get("REVIEW"))
+check(st2b["imported"] is None, "17b: an unedited description must not import")
+
+# --- 17c. the description stays in the seller's voice (user directive 2026-10-04) ---
+def _desc_codes(desc):
+    _d["description"] = desc
+    json.dump(_d, open(_dp, "w"))
+    m, st = run(SMART, SMART_AD, {"CONFIRM": "1"})
+    return [r.get("code") for r in (m.get("REVIEW") or {}).get("reasons", [])], st
+# the 2026-10-04 listings: a third voice narrating the seller and the photos
+codes, st = _desc_codes(FILLED_SMART["description"] + " Vânzătorul precizează că "
+                        "funcționează. Fotografiile prezintă ceasul, iar în anunț sunt "
+                        "disponibile și alte imagini.")
+check("description_meta" in codes, "17c: a text about the seller/ad/photos must stop: %s" % codes)
+check(st["imported"] is None, "17c: a text about the seller/ad/photos must not import")
+# a wholesale rewrite: hardly a word of it is the seller's
+codes, _ = _desc_codes("Garmin Fenix 7X Solar este un ceas smart outdoor robust, cu carcasă "
+                       "rezistentă, ecran transflectiv mare, lanternă integrată și încărcare "
+                       "solară prin geamul Power Glass, potrivit pentru drumeții lungi.")
+check("description_drifted" in codes, "17c: a rewrite must stop as drifted: %s" % codes)
+# a light edit plus a short clause of ours still passes
+codes, _ = _desc_codes("Ceas Garmin Fenix 7X Solar de 51 mm, negru, în stare foarte bună, "
+                       "folosit un an.\nVine cu încărcător și cutie.\n\nAre GPS și hărți, "
+                       "autonomie excelentă.")
+check(not [c for c in codes if c.startswith("description")],
+      "17c: a light edit must pass: %s" % codes)
 _d["description"] = FILLED_SMART["description"] + " Contact: 0745 123 456"
 json.dump(_d, open(_dp, "w"))
 m2c, _ = run(SMART, SMART_AD, {"CONFIRM": "1"})

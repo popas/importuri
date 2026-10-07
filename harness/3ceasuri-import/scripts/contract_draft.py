@@ -5,8 +5,8 @@ Before this, pass 2 took the filled contract through OVERRIDES='{…}', a single
 shell variable. Two things went wrong with that and neither was the model's fault:
 Romanian ad text contains apostrophes ("anii '70"), which terminate the quoting; and
 because a field omitted from the answer is CLEARED, the model had to retype the entire
-seller description to avoid deleting it. (Since 2026-10-03 the description is rewritten
-anyway — it is seeded with the seller's text as the source to rewrite from.)
+seller description to avoid deleting it. (Since 2026-10-03 the description is always
+edited — it is seeded with the seller's text, which the model corrects lightly.)
 
 So pass 1 now writes the WHOLE contract to disk, pre-filled with everything the
 deterministic baseline knows, with the open fields null and named in `_todo`. The model
@@ -33,7 +33,7 @@ def draft_path(project_root, ad_id):
 
 
 def description_path(project_root, ad_id):
-    """Where the driver takes our rewritten description from: a plain-text file, because
+    """Where the driver takes the edited description from: a plain-text file, because
     a multi-line Romanian paragraph with apostrophes cannot survive a shell argument."""
     return os.path.join(project_root, DRAFT_SUBDIR, "olx-%s.description.txt" % ad_id)
 

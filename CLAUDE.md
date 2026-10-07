@@ -131,11 +131,14 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   maker mark is stored as `Fără marcă` (id 54); the importer rewrites a final answer of
   "Alt brand" to it. OLX's own "Alt brand" dropdown label means "a brand OLX does not
   list", NOT "unbranded" — read the real maker off the dial/caseback/box first.
-- **The listing description is ours, not the seller's** (user directive 2026-10-03):
-  rewritten as descriptively as the ad and photos allow, never invented, never with a
-  phone number or contact. The seller's text only seeds the draft; handing it back
-  unchanged stops as `description_not_rewritten`, and `olx_api.strip_phones` scrubs
-  phone numbers from both texts.
+- **The listing description is the seller's text, lightly corrected** (user directive
+  2026-10-04, replacing the 2026-10-03 "rewrite it as descriptively as possible"): it
+  must read as if the author wrote it and still look like the OLX ad. Fix diacritics,
+  typos, punctuation; drop price, contact, shipping, sign-offs; add nothing but a
+  missing brand/model. Never a word about the seller, the ad or the photos
+  ("vânzătorul precizează", "fotografiile prezintă") — those listings are what this
+  rule ended. Gates, all `fix`: `description_unedited`, `description_meta`,
+  `description_drifted` (`olx_import.py`); `olx_api.strip_phones` scrubs phone numbers.
 - **About 40% of the site's "active" OLX listings are gone from OLX** (measured
   2026-10-04: 30 of 72 sampled answered 410/404; none had ever been deactivated).
   `olx-check-active.py` finds them; ending them needs the `deactivate/` endpoint from
