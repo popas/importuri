@@ -307,8 +307,11 @@ def _reveal_phone(bu, ad_url, wait=9):
     return None, "not_revealed"
 
 
-def download_photos(bu, urls, dest_dir):
+def download_photos(bu, urls, dest_dir, numbers=None):
     """Save an ad's photos to disk. Returns (paths, failed_count).
+
+    Photo N of the ad is always `NN.jpg`. `numbers` gives each URL's N when `urls` is
+    not the whole list (shop cards dropped, photo_dedup.shop_cards); default 1..n.
 
     Fetched in the page context rather than with urllib: the CDN is a different
     host from olx.ro, but going through the page keeps one code path and one set
@@ -323,7 +326,7 @@ def download_photos(bu, urls, dest_dir):
 
     os.makedirs(dest_dir, exist_ok=True)
     paths, failed = [], 0
-    for i, url in enumerate(urls, 1):
+    for i, url in zip(numbers or range(1, len(urls) + 1), urls):
         try:
             b64 = bu.js("(async () => { const r = await fetch(%s); const b = await r.blob();"
                         " return await new Promise(res => { const fr = new FileReader();"
@@ -341,20 +344,22 @@ def download_photos(bu, urls, dest_dir):
     return paths, failed
 
 
-def photo_data_urls(bu, urls, dest_dir):
+def photo_data_urls(bu, urls, dest_dir, numbers=None):
     """The ad's photos as `data:` URLs, for the harness to upload.
 
     Since 2026-09-29 the CDN answers 403 to any request carrying a foreign Origin,
     so importWatch() can no longer fetch() the photo URLs from the admin page. It
     gets the copies pass 1 saved instead; they are re-downloaded (from the olx.ro
-    tab, which the CDN still serves) when any is missing.
+    tab, which the CDN still serves) when any is missing. `numbers` as in
+    download_photos: the file each URL was saved to.
     """
     import base64
     import os
 
-    paths = [os.path.join(dest_dir, "%02d.jpg" % i) for i in range(1, len(urls) + 1)]
+    numbers = list(numbers or range(1, len(urls) + 1))
+    paths = [os.path.join(dest_dir, "%02d.jpg" % i) for i in numbers]
     if not all(os.path.exists(p) for p in paths):
-        paths, _ = download_photos(bu, urls, dest_dir)
+        paths, _ = download_photos(bu, urls, dest_dir, numbers)
     out = []
     for p in paths:
         with open(p, "rb") as f:

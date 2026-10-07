@@ -94,6 +94,62 @@ os.utime(os.path.join(root, "olx-2", "01.jpg"), (1, 1))
 check(photo_dedup.index(root)["2"]["01.jpg"] != before, "a changed file must be re-hashed")
 check(photo_dedup.find_duplicate(root, 2, hist) == ("1", 4), "four of five still match")
 
+# --- shop cards: the same file beside two DIFFERENT watches -------------------
+# The shape of 304459760 / 304460733 (2026-10-07): two TotalConvert watches, each with
+# its own photos, both carrying the shop's three cards. Only two ads, so far under
+# BANNER_ADS -- by count alone the second one looked like a relist of the first.
+croot = tempfile.mkdtemp(prefix="cards-test-")
+chist = os.path.join(croot, "history.jsonl")
+cards_file = os.path.join(croot, "shop-cards.json")
+shop = [photo("LOGO"), photo("STOREFRONT"), photo("INSIDE")]
+ad_dir(croot, 30, [photo("blue1"), photo("blue2")] + shop)
+ad_dir(croot, 31, [photo("orange1"), photo("orange2"), photo("orange3")] + shop)
+# a relist: the same five photos (the G-Shock shape) -- never cards
+ad_dir(croot, 40, [photo("g%d" % i) for i in range(5)])
+ad_dir(croot, 41, [photo("g%d" % i) for i in range(5)])
+# one own photo each beside the shared ones: as likely a relist as a shop (the Rolex
+# shape, 7 of 8 shared) -- not learned
+ad_dir(croot, 50, [photo("r-own-a")] + [photo("r%d" % i) for i in range(3)])
+ad_dir(croot, 51, [photo("r-own-b")] + [photo("r%d" % i) for i in range(3)])
+history(chist, [30, 40, 50])
+
+check(photo_dedup.find_duplicate(croot, 31, chist) == ("30", 3),
+      "without the card check the shop's second watch looks like a relist")
+got = photo_dedup.shop_cards(croot, 31, cards_file, seller="TotalConvert.ro")
+check(sorted(got) == ["04.jpg", "05.jpg", "06.jpg"],
+      "the three shared files beside different watches are cards: %s" % sorted(got))
+saved = photo_dedup.load_cards(cards_file)
+check(set(saved) == set(got.values()), "learned cards are written to the list: %s" % saved)
+_e = next(iter(saved.values()), {})
+check(_e.get("seller") == "TotalConvert.ro" and _e.get("also_on") == "olx-30"
+      and _e.get("example", "").startswith("olx-31/"), "a learned entry says where: %s" % _e)
+check(photo_dedup.find_duplicate(croot, 31, chist, ignore=set(saved)) is None,
+      "with the cards ignored, the shop's second watch is not a relist")
+check(photo_dedup.shop_cards(croot, 30, cards_file) == {f: h for f, h in
+      photo_dedup.index(croot)["30"].items() if h in saved},
+      "the first ad's copies of the cards are cards too")
+check(photo_dedup.shop_cards(croot, 41, cards_file) == {}, "a relist's photos are never cards")
+check(photo_dedup.find_duplicate(croot, 41, chist, ignore=set(saved)) == ("40", 5),
+      "a relist is still a duplicate")
+check(photo_dedup.shop_cards(croot, 51, cards_file) == {},
+      "one own photo each is not enough to call the shared ones cards")
+
+# the list works where the other ad is not on disk (the other machine)
+other = tempfile.mkdtemp(prefix="cards-other-")
+ad_dir(other, 32, [photo("green1"), photo("green2")] + shop)
+check(sorted(photo_dedup.shop_cards(other, 32, cards_file)) == ["03.jpg", "04.jpg", "05.jpg"],
+      "a card on the list is dropped even with no other ad on disk")
+check(photo_dedup.shop_cards(other, 32, os.path.join(other, "none.json")) == {},
+      "without the list and without another ad nothing is learned")
+check(photo_dedup.load_cards(os.path.join(other, "none.json")) == {},
+      "a missing list reads as empty")
+with open(os.path.join(other, "bad.json"), "w") as f:
+    f.write("{not json")
+check(photo_dedup.load_cards(os.path.join(other, "bad.json")) == {},
+      "an unreadable list reads as empty")
+check(photo_dedup.load_cards(photo_dedup.CARDS_FILE),
+      "the committed list (references/shop-cards.json) loads and is not empty")
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)

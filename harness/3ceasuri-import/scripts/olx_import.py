@@ -307,6 +307,8 @@ def run(profile, g):
     PHOTO_DIR   = os.path.join(os.environ.get("PHOTO_ROOT") or
                                os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/.photos"),
                                "olx-%s" % AD_ID)
+    # SHOP_CARDS exists for the offline tests, like PHOTO_ROOT: the list is committed.
+    SHOP_CARDS  = os.environ.get("SHOP_CARDS") or photo_dedup.CARDS_FILE
 
     def emit(tag, obj):
         print(tag + ": " + json.dumps(obj, ensure_ascii=False))
@@ -350,6 +352,22 @@ def run(profile, g):
         _mark("error", msg)
         emit("ERROR", {"ad_id": AD_ID, "msg": msg})
         raise SystemExit(1)
+
+    def drop_shop_cards(images, numbers):
+        """(images, numbers, card files) without the photos that are a shop's cards.
+
+        User directive 2026-10-07: a seller's logo card, storefront or "why buy from
+        us" panel is never imported -- it advertises another business and says nothing
+        about the watch (photo_dedup.shop_cards). `numbers` keeps each URL's file
+        number, so the local copies still match their URLs once some are gone.
+        """
+        cards = photo_dedup.shop_cards(os.path.dirname(PHOTO_DIR), AD_ID, SHOP_CARDS,
+                                       seller=seller["name"])
+        if cards:
+            emit("CARDS", {"ad_id": AD_ID, "dropped": sorted(cards)})
+        drop = {int(f.split(".")[0]) for f in cards}
+        kept = [(n, u) for n, u in zip(numbers, images) if n not in drop]
+        return [u for _, u in kept], [n for n, _ in kept], sorted(cards)
 
     RERUN = ("AD_ID=%s CONFIRM=1 OVERRIDES='{...}' browser-use < .../%s"
              % (AD_ID, conf["script_name"]))
@@ -403,6 +421,7 @@ def run(profile, g):
     description = olx_api.clean_description(ad.get("description"))
     text = (title + "\n\n" + description).strip()
     images = olx_api.photo_urls(ad)
+    photo_nums = list(range(1, len(images) + 1))    # each URL's NN.jpg, see drop_shop_cards
     SOURCE_URL = ad.get("url") or "https://www.olx.ro/d/oferta/-ID%s.html" % AD_ID
 
     emit("EXTRACT", {"ad_id": AD_ID, "title": title[:100], "images": len(images),
@@ -512,11 +531,20 @@ def run(profile, g):
             skip("thin_description", {"reason": "thin_description: %d chars"
                                                 % len(description.strip())})
         photos, failed = olx_api.download_photos(bu, images, PHOTO_DIR)
+        # Shop cards go before anything counts or compares the photos: the model never
+        # sees them, and two of a shop's watches never look like one relisted.
+        images, photo_nums, cards = drop_shop_cards(images, photo_nums)
+        photos = [p for p in photos if os.path.basename(p) not in cards]
+        if len(images) < 2:
+            skip("too_few_images", {"reason": "too_few_images: only %d image(s) on the ad "
+                                              "once %d shop card(s) are dropped"
+                                              % (len(images), len(cards))})
         # The same photo files as an ad already imported = the same watch relisted,
         # by the same seller or another account (photo_dedup.py). Decided before the
         # phone reveal and the draft, which it would make wasted work.
         dup = photo_dedup.find_duplicate(os.path.dirname(PHOTO_DIR), AD_ID,
-                                         os.path.join(PROJECT_ROOT, "history.jsonl"))
+                                         os.path.join(PROJECT_ROOT, "history.jsonl"),
+                                         ignore=set(photo_dedup.load_cards(SHOP_CARDS)))
         if dup and os.environ.get("ALLOW_DUPLICATE_PHOTOS", "") != "1":
             skip("duplicate_photos", {"reason": "duplicate_photos: %d photo(s) identical to "
                                                 "imported ad %s" % (dup[1], dup[0]),
@@ -632,6 +660,12 @@ def run(profile, g):
     data["city"] = olx_api.location_city(ad)
     if not data.get("phone"):
         data["phone"] = olx_api.reveal_phone(bu, SOURCE_URL)[0] or None
+    # Pass 2 read the ad again, so its photo list is whole again: drop the shop cards
+    # once more, from the copies pass 1 saved (fetched now if this machine has none).
+    if not all(os.path.exists(os.path.join(PHOTO_DIR, "%02d.jpg" % n)) for n in photo_nums):
+        switch_tab(OLX_TAB)
+        olx_api.download_photos(bu, images, PHOTO_DIR, photo_nums)
+    images, photo_nums, _ = drop_shop_cards(images, photo_nums)
     data["images"] = images
     data["sourceUrl"] = SOURCE_URL
     data["source"] = "olx"
@@ -713,9 +747,10 @@ def run(profile, g):
 
         def post(blobs=None):
             try:
-                return site_api.import_json(A, fields, data["brand"], image_urls=images,
-                                            blob_urls=blobs, dry_run=DRY_RUN,
-                                            tab=ADMIN_TAB, return_to=ADMIN_TAB)
+                return site_api.import_json(
+                    A, fields, data["brand"], image_urls=images, blob_urls=blobs,
+                    dry_run=DRY_RUN, tab=ADMIN_TAB, return_to=ADMIN_TAB,
+                    allow_duplicate_photos=os.environ.get("ALLOW_DUPLICATE_PHOTOS", "") == "1")
             except Exception as e:          # a CDP error: unknown, like a timeout
                 return {"http": 0, "body": "harness: %s" % e}
 
@@ -724,7 +759,7 @@ def run(profile, g):
             the production host). Staged and posted from the same admin tab with no
             navigation between — a blob: URL dies with the page that made it."""
             switch_tab(OLX_TAB)
-            local = olx_api.photo_data_urls(bu, images, PHOTO_DIR)
+            local = olx_api.photo_data_urls(bu, images, PHOTO_DIR, photo_nums)
             if len(local) < len(images):
                 emit("WARN", {"msg": "only %d/%d photos available locally"
                                      % (len(local), len(images))})
@@ -787,6 +822,18 @@ def run(profile, g):
                               "image_errors": (resp.get("image_errors") or [])[:5]})
                 env, uploaded = upload(), True
                 continue
+            if resp is not None and http == 409 and resp.get("error") == "duplicate_photos":
+                # The server's photo check: the same files as an ACTIVE listing, from any
+                # machine or era -- the pass-1 check only sees this machine's .photos/.
+                # Nothing was saved, so this is a skip, never a retry or the DOM path.
+                ext = resp.get("external_listing_id")
+                skip("duplicate_photos", {
+                    "reason": "duplicate_photos: %s photo(s) identical to site listing pk %s "
+                              "(%s %s, import-json)" % (resp.get("shared"), resp.get("duplicate_of"),
+                                                        resp.get("source"), ext or "-"),
+                    "duplicate_of": ext,
+                    "existing": {"pk": resp.get("duplicate_of"), "source": resp.get("source"),
+                                 "change_url": resp.get("change_url")}})
             if resp is not None and http == 409:
                 skip("already_imported", {"reason": "already imported (import-json: duplicate)",
                                           "existing": resp.get("existing")})
@@ -822,7 +869,7 @@ def run(profile, g):
     # --- 7b. photos as data: URLs (the CDN now refuses the admin's Origin) ---
     if not DRY_RUN:
         switch_tab(OLX_TAB)
-        local_photos = olx_api.photo_data_urls(bu, images, PHOTO_DIR)
+        local_photos = olx_api.photo_data_urls(bu, images, PHOTO_DIR, photo_nums)
         if len(local_photos) < len(images):
             emit("WARN", {"msg": "only %d/%d photos available locally"
                                  % (len(local_photos), len(images))})

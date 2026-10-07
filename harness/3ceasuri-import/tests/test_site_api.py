@@ -302,6 +302,11 @@ check("FormData" in e and 'fd.append("payload"' in e and 'fd.append("images"' in
 check(p.calls[-1][0] == "A", "import_json: multipart posts from the tab the blobs were staged in")
 site_api.import_json(p, fields, "Casio", image_urls=urls, dry_run=True)
 check(p.calls[-1][1]["json"]["dry_run"] is True, "import_json: dry_run is passed through")
+check("allow_duplicate_photos" not in p.calls[-1][1]["json"],
+      "import_json: allow_duplicate_photos is not sent unless a human set it")
+site_api.import_json(p, fields, "Casio", image_urls=urls, allow_duplicate_photos=True)
+check(p.calls[-1][1]["json"].get("allow_duplicate_photos") is True,
+      "import_json: allow_duplicate_photos is passed through")
 
 check(all(len(x.encode("utf-8")) < 64 * 1024 for x in p.exprs),
       "import_json: every js() call must stay under 64 KB, max %d"

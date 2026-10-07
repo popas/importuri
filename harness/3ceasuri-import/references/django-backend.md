@@ -43,9 +43,32 @@ model-field mapping is its `CONTRACT_TO_MODEL`, held to `import-watch.js` by
 | `GET /admin/watches/brand/all/` | `{brands: [{id, name, slug}]}` |
 | `GET /admin/watches/brand/lookup/?names=a,b` (≤100) | `{found: {name: brand}, missing}` — matched on normalized names |
 | `POST /admin/watches/brand/ensure/` `{name}` | the brand, `created` true/false; "Alt brand" → 400 |
-| `POST /admin/watches/watch/import-json/` | 201 `{pk, pictures, image_errors, brand, saved}` · 400 `{errors}` · 409 duplicate · 422 `no_images` |
+| `POST /admin/watches/watch/import-json/` | 201 `{pk, pictures, image_errors, brand, saved}` · 400 `{errors}` · 409 duplicate · 409 `duplicate_photos` · 422 `no_images` |
 
 They ship together, so one probe (`GET lookup/?ids=0`) decides for all six. Deployed ⇔
 the answer is JSON and not redirected: a path the admin does not know redirects to
 `/admin/` (200 HTML), never 404s. A redirect to `/admin/login/` is a lost session.
 The POST endpoints answer a GET with a 405 JSON body.
+
+### import-json refuses a relist by its photos (2026-10-07)
+
+The server hashes the photos it fetched (or was sent) and compares them with every
+stored picture's `content_sha256`. A photo on 5+ listings is a shop's banner card and
+does not count; 2 of the rest (1 when only one is left) on one ACTIVE listing →
+`409 {"error": "duplicate_photos", "duplicate_of": <pk>, "external_listing_id",
+"source", "shared", "change_url"}`, nothing saved. `site_api.import_json` sends
+`"allow_duplicate_photos": true` only under `ALLOW_DUPLICATE_PHOTOS=1`; `olx_import.py`
+turns the 409 into a `duplicate_photos` skip (never a retry, never the DOM path).
+`dry_run` now fetches the photos and runs the check too.
+
+The runbook never sends a shop's cards (`photo_dedup.shop_cards`,
+`references/shop-cards.json`), so new listings never add cards to the site and two of a
+shop's watches never share them; the server's 5-listing rule is only the safety net for
+cards already stored.
+
+It complements, not replaces, `photo_dedup.py`: that one runs in pass 1, before the
+draft is written, but sees only this machine's `.photos/`; the server sees every
+listing, but only in pass 2. `API=off` (the DOM path) skips the server check.
+Server-side: `manage.py hash_pictures` backfills hashes of older pictures (run once
+after the deploy — unhashed pictures are invisible to the check), and
+`manage.py photo_duplicates` lists active listings that already share photos.

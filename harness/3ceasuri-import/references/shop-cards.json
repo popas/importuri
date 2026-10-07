@@ -1,0 +1,101 @@
+{
+  "_comment": "Shop cards: photos that advertise a seller's business (logo card, storefront, 'why buy from us' panel), dropped from every import by photo_dedup.shop_cards. Keyed by the md5 of the file OLX serves. Learned automatically when one file sits beside two different watches; commit the file so the other machine drops them too. Delete an entry that is really a photo of a watch.",
+  "cards": {
+    "301bc0ead6b83e42eb3aaa3d0eafb379": {
+      "added": "2026-10-07",
+      "also_on": "olx-309214089",
+      "example": "olx-304377984/03.jpg",
+      "seller": "LuckyGold Militari"
+    },
+    "3558b4d76ba4721b6f968fd59fd4feb1": {
+      "added": "2026-10-07",
+      "also_on": "olx-303538014",
+      "example": "olx-298363782/05.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "413ace4e1ec0767e8f2b532b0b4e58a9": {
+      "added": "2026-10-07",
+      "also_on": "olx-304467653",
+      "example": "olx-301793854/08.jpg",
+      "seller": "ROW-Collection"
+    },
+    "602d4eb05c2a1f4a07fa27d3cb532509": {
+      "added": "2026-10-07",
+      "also_on": "olx-302669054",
+      "example": "olx-298341794/05.jpg",
+      "seller": "Express Credit Amanet"
+    },
+    "6ac83329f5f460125c028bf3e424a3c2": {
+      "added": "2026-10-07",
+      "also_on": "olx-305704180",
+      "example": "olx-305703636/05.jpg",
+      "seller": "Alex"
+    },
+    "6d7c5e437dc4faa1514f978216107ec8": {
+      "added": "2026-10-07",
+      "also_on": "olx-303268328",
+      "example": "olx-298341794/04.jpg",
+      "seller": "Express Credit Amanet"
+    },
+    "7c0eae0b0bba2394d9e6ccac44c8d3cd": {
+      "added": "2026-10-07",
+      "also_on": "olx-304460733",
+      "example": "olx-304459760/03.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "806fc53ad553a218e06d1c9cdad52476": {
+      "added": "2026-10-07",
+      "also_on": "olx-301640149",
+      "example": "olx-297239734/04.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "889b9be0a65361d3e856b0c48c9d366d": {
+      "added": "2026-10-07",
+      "also_on": "olx-303538014",
+      "example": "olx-298363782/06.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "944f1a04f913bf2176654e34b56b5161": {
+      "added": "2026-10-07",
+      "also_on": "olx-301640149",
+      "example": "olx-297239734/05.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "b09b5b4a2e8377c8ce7d1173ae3657b2": {
+      "added": "2026-10-07",
+      "also_on": "olx-304460733",
+      "example": "olx-304459760/04.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "b5af624922d28ab80cbcb43f6f12b5fe": {
+      "added": "2026-10-07",
+      "also_on": "olx-304460733",
+      "example": "olx-304459760/05.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "d34724a3b363a8c43d21cc4c966f36cd": {
+      "added": "2026-10-07",
+      "also_on": "olx-260294396",
+      "example": "olx-260288646/08.jpg",
+      "seller": "ROW-Collection"
+    },
+    "d922011c90591b1c1d696a18fd695a94": {
+      "added": "2026-10-07",
+      "also_on": "olx-305666929",
+      "example": "olx-304861795/03.jpg",
+      "seller": "BuyBack telefoane by iCert Phone"
+    },
+    "f1e36d8c49bebbef377028c44d32f1e4": {
+      "added": "2026-10-07",
+      "also_on": "olx-298363782",
+      "example": "olx-297239734/03.jpg",
+      "seller": "TotalConvert.ro"
+    },
+    "f44960b55d3198e3b843576775bcafbd": {
+      "added": "2026-10-07",
+      "also_on": "olx-307182509",
+      "example": "olx-304467823/08.jpg",
+      "seller": "ROW-Collection"
+    }
+  }
+}

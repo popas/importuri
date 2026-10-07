@@ -432,15 +432,20 @@ def brand_lookup(bu, name, tab=None, return_to=None):
 
 # --- A2: import-json -----------------------------------------------------------
 def import_json(bu, watch_fields, brand_name, image_urls=None, blob_urls=None,
-                dry_run=False, tab=None, return_to=None):
+                dry_run=False, allow_duplicate_photos=False, tab=None, return_to=None):
     """POST one watch. Returns the raw envelope (None when the page never answered);
     the caller routes it — a POST never falls back to the DOM path.
 
     `image_urls`: a JSON body, and the server fetches the photos. `blob_urls`:
     multipart, with the photos staged in `tab` by admin_import.stage_images.
+
+    The server refuses photos an active listing already has (409 duplicate_photos);
+    `allow_duplicate_photos` is a human's override of that, and is only sent when set.
     """
     body = {"watch": watch_fields, "brand": {"name": brand_name}, "create_brand": True,
             "dry_run": bool(dry_run)}
+    if allow_duplicate_photos:
+        body["allow_duplicate_photos"] = True
     if blob_urls is None:
         body["image_urls"] = list(image_urls or [])
     return fetch(bu, WATCH + "import-json/", method="POST", body=body, blobs=blob_urls,

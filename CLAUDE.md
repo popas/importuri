@@ -68,7 +68,9 @@ harness/3ceasuri-import/
   scripts/olx_api.py               ← in-page API, param→enum map, photo URLs, phone reveal
   scripts/price_sanity.py          ← price floors — suspiciously cheap = fake, dropped
   scripts/photo_dedup.py           ← byte-identical photos of an imported ad = a relist,
-                                     skipped in pass 1 (`duplicate_photos`)
+                                     skipped in pass 1 (`duplicate_photos`); the site's
+                                     import-json refuses one too (409, every listing).
+                                     Also finds the shop cards (`shop_cards`)
   scripts/olx-find-smartwatches.py ← category 1943 discovery
   scripts/olx-find-watches.py      ← category 1677 discovery
   scripts/olx-import-smartwatch.py ← wrapper: olx_import.run("smart", globals())
@@ -83,6 +85,7 @@ harness/3ceasuri-import/
   references/brand-ids.md          ← brand→ID mapping source of truth
   references/olx-lore.md           ← why the rules are the rules; read when troubleshooting
   references/seller-blocklist.json ← never-import sellers (`olx_sellers`; `authors` = FB)
+  references/shop-cards.json       ← never-import PHOTOS: shop cards, learned; commit it
   references/django-backend.md     ← where the Django app lives and what it expects
   tests/                           ← offline stubs: python3 tests/test_*.py (no browser)
 archive/facebook/                  ← the archived FB source (see its README)
@@ -149,6 +152,14 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   not redirected — never "not 404". A redirect to `/admin/login/` is a lost session
   (an ERROR), not "not deployed". `API=off` is the kill switch back to the DOM
   harness; a POST to import-json never falls back to it (the server may have saved).
+- **A shop's cards are never imported** (user directive 2026-10-07): logo cards,
+  storefront and shop-interior photos, "why buy from us" panels, catalogue box shots —
+  ads for another business, sometimes with its phone number. `photo_dedup.shop_cards`
+  drops them in BOTH passes, before anything counts or compares photos: a file is a card
+  when it is in `references/shop-cards.json`, or when it sits beside two different
+  watches (each ad has ≥ 2 photos the other lacks). Learned cards are written to the
+  list — commit it, the other machine reads it. A real watch photo in the list: delete
+  its entry. Photo N of an ad stays `NN.jpg`; the kept ones travel with their numbers.
 - **Never import a suspiciously cheap listing.** Below the floors in
   `scripts/price_sanity.py` a watch is a fake, not a bargain. `CONFIRM=1` does not wave
   one through.

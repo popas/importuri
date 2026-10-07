@@ -100,6 +100,9 @@ def _clear_drafts_once(ad_id):
 # .photos/olx-<id>/ folders hold their photos.
 import tempfile as _tempfile
 _PHOTO_ROOT = _tempfile.mkdtemp(prefix="olx-test-photos-")
+# ...and the shop-cards list is references/shop-cards.json, committed: learning into it
+# from stub photos would put test bytes in the real list.
+_SHOP_CARDS = os.path.join(_tempfile.mkdtemp(prefix="olx-test-cards-"), "shop-cards.json")
 
 
 def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=None,
@@ -138,6 +141,8 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=
                 return "blob:https://3ceasuri.ro/%d" % state["staged"]
             return 1
         if "String(fr.result)" in e:                                    # photo download
+            if callable(photo_b64):             # bytes per photo URL
+                return photo_b64(json.loads(re.search(r'fetch\(("[^"]*")\)', e).group(1)))
             return photo_b64 or "A" * 800       # 600 bytes: below photo_dedup.MIN_BYTES
         if 'Accept:"application/json"' in e:                            # the OLX API
             path = re.search(r'fetch\("([^"]+)"', e).group(1)
@@ -203,7 +208,7 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=
     _clear_drafts_once(ad["id"])
     os.environ.clear()
     os.environ.update({"PROJECT_ROOT": ROOT, "AD_ID": str(ad["id"]), "PATH": "/usr/bin:/bin",
-                       "PHOTO_ROOT": _PHOTO_ROOT})
+                       "PHOTO_ROOT": _PHOTO_ROOT, "SHOP_CARDS": _SHOP_CARDS})
     os.environ.update(env or {})
 
     buf = io.StringIO()
@@ -933,6 +938,28 @@ m, st = run(SMART, SMART_AD, _env, site=deployed_site([jenv(
 check(m.get("SKIP", {}).get("reason", "").startswith("already imported"),
       "23: 409 is SKIP already_imported, got %s" % sorted(m))
 
+# 409 duplicate_photos -> the server's photo check: a skip, never a retry or the DOM path
+_dup_photos = jenv({"error": "duplicate_photos", "duplicate_of": 741,
+                    "external_listing_id": "299454774", "source": "olx", "shared": 3,
+                    "change_url": "/admin/watches/watch/741/change/"}, 409)
+_qp = _queue(SMART_AD["id"])
+m, st = run(SMART, SMART_AD, dict(_env, CANDIDATES_FILE=_qp), site=deployed_site([_dup_photos]))
+_s = m.get("SKIP") or {}
+check(_s.get("reason", "").startswith("duplicate_photos") and "pk 741" in _s["reason"]
+      and _s.get("duplicate_of") == "299454774" and (_s.get("existing") or {}).get("pk") == 741,
+      "23: 409 duplicate_photos is SKIP duplicate_photos carrying the listing: %s"
+      % (_s or sorted(m)))
+check(len(posts(st)) == 1 and not dom_used(st), "23: duplicate_photos is never re-posted")
+_c = _q.load(_qp)["candidates"][0]
+check(_c["status"] == "skipped" and _c.get("reason") == "duplicate_photos",
+      "23: the queue records duplicate_photos: %s" % _c)
+check("allow_duplicate_photos" not in posts(st)[0]["json"],
+      "23: the override is not sent unless a human set it")
+m, st = run(SMART, SMART_AD, dict(_env, ALLOW_DUPLICATE_PHOTOS="1"), site=deployed_site([created()]))
+check(m.get("RESULT", {}).get("ok") is True
+      and posts(st)[0]["json"].get("allow_duplicate_photos") is True,
+      "23: ALLOW_DUPLICATE_PHOTOS=1 waves the server's check through too")
+
 # 400 -> REVIEW server_invalid: fix only what `finish` can answer
 for _field, _key, _action in (("movement", "movement", "fix"), ("source_url", "sourceUrl", "skip"),
                               ("__all__", None, "skip"), ("brand", "brand", "fix")):
@@ -1071,6 +1098,56 @@ m, st = run(CLASSIC, _dup, env={"PHOTO_ROOT": _root, "ALLOW_DUPLICATE_PHOTOS": "
             photo_b64=_b64)
 check("EXTRACT_PROMPT" in m, "24: ALLOW_DUPLICATE_PHOTOS=1 lets a human wave it through")
 _draft_of(900000004)
+
+# --- 25. shop cards are never imported ---------------------------------------
+# The shape of TotalConvert's 304459760 / 304460733 (2026-10-07): two different watches,
+# each beside the same three shop cards. The cards sit BETWEEN the watch photos here, so
+# a URL dropped without its file number would upload the wrong local copies.
+_croot = _tf.mkdtemp(prefix="olx-test-cards-")
+def _pic(tag):
+    return _b.b64encode(((tag + "|") * 2000).encode()[:9000]).decode()
+_card_tags = {2: "LOGO", 4: "STOREFRONT", 6: "INSIDE"}       # photo number -> card
+os.makedirs(os.path.join(_croot, "olx-900000010"))           # the shop's earlier watch
+for _i, _tag in enumerate(["blue1", "LOGO", "blue2", "STOREFRONT", "INSIDE"], 1):
+    open(os.path.join(_croot, "olx-900000010", "%02d.jpg" % _i), "wb").write(
+        _b.b64decode(_pic(_tag)))
+_shop_ad = dict(SMART_AD, id=900000011, photos=photos(6))
+_urls = olx_api.photo_urls(_shop_ad)
+def _shop_photo(url):
+    n = _urls.index(url) + 1
+    return _pic(_card_tags.get(n, "orange%d" % n))
+_cenv = {"PHOTO_ROOT": _croot}
+m, st = run(SMART, _shop_ad, env=_cenv, photo_b64=_shop_photo)
+check((m.get("CARDS") or {}).get("dropped") == ["02.jpg", "04.jpg", "06.jpg"],
+      "25: pass 1 drops the three cards: %s" % m.get("CARDS"))
+check("EXTRACT_PROMPT" in m and "SKIP" not in m,
+      "25: the shop's second watch is not a relist: %s" % (m.get("SKIP") or sorted(m)))
+check([os.path.basename(p) for p in (m.get("EXTRACT_PROMPT") or {}).get("photos", [])]
+      == ["01.jpg", "03.jpg", "05.jpg"], "25: the model is shown only the watch's own photos")
+import photo_dedup as _pd
+check(len(_pd.load_cards(_SHOP_CARDS)) == 3, "25: the cards are learned into the list")
+m, st = run(SMART, _shop_ad, dict(_cenv, CONFIRM="1", OVERRIDES=json.dumps(FILLED_SMART)),
+            site=deployed_site([created()]), photo_b64=_shop_photo)
+check(m.get("RESULT", {}).get("ok") is True, "25: it imports: %s" % sorted(m))
+check(posts(st) and posts(st)[0]["json"]["image_urls"] == [_urls[0], _urls[2], _urls[4]],
+      "25: import-json gets only the watch's photo URLs: %s"
+      % (posts(st)[0]["json"]["image_urls"] if posts(st) else None))
+check(m["RESULT"]["state_entry"]["images"] == 3, "25: history counts the photos imported")
+# the uploaded copies are the files those URLs were saved to, not 01-03.jpg
+_local = olx_api.photo_data_urls(None, [_urls[0], _urls[2], _urls[4]],
+                                 os.path.join(_croot, "olx-900000011"), [1, 3, 5])
+check([_b.b64decode(u.split(",", 1)[1])[:7] for u in _local]
+      == [b"orange1", b"orange3", b"orange5"], "25: photo_data_urls reads files by number")
+# an ad that is nothing but one photo and the cards is too thin to import
+_thin = dict(SMART_AD, id=900000012, photos=photos(4))
+_turls = olx_api.photo_urls(_thin)
+m, st = run(SMART, _thin, env=_cenv, photo_b64=lambda u: _pic(
+    ["solo", "LOGO", "STOREFRONT", "INSIDE"][_turls.index(u)]))
+check(m.get("SKIP", {}).get("reason", "").startswith("too_few_images")
+      and "shop card" in m["SKIP"]["reason"],
+      "25: one photo beside the cards is too_few_images: %s" % (m.get("SKIP") or sorted(m)))
+for _i in (900000011, 900000012):
+    _draft_of(_i)
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
