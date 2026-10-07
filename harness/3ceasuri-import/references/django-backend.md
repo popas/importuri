@@ -43,12 +43,31 @@ model-field mapping is its `CONTRACT_TO_MODEL`, held to `import-watch.js` by
 | `GET /admin/watches/brand/all/` | `{brands: [{id, name, slug}]}` |
 | `GET /admin/watches/brand/lookup/?names=a,b` (≤100) | `{found: {name: brand}, missing}` — matched on normalized names |
 | `POST /admin/watches/brand/ensure/` `{name}` | the brand, `created` true/false; "Alt brand" → 400 |
-| `POST /admin/watches/watch/import-json/` | 201 `{pk, pictures, image_errors, brand, saved}` · 400 `{errors}` · 409 duplicate · 409 `duplicate_photos` · 422 `no_images` |
+| `POST /admin/watches/watch/import-json/` | 201 `{pk, pictures, image_errors, brand, saved}` · 400 `{errors}` (+ `models` for an unknown model) · 409 duplicate · 409 `duplicate_photos` · 422 `no_images` |
+| `GET /admin/watches/watchmodel/list/?brand=Apple` | `{brand, models: [{name, listings}]}` — 404 `unknown_brand` |
+| `POST /admin/watches/watchmodel/ensure/` `{brand, model_name}` | `{model_name, created}` — the site's spelling; 404 `unknown_brand` |
 
-They ship together, so one probe (`GET lookup/?ids=0`) decides for all six. Deployed ⇔
+The first six ship together, so one probe (`GET lookup/?ids=0`) decides for them; the
+two model endpoints came later, and `site_api` reads any other answer from them as None. Deployed ⇔
 the answer is JSON and not redirected: a path the admin does not know redirects to
 `/admin/` (200 HTML), never 404s. A redirect to `/admin/login/` is a lost session.
 The POST endpoints answer a GET with a 405 JSON body.
+
+### import-json refuses a model the brand does not have (2026-10-08)
+
+A brand's models are those its listings carry plus those added ahead with
+`watchmodel/ensure/` (or in the admin, *Modele*). Spelling, spaces, hyphens, case and a
+spec tail ("46mm GPS") do not make a model new, and the site stores its own spelling.
+Any other `model_name` is `400 {"errors": {"model_name": [...]}, "models": [the brand's
+names]}`, nothing saved — unless the body sends `create_model: true`; a brand created by
+the same import brings its first model. The harness never sends `create_model`: pass 1
+shows the agent the brand's list (`site_api.brand_models`, the prompt's *Models … already
+has on the site*), pass 2 calls `ensure` first when the contract says `new_model: true`
+(`NEW_MODEL:` marker), and turns the 400 into an `unknown_model` fix on `model`.
+
+What sets a watch apart from others of its model (dial, edition, nickname, strap) goes
+in the contract's `variant`, sent as the Watch field `variant`: the site shows model +
+variant as the listing's name, and only the model in its filters.
 
 ### import-json refuses a relist by its photos (2026-10-07)
 

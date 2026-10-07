@@ -343,6 +343,62 @@ for k in ("movement", "brand", "model", "price", "caseMat", "description", "phon
 for k in ("sourceUrl", "county", "city", "sellerName", "sellerId", "externalId", "source",
           "videoUrl", None, "", "__all__"):
     check(not site_api.fixable(k), "fixable: %r has no `finish` answer" % k)
+check(site_api.to_model_fields({"model": "Royal Oak Offshore", "variant": "Chronograph Panda"})
+      .get("variant") == "Chronograph Panda", "to_model_fields: the variant travels with the model")
+check(site_api.from_model_field("variant") == "variant" and site_api.fixable("variant"),
+      "variant is a contract key the agent can answer")
+check("new_model" not in site_api.to_model_fields({"model": "X", "new_model": True}),
+      "to_model_fields: new_model is the harness's, never a model field")
+
+# --- the brand's models: listed for the prompt, added ahead with ensure -------------
+MODELS = {"brand": {"id": 3, "name": "Apple", "slug": "apple"},
+          "models": [{"name": "Watch SE 2", "listings": 9}, {"name": "Watch Series 12", "listings": 0}]}
+
+
+def models_site(req):
+    if req["path"].startswith("/admin/watches/watch/lookup/"):
+        return jenv({"existing": {}, "missing": ["0"]})
+    if req["path"].startswith("/admin/watches/watchmodel/list/"):
+        if "brand=Apple" in req["path"]:
+            return jenv(MODELS)
+        return jenv({"error": "unknown_brand"}, 404)
+    if req["path"] == "/admin/watches/watchmodel/ensure/":
+        if req["json"].get("brand") != "Apple":
+            return jenv({"error": "unknown_brand"}, 404)
+        return jenv({"model_name": "Watch Series 12", "created": True})
+    return NOT_DEPLOYED
+
+
+fresh()
+p = Page(route=models_site)
+check(site_api.brand_models(p, "Apple") == ["Watch SE 2", "Watch Series 12"],
+      "brand_models: the names, in the server's order, got %r" % site_api.brand_models(p, "Apple"))
+check(p.calls[-1][1]["path"] == "/admin/watches/watchmodel/list/?brand=Apple",
+      "brand_models: GET watchmodel/list/?brand=, got %s" % p.calls[-1][1]["path"])
+check(site_api.brand_models(p, "Nimeni") is None, "brand_models: an unknown brand is None")
+check(site_api.brand_models(p, "") is None, "brand_models: no brand, no request")
+
+got = site_api.ensure_model(p, "Apple", "Watch Series12")
+check(got == {"model_name": "Watch Series 12", "created": True},
+      "ensure_model: the server's spelling and whether it was added, got %r" % got)
+_, req = p.calls[-1]
+check(req["method"] == "POST" and req["json"] == {"brand": "Apple", "model_name": "Watch Series12"},
+      "ensure_model: POST {brand, model_name}, got %s %s" % (req["method"], req.get("json")))
+check(site_api.ensure_model(p, "Nimeni", "X") is None,
+      "ensure_model: a brand the site does not have yet is None (the import creates both)")
+
+fresh()
+p = Page(route=lambda r: jenv({"existing": {}, "missing": ["0"]}) if "lookup" in r["path"]
+         else NOT_DEPLOYED)
+check(site_api.brand_models(p, "Apple") is None and site_api.ensure_model(p, "Apple", "X") is None,
+      "an admin without the model endpoints answers None, never raises")
+fresh()
+try:
+    site_api.ensure_model(Page(route=lambda r: jenv({"existing": {}}) if "lookup" in r["path"]
+                               else LOGIN), "Apple", "X")
+    check(False, "ensure_model: a lost session must raise SessionLost")
+except site_api.SessionLost:
+    pass
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

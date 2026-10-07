@@ -1149,6 +1149,90 @@ check(m.get("SKIP", {}).get("reason", "").startswith("too_few_images")
 for _i in (900000011, 900000012):
     _draft_of(_i)
 
+# --- 26. the model is one the brand already has, or added on purpose --------
+# The site refuses a model its brand does not have (2026-10-08): "Watch SE (Gen 2)",
+# "SE 2nd generation" and "SE 2022" had become three models of one watch. Pass 1 shows
+# the brand's models; pass 2 adds a new one first (watchmodel/ensure/) only when the
+# contract says new_model=true, and turns the server's refusal into a `fix`.
+_GARMIN_MODELS = {"brand": {"id": 58, "name": "Garmin", "slug": "garmin"},
+                  "models": [{"name": "Fenix 7X", "listings": 5},
+                             {"name": "Fenix 8 Pro", "listings": 6}]}
+
+
+def models_site(imports=(), ensured=None):
+    """deployed_site() plus the model endpoints; `ensured` is ensure's answer."""
+    base = deployed_site(imports)
+
+    def route(req):
+        if req["path"].startswith("/admin/watches/watchmodel/list/"):
+            return jenv(_GARMIN_MODELS)
+        if req["path"] == "/admin/watches/watchmodel/ensure/":
+            return ensured or jenv({"model_name": req["json"]["model_name"], "created": True})
+        return base(req)
+    return route
+
+
+def ensures(st):
+    return [r for r in st["site_calls"] if r["path"] == "/admin/watches/watchmodel/ensure/"]
+
+
+_mad = dict(SMART_AD, id=900000020)
+m, st = run(SMART, _mad, site=models_site())
+_ep = m.get("EXTRACT_PROMPT") or {}
+check("Fenix 7X" in _ep.get("prompt", "") and "Fenix 8 Pro" in _ep.get("prompt", "")
+      and "Garmin already has" in _ep.get("prompt", ""),
+      "26: pass 1 shows the brand's models on the site: %s" % sorted(m))
+check(_ep.get("models") == ["Fenix 7X", "Fenix 8 Pro"], "26: EXTRACT_PROMPT carries the models")
+check("variant" in _ep.get("todo", []), "26: the variant is decided with the model")
+_draft_of(900000020)
+
+_refused = jenv({"errors": {"model_name": ["unknown model 'Fenix 7X Solar' for Garmin; send "
+                                           "create_model: true to add it"]},
+                 "models": ["Fenix 7X", "Fenix 8 Pro"]}, 400)
+m, st = run(SMART, SMART_AD, _env, site=models_site([_refused]))
+rs = (m.get("REVIEW") or {}).get("reasons") or [{}]
+check(rs[0].get("code") == "unknown_model" and rs[0].get("action") == "fix"
+      and rs[0].get("field") == "model", "26: a refused model is a fix on `model`: %s" % rs)
+check("Fenix 7X, Fenix 8 Pro" in rs[0].get("message", "") and "new_model=true" in rs[0]["message"]
+      and "variant" in rs[0]["message"],
+      "26: the fix lists the brand's models and both ways out: %s" % rs[0].get("message"))
+check((m.get("REVIEW") or {}).get("models") == ["Fenix 7X", "Fenix 8 Pro"],
+      "26: the REVIEW carries the models")
+check(not ensures(st) and not dom_used(st), "26: no model is added without new_model=true")
+
+_ov = dict(FILLED_SMART, model="Fenix 7X", variant="Solar")
+m, st = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(_ov)},
+            site=models_site([created()]))
+check(m.get("RESULT", {}).get("ok") is True, "26: an existing model imports: %s" % sorted(m))
+_w = posts(st)[0]["json"]["watch"]
+check(_w.get("model_name") == "Fenix 7X" and _w.get("variant") == "Solar",
+      "26: model and variant are both sent: %s" % {k: _w.get(k) for k in ("model_name", "variant")})
+check(not ensures(st), "26: an existing model is not ensured")
+
+_ov = dict(FILLED_SMART, model="Fenix 9 pro", new_model=True)
+m, st = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(_ov)},
+            site=models_site([created()], ensured=jenv({"model_name": "Fenix 9 Pro",
+                                                        "created": True})))
+check(m.get("RESULT", {}).get("ok") is True, "26: a new model imports: %s" % sorted(m))
+check(len(ensures(st)) == 1 and ensures(st)[0]["json"] == {"brand": "Garmin",
+                                                           "model_name": "Fenix 9 pro"},
+      "26: new_model=true adds the model first: %s" % ensures(st))
+_calls = [r["path"] for r in st["site_calls"]]
+check(_calls.index("/admin/watches/watchmodel/ensure/")
+      < _calls.index("/admin/watches/watch/import-json/"), "26: ensure runs before the import")
+_w = posts(st)[0]["json"]["watch"]
+check(_w.get("model_name") == "Fenix 9 Pro" and "new_model" not in _w,
+      "26: the import uses the site's spelling, and new_model stays the harness's: %s" % _w)
+check((m.get("NEW_MODEL") or {}).get("created") is True, "26: NEW_MODEL: says it was added")
+
+# a brand the site does not have yet: ensure 404s, the import creates both
+m, st = run(SMART, SMART_AD, {"CONFIRM": "1", "OVERRIDES": json.dumps(
+    dict(FILLED_SMART, brand="Zxcvbnwatch", new_model=True))},
+    site=models_site([created(brand={"id": 266, "name": "ZXCVBN Watch", "created": True})],
+                     ensured=jenv({"error": "unknown_brand"}, 404)))
+check(m.get("RESULT", {}).get("ok") is True, "26: a new brand with its first model imports: %s"
+      % sorted(m))
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)

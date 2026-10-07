@@ -59,12 +59,20 @@ HINTS = {
     "brand": "exact BRAND_IDS spelling when it is one, else the maker on the dial/caseback/box. "
              "No maker mark anywhere -> 'Fără marcă'. Never 'Alt brand'; never a brand the ad "
              "says it is NOT ('Nu Citizen, Seiko...').",
-    "model": {"classic": "model NAME only: short, no brand, no filler ('Original', 'Ceas', "
-                         "'Dama'). The ad naming none is normal - read it off the dial. Nothing "
+    "model": {"classic": "the model LINE only: short, no brand, no filler ('Original', 'Ceas', "
+                         "'Dama'). One of MODELS when it is this watch's line (exact spelling). "
+                         "The ad naming none is normal - read it off the dial. Nothing "
                          "identifiable -> the defining trait ('Automatic 21 Jewels').",
-              "smart": "model NAME only, no brand/size/condition: 'Watch Series 9', 'Galaxy "
-                       "Watch 6 Classic', 'Fenix 7X Solar'. The photo settles the generation, "
-                       "not the title."},
+              "smart": "the model LINE and generation, no brand/size/condition: 'Watch Series "
+                       "9', 'Watch SE 2', 'Galaxy Watch 6 Classic', 'Fenix 7X'. One of MODELS "
+                       "when it is this watch's (exact spelling). The photo settles the "
+                       "generation, not the title."},
+    "variant": "what sets this watch apart from others of its model: edition, dial, colour, "
+               "nickname, strap ('Chronograph Panda', 'Pepsi Jubilee', 'Solar', 'Black "
+               "Titanium'). model + variant = the full name. Never size, GPS/Cellular, "
+               "condition, reference or year. Nothing -> null.",
+    "new_model": "true ONLY when the model is a line the brand really makes and MODELS lacks "
+                 "it - never to keep a name padded with what belongs in variant.",
     "movement": "judge it from the ad, the dial ('automatic', '21 jewels') or the model. "
                 "Nothing states or shows it -> null (the gate then skips it; that is correct).",
     "reference": "only text you can READ in the ad or on a caseback/papers photo. Never from "
@@ -84,7 +92,7 @@ HINTS = {
     "is_bulk_lot": "true when one price covers several watches, or shop stock 'mai multe bucăți'.",
     "notes": "one short sentence ONLY if the operator must know (suspected replica, "
              "iCloud-locked, model read off a photo, movement inferred). Else null.",
-    "year": "ONE integer, only when stated. A decade -> null (put it in model). A smartwatch "
+    "year": "ONE integer, only when stated. A decade -> null (put it in variant). A smartwatch "
             "generation is not a year.",
     "diameter": "case size in mm, a number. Only when stated or legible.",
     "gender": "only when the ad or the watch makes it clear.",
@@ -229,7 +237,7 @@ def parse_pair(pair):
     k, v = k.strip(), v.strip()
     if v in ("null", "None", ""):
         return k, None
-    if k in infer_fields.FLAGS:
+    if k in infer_fields.FLAGS + infer_fields.OPTIONAL_FLAGS:
         if v.lower() not in ("true", "false"):
             raise ValueError("%s must be true or false, got %r" % (k, v))
         return k, v.lower() == "true"
@@ -293,7 +301,7 @@ def hint(field, profile):
         h = h.get(profile, "")
     if field in infer_fields.ENUMS:
         h = "one of %s. %s" % ("|".join(infer_fields.ENUMS[field]), h)
-    elif field in infer_fields.FLAGS:
+    elif field in infer_fields.FLAGS + infer_fields.OPTIONAL_FLAGS:
         h = "true|false. " + h
     return h.strip()
 
@@ -302,7 +310,7 @@ def quote(v):
     return json.dumps(v, ensure_ascii=False)
 
 
-def sheet(queue, ad_id, profile, draft, extract, photos, note=None):
+def sheet(queue, ad_id, profile, draft, extract, photos, note=None, models=None):
     todo = draft.get("_todo") or []
     title = (extract or {}).get("title") or ""
     desc = (draft.get("description") or "").strip()
@@ -330,6 +338,9 @@ def sheet(queue, ad_id, profile, draft, extract, photos, note=None):
                    % (os.path.relpath(contract_draft.description_path(ROOT, ad_id), ROOT),
                       hint("description", profile)))
         todo = [f for f in todo if f != "description"]
+    if models:
+        out.append("MODELS %s has on the site - `model` is one of these when it is this "
+                   "watch's line: %s" % (draft.get("brand") or "the brand", ", ".join(models)))
     out.append("DECIDE (field = current value | rule):")
     w = max([len(f) for f in todo] + [8])
     required = infer_fields.REQUIRED_BY_PROFILE.get(profile, []) + infer_fields.FLAGS
@@ -380,7 +391,7 @@ def cmd_next(queue):
             if os.path.isdir(pdir) else []
         save_run(ad_id, dict(st, queue=queue))
         say(sheet(queue, ad_id, st.get("profile", profile), draft, st.get("extract"), photos,
-                  "RESUMED: a draft already exists (pass 1 ran earlier)"))
+                  "RESUMED: a draft already exists (pass 1 ran earlier)", st.get("models")))
         return 0
 
     out = run_payload(open(os.path.join(HERE, SCRIPTS[profile])).read(),
@@ -397,12 +408,13 @@ def cmd_next(queue):
         with open(ep["draft"]) as f:
             draft = json.load(f)
         save_run(ad_id, {"profile": profile, "queue": queue, "fix_attempts": 0,
-                         "extract": m.get("EXTRACT"), "photos": ep.get("photos")})
+                         "extract": m.get("EXTRACT"), "photos": ep.get("photos"),
+                         "models": ep.get("models")})
         extra = []
         if ep.get("phone_status") == "login_required":
             extra.append("WARN: olx.ro is not signed in - the phone is missing (not fatal)")
         say(sheet(queue, ad_id, profile, draft, m.get("EXTRACT"), ep.get("photos") or [],
-                  note), *extra)
+                  note, ep.get("models")), *extra)
         return 0
     if "ERROR" in m:
         settle(queue, ad_id, "error", m["ERROR"].get("msg"))

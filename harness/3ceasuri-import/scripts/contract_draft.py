@@ -25,7 +25,8 @@ import infer_fields
 DRAFT_SUBDIR = "harness/3ceasuri-import/.contracts"
 
 # Null is a legitimate answer for these, so `read` never demands a value.
-NULLABLE = {"reference", "year", "notes", "priceNote", "seller", "phone", "location"}
+NULLABLE = {"reference", "year", "notes", "priceNote", "seller", "phone", "location",
+            "variant", "new_model"}
 
 
 def draft_path(project_root, ad_id):

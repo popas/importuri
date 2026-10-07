@@ -45,7 +45,9 @@ Edit the `draft` file in place. Change only the fields named in `todo`. Save.
 
 | Field | Rule |
 |---|---|
-| `model` | the model NAME only. Short, no brand, never a sentence, never a filler noun ("Original", "Ceas", "Dama"). The ad naming no model is the normal case — the dial answers it. |
+| `model` | the model LINE only. Short, no brand, never a sentence, never a filler noun ("Original", "Ceas", "Dama"). One of the brand's models on the site (the prompt lists them) whenever it is this watch's line, spelled exactly. The ad naming no model is the normal case — the dial answers it. |
+| `variant` | what sets this watch apart from others of its model: complication, dial, edition, nickname ("Chronograph Panda", "41 Wimbledon", "Pepsi Jubilee"). Never the size, condition, reference or year. Null when there is nothing. |
+| `new_model` | only after an `unknown_model` fix, and only for a line the brand really makes that the site lacks: `true` makes pass 2 add it first. |
 | `movement` | judge it from the ad and the photos. If nothing states or shows it, leave it null: the gate will stop the watch, and that is correct. |
 | `reference` | only from text you can READ on a photo or in the ad. **Never derive one from the design.** Null is fine. |
 | `is_wristwatch` | `false` for a wall clock, pocket, mantel, table or alarm clock |

@@ -16,7 +16,9 @@ Detection, which is the part that bites:
   - a lost session is a redirect to /admin/login/, which fetch() follows. That is
     an error (SessionLost), never "not deployed": falling back to the DOM path
     would only fail more slowly;
-  - one probe per process decides for all six endpoints (they ship together);
+  - one probe per process decides for the lookups and import-json (they ship
+    together); the two model endpoints came later, so an answer that is not theirs
+    is None from them, never an error;
   - API=off skips the probe and keeps the DOM path: the kill switch.
 
 Every call runs as fetch() from a 3ceasuri.ro admin tab — from the OLX tab it would
@@ -40,6 +42,7 @@ import infer_fields
 ADMIN_URL_MARK = "3ceasuri.ro/admin"
 WATCH = "/admin/watches/watch/"
 BRAND = "/admin/watches/brand/"
+MODEL = "/admin/watches/watchmodel/"
 LOOKUP_BATCH = 500           # the endpoint's own cap
 JS_LIMIT = 60000             # browser-use reads a request line of at most 64 KB
 POLL = 0.5
@@ -57,6 +60,7 @@ class SessionLost(RuntimeError):
 # writers to each other. `brand` travels separately, as {"name": ...}.
 CONTRACT_TO_MODEL = {
     "model": "model_name",
+    "variant": "variant",
     "reference": "reference_number",
     "category": "category",
     "condition": "condition",
@@ -428,6 +432,46 @@ def brand_lookup(bu, name, tab=None, return_to=None):
     d = _get_json(bu, BRAND + "lookup/?" + urllib.parse.urlencode({"names": name}),
                   tab=tab, return_to=return_to)
     return ((d or {}).get("found") or {}).get(name)
+
+
+# --- the brand's models ----------------------------------------------------------
+# import-json refuses a model the brand does not have (a listing carrying it, or one
+# added ahead). Pass 1 shows the agent the list; pass 2 adds a new one with `ensure`
+# only when the contract says new_model=true.
+def brand_models(bu, brand_name, tab=None, return_to=None):
+    """The model names the site has for a brand, in the server's order, or None
+    (no brand, an unknown one, the API off or without the endpoint)."""
+    brand_name = (brand_name or "").strip()
+    if not brand_name or not available(bu, tab=tab, return_to=return_to):
+        return None
+    d = _get_json(bu, MODEL + "list/?" + urllib.parse.urlencode({"brand": brand_name}),
+                  tab=tab, return_to=return_to)
+    if d is None:
+        return None
+    return [m["name"] for m in d.get("models") or [] if isinstance(m, dict) and m.get("name")]
+
+
+def ensure_model(bu, brand_name, model_name, tab=None, return_to=None):
+    """Add a model to the brand ahead of its first listing; idempotent.
+
+    {"model_name": the site's spelling, "created": bool}, or None when the brand is
+    not on the site yet (the import then creates both) or the endpoint is not there.
+    A lost session raises SessionLost.
+    """
+    if not available(bu, tab=tab, return_to=return_to):
+        return None
+    try:
+        env = fetch(bu, MODEL + "ensure/", method="POST",
+                    body={"brand": brand_name, "model_name": model_name},
+                    tab=tab, return_to=return_to)
+    except Exception:
+        return None
+    if session_lost(env):
+        raise SessionLost("admin session lost - sign in to 3ceasuri.ro/admin")
+    if not deployed(env) or env.get("http") != 200:
+        return None
+    d = body_json(env)
+    return d if isinstance(d, dict) and d.get("model_name") else None
 
 
 # --- A2: import-json -----------------------------------------------------------

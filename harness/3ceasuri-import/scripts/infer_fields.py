@@ -59,11 +59,14 @@ ENUMS = {
 }
 
 NUMERIC = {"price": float, "diameter": float, "year": int}
-TEXT = ["brand", "model", "reference", "priceNote", "phone", "location",
+TEXT = ["brand", "model", "variant", "reference", "priceNote", "phone", "location",
         "seller", "description"]
 FLAGS = ["is_wristwatch", "is_bulk_lot"]
+# Answered only when a gate asks for it, so null (= no) is the normal value: `new_model`
+# says the model is a line the brand makes that the site does not list yet.
+OPTIONAL_FLAGS = ["new_model"]
 
-SCHEMA_FIELDS = TEXT + list(NUMERIC) + list(ENUMS) + FLAGS + ["notes"]
+SCHEMA_FIELDS = TEXT + list(NUMERIC) + list(ENUMS) + FLAGS + OPTIONAL_FLAGS + ["notes"]
 
 # Fields the filled contract MUST answer non-null, per profile. Everything else in
 # SCHEMA_FIELDS may legitimately be null — a watch with no reference, no year and no
@@ -79,10 +82,10 @@ REQUIRED_BY_PROFILE = {
 # `description` is always edited (user directives 2026-10-03/04: the seller's text, lightly
 # corrected, in their voice), so it is always asked.
 ALWAYS_ASK = {
-    "classic": ["model", "movement", "reference", "is_wristwatch", "is_bulk_lot", "notes",
-                "description"],
-    "smart":   ["model", "connectivity", "compatibility", "is_wristwatch", "is_bulk_lot", "notes",
-                "description"],
+    "classic": ["model", "variant", "movement", "reference", "is_wristwatch", "is_bulk_lot",
+                "notes", "description"],
+    "smart":   ["model", "variant", "connectivity", "compatibility", "is_wristwatch",
+                "is_bulk_lot", "notes", "description"],
 }
 # `brand` is asked only when neither the OLX param nor the title named a known one --
 # otherwise a required field sat null OUTSIDE the todo list, so the only way past the
@@ -104,7 +107,7 @@ movement, material, or year because it is "usually" that.
 brand as the post spells it
 
 {brands}
-{known}
+{models}{known}
 ## {source_noun_title}
 
 {text}
@@ -113,8 +116,15 @@ brand as the post spells it
 RULES_CLASSIC = """
 ## Rules that exist because they were broken before
 
-- `model` — the model NAME only. Short. No brand, never a sentence.
-  "Vand Oris Divers Sixty-Five Date 40mm, stare buna" -> "Divers Sixty-Five Date".
+- `model` — the model LINE only: what a buyer filters by. Short. No brand, never a
+  sentence. "Vand Oris Divers Sixty-Five Date 40mm, stare buna" -> "Divers Sixty-Five".
+  When the brand's models on the site are listed below, use one of those exact names
+  whenever it is this watch's line ("Royal Oak Offshore", "Datejust", "Seamaster Aqua
+  Terra"); a model the list lacks is refused unless you also answer `new_model: true`.
+- `variant` — what sets THIS watch apart from others of its model: complication,
+  dial, material, edition, nickname ("Chronograph Panda", "41 Wimbledon", "Pepsi
+  Jubilee", "Date"). `model` + `variant` should read as the watch's full name. Never
+  the size, the condition, the reference or the year. Null when there is nothing.
   **The ad often does not name the model — LOOK AT THE PHOTOS.** Dial layout, bezel,
   handset, bracelet and caseback identify most watches: a Fossil ladies' watch with a
   crystal bezel, Roman numerals and a 4:30 date is a "Jacqueline". Read the caseback
@@ -162,7 +172,7 @@ RULES_CLASSIC = """
   mostly not their words (`description_drifted`).
 - `year` — ONE year as an integer. `id_year` is a numeric input, so a decade range
   is silently dropped: if the post only says "anii '70", leave this null and put the
-  decade in `model` instead.
+  decade in `variant` instead.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
 - `category` — `wrist` for anything worn on the wrist, `wall` for a clock hung on a
   wall (pendulum, cuckoo, kitchen, station, cartel). Leave null only when the post
@@ -203,11 +213,19 @@ RULES_SMART = """
   for an accessory** — a strap, charger, case, screen protector, dock or an empty
   box is not a watch, and `is_wristwatch: false` stops the import. Say which in
   `notes`.
-- `model` — the model NAME only, short, no brand: "Watch Series 9", "Galaxy Watch
-  6 Classic", "Fenix 7X Solar", "Bip 5". The ad title is usually close but padded
-  with condition, size and warranty noise — strip that. **Look at the photos** when
-  the title is vague: the case shape, crown, bezel markings and band tell the
-  generation apart.
+- `model` — the model LINE and generation only, short, no brand: "Watch Series 9",
+  "Watch SE 2", "Galaxy Watch 6 Classic", "Fenix 7X", "Bip 5". The ad title is usually
+  close but padded with condition, size and warranty noise — strip that. **Look at the
+  photos** when the title is vague: the case shape, crown, bezel markings and band
+  tell the generation apart. When the brand's models on the site are listed below, use
+  one of those exact names whenever it is this watch's ("Watch SE 2", never "Watch SE
+  (Gen 2)" or "SE 2nd generation"); a model the list lacks is refused unless you also
+  answer `new_model: true`.
+- `variant` — what sets THIS watch apart from others of its model: edition, finish,
+  colour, strap ("Solar", "Sapphire", "Black Titanium", "Nike", "Milanese Loop").
+  `model` + `variant` should read as the watch's full name. Never the size (that is
+  `diameter`), GPS/Cellular (that is `connectivity`), the condition or the battery
+  health. Null when there is nothing.
 - `connectivity` — `gsm` when the watch takes calls without the phone (the ad or a
   photo says LTE, Cellular, 4G, eSIM; on an Apple Watch the cellular models have a
   red ring or dot on the crown), `no_gsm` when it is GPS/Bluetooth only. Null only
@@ -264,8 +282,21 @@ def _field_lines():
         out.append("- `%s`: one of %s, or null" % (f, " | ".join(vals)))
     for f in FLAGS:
         out.append("- `%s`: true or false (never null)" % f)
+    for f in OPTIONAL_FLAGS:
+        out.append("- `%s`: true, or null" % f)
     out.append("- `notes`: text or null")
     return "\n".join(out)
+
+
+def _models_block(brand, models):
+    """The models the brand already has on the site: the names `model` should reuse."""
+    if not models:
+        return ""
+    return ("\n## Models %s already has on the site\n\n"
+            "Use one of these exact names as `model` when it is this watch's line, and put\n"
+            "what sets this watch apart in `variant`. A model not in this list is refused\n"
+            "unless you also answer `new_model: true` - only for a line the brand really makes.\n\n"
+            "%s\n" % (brand or "The brand", ", ".join(models)))
 
 
 def _known_block(known):
@@ -286,7 +317,7 @@ def _known_block(known):
 
 
 def build_prompt(text, brands=(), profile="classic", known=None, source_noun="post text",
-                 todo=None):
+                 todo=None, brand=None, models=None):
     """Render the contract. With `todo`, only those fields are described.
 
     The seeded draft already carries every field the deterministic baseline settled,
@@ -305,6 +336,7 @@ def build_prompt(text, brands=(), profile="classic", known=None, source_noun="po
     return PROMPT.format(rules=rules,
                          fields=head + fields,
                          brands=", ".join(sorted(brands)) or "(none)",
+                         models=_models_block(brand, models),
                          known=_known_block(known),
                          source_noun=source_noun,
                          source_noun_title=source_noun[:1].upper() + source_noun[1:],
@@ -329,7 +361,7 @@ def validate(payload):
                 NUMERIC[key](value)
             except (TypeError, ValueError):
                 problems.append("%s=%r is not a %s" % (key, value, NUMERIC[key].__name__))
-        elif key in FLAGS and not isinstance(value, bool):
+        elif key in FLAGS + OPTIONAL_FLAGS and not isinstance(value, bool):
             problems.append("%s=%r is not a boolean" % (key, value))
         elif key not in SCHEMA_FIELDS and key not in ("force",):
             problems.append("%s is not a field in the contract" % key)

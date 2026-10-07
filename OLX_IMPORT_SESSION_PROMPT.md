@@ -67,13 +67,20 @@ Judging, in one place:
   - brand: the maker on the dial/caseback/box. No mark anywhere -> 'Fără marcă'.
     'Alt brand' is NEVER stored — unbranded is always 'Fără marcă'. OLX's 'Alt brand'
     and 'Swiss' are labels, not makers: find the real maker first.
-  - model: the name on the dial or box. None -> the defining trait, short
-    ('Tachymetre 100M Automatic', "Precision anii '40").
+  - model: the LINE on the dial or box, one of the sheet's MODELS when it is this
+    watch's (exact spelling). None -> the defining trait, short ('Tachymetre 100M
+    Automatic', 'Precision').
+  - variant: what sets this watch apart from others of its model — dial, edition,
+    nickname, strap ('Chronograph Panda', 'Pepsi', "anii '40"). Never size,
+    GPS/Cellular, condition. Nothing -> null.
+  - FIX unknown_model: the site has no such model for the brand. Pick one of the
+    listed names as model (the rest goes in variant); only for a line the brand really
+    makes, keep it and add 'new_model=true'.
   - movement: from the ad or dial; or inferred from a model you KNOW (a fashion or
     alarm chronograph is quartz; a 1960s Swiss Incabloc without 'automatic' is
     hand-wound) — then say so in notes. Unknown -> leave it null, the gate skips it.
   - year: one integer, only when stated. "între 1960 și 1970" -> year=null and the
-    decade goes in model.
+    decade goes in variant.
   - notes: one sentence when the model or movement was inferred; otherwise null.
   - description: the SELLER's text, lightly corrected — it must read as if they wrote
     it and still look like the OLX ad. Keep their sentences, order, person and facts,

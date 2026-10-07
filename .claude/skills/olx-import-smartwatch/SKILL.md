@@ -48,7 +48,9 @@ Edit the `draft` file in place. Change only the fields named in `todo`. Save.
 
 | Field | Rule |
 |---|---|
-| `model` | the model NAME only. Short, no brand, never a sentence. Ads routinely inflate the generation — the photo settles it, not the title. |
+| `model` | the model LINE and generation only. Short, no brand, never a sentence. One of the brand's models on the site (the prompt lists them) whenever it is this watch's, spelled exactly ("Watch SE 2", never "Watch SE (Gen 2)"). Ads routinely inflate the generation — the photo settles it, not the title. |
+| `variant` | what sets this watch apart from others of its model: edition, finish, colour, strap ("Solar", "Sapphire", "Black Titanium", "Nike"). Never the size, GPS/Cellular, condition or battery health. Null when there is nothing. |
+| `new_model` | only after an `unknown_model` fix, and only for a line the brand really makes that the site lacks: `true` makes pass 2 add it first. |
 | `connectivity` | `gsm` (has its own SIM/eSIM) or `no_gsm`. Required. |
 | `compatibility` | `ios`, `android` or `both`. Required. |
 | `is_wristwatch` | `false` only for an accessory (strap, charger, case, dock, empty box) — that is a skip |

@@ -36,7 +36,7 @@
 #   FORCE_IMAGE_UPLOAD "1" = import-json with the photos uploaded as files, not
 #                       fetched by the server (tests the 422 fallback on purpose)
 #
-# Emits: EXTRACT: SKIP: EXTRACT_PROMPT: INFER: REVIEW: NEW_BRAND: RESULT: ERROR: WARN:
+# Emits: EXTRACT: SKIP: EXTRACT_PROMPT: INFER: REVIEW: NEW_BRAND: NEW_MODEL: RESULT: ERROR: WARN:
 #
 # TWO PASSES, because YOU do the inference. OLX's structured params answer
 # condition, materials, gender, style and price outright — what they never answer
@@ -212,7 +212,7 @@ def confidence_review(profile, data, images, brand_ids, seller_text=None, seller
                     "description")
         new, share = description_drift(ours, "\n".join(
             [seller_title or "", seller_text] +
-            [str(data.get(k) or "") for k in ("brand", "model", "reference")]))
+            [str(data.get(k) or "") for k in ("brand", "model", "variant", "reference")]))
         if len(new) > DESCRIPTION_MAX_NEW_WORDS and share < DESCRIPTION_MIN_SELLER_SHARE:
             _review("description_drifted", "fix",
                     "description is rewritten, only %d%% of it is the seller's words "
@@ -257,17 +257,35 @@ def readback_from_lookup(row, ad_id):
     return rb
 
 
-def server_reasons(errors):
+# How many of the brand's models an unknown_model fix lists before "and N more".
+MODELS_IN_FIX = 80
+
+
+def server_reasons(errors, models=None):
     """import-json's 400 field errors as REVIEW reasons.
 
     `fix` only for a contract key, which the agent can answer with `finish`. An error
     on a field the harness fills (sourceUrl, sellerId, county...) or a non-field
     error has no answer there — a `fix` would loop on BAD_ANSWER — so it is `skip`.
+
+    A model the brand does not have comes with `models`, the brand's list: that is an
+    `unknown_model` fix with both ways out — a listed name, or new_model=true.
     """
     import site_api
     reasons = []
     for field, msgs in (errors or {}).items():
         text = "; ".join(str(m) for m in (msgs if isinstance(msgs, list) else [msgs]))
+        if field == "model_name" and models is not None:
+            shown = ", ".join(models[:MODELS_IN_FIX]) or "(none yet)"
+            if len(models) > MODELS_IN_FIX:
+                shown += " and %d more" % (len(models) - MODELS_IN_FIX)
+            reasons.append({"code": "unknown_model", "action": "fix", "field": "model",
+                            "message": "the site refused the model: %s. The brand's models: "
+                                       "%s. Use one of them as `model` and put the rest of "
+                                       "the name in `variant`; only for a line the brand "
+                                       "really makes and the site lacks, keep it and answer "
+                                       "new_model=true" % (text, shown)})
+            continue
         key = site_api.from_model_field(field)
         reasons.append({"code": "server_invalid",
                         "action": "fix" if site_api.fixable(key) else "skip",
@@ -557,6 +575,15 @@ def run(profile, g):
         if phone:
             known["phone"] = phone
             data["phone"] = phone      # into the draft, or pass 2 reveals it all over again
+        # The brand's models on the site, so `model` reuses one of them: the site refuses
+        # a model its brand does not have. Only for a settled brand -- a guessed one
+        # would steer the model to the wrong maker's list.
+        models = None
+        if brand_settled:
+            try:
+                models = site_api.brand_models(A, brand, return_to=OLX_TAB)
+            except site_api.SessionLost:
+                die(LOST)
         draft = contract_draft.build(data, profile)
         if not brand_settled and "brand" not in draft["_todo"]:
             draft["_todo"].insert(0, "brand")
@@ -568,7 +595,9 @@ def run(profile, g):
             "todo": draft["_todo"],
             "prompt": infer_fields.build_prompt(text, brand_ids.keys(), profile=profile,
                                                 known=known, source_noun="OLX ad",
-                                                todo=draft["_todo"]),
+                                                todo=draft["_todo"], brand=brand,
+                                                models=models),
+            "models": models,
             "photos": photos, "photos_failed": failed, "phone_status": phone_status,
             "rerun": "AD_ID=%s CONFIRM=1 browser-use < .../%s" % (AD_ID, conf["script_name"])})
         raise SystemExit(0)
@@ -643,6 +672,8 @@ def run(profile, g):
                              "notes": filled.get("notes")})
     if filled.get("is_bulk_lot") is True:
         skip("bulk_lot", {"reason": "bulk lot — one price, several watches"})
+    # The agent's word that the model is new to the site: added ahead in 7a, never sent.
+    new_model = data.pop("new_model", None) is True
     for k in ("is_wristwatch", "is_bulk_lot", "notes"):   # contract-only, not form fields
         data.pop(k, None)
     if data.get("category") is None:                     # same reason as the forced fields
@@ -743,6 +774,18 @@ def run(profile, g):
     except site_api.SessionLost:
         die(LOST)
     if _api_on:
+        # A model the brand does not have is refused by import-json. The contract said
+        # it is a new line, so add it first; the site answers with its own spelling.
+        if new_model and not DRY_RUN:
+            try:
+                added = site_api.ensure_model(A, data["brand"], data["model"],
+                                              tab=ADMIN_TAB, return_to=ADMIN_TAB)
+            except site_api.SessionLost:
+                die(LOST)
+            if added:
+                data["model"] = added["model_name"]
+                emit("NEW_MODEL", {"brand": data["brand"], "model": added["model_name"],
+                                   "created": bool(added.get("created"))})
         fields = site_api.to_model_fields(data)
 
         def post(blobs=None):
@@ -838,8 +881,11 @@ def run(profile, g):
                 skip("already_imported", {"reason": "already imported (import-json: duplicate)",
                                           "existing": resp.get("existing")})
             if resp is not None and http == 400 and isinstance(resp.get("errors"), dict):
-                review_stop({"reasons": server_reasons(resp["errors"]),
-                             "images": len(images), "rerun": RERUN})
+                _review = {"reasons": server_reasons(resp["errors"], resp.get("models")),
+                           "images": len(images), "rerun": RERUN}
+                if resp.get("models") is not None:
+                    _review["models"] = resp["models"]
+                review_stop(_review)
             if http == 400:
                 die("import-json answered 400: %s" % text[:300])
             if http == 403:

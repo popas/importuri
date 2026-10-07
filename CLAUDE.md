@@ -160,6 +160,13 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   watches (each ad has ≥ 2 photos the other lacks). Learned cards are written to the
   list — commit it, the other machine reads it. A real watch photo in the list: delete
   its entry. Photo N of an ad stays `NN.jpg`; the kept ones travel with their numbers.
+- **The model is one the brand already has** (2026-10-08). The site refuses a model its
+  brand does not have (400 + the brand's list) — "Watch SE (Gen 2)", "SE 2nd generation"
+  and "SE 2022" had become three models of one watch. Pass 1 lists the brand's models in
+  the prompt; `model` reuses one, and what sets the watch apart goes in `variant`. A
+  refusal is an `unknown_model` fix; `new_model=true` (a line the brand really makes)
+  makes pass 2 add it first through `watchmodel/ensure/`. The harness never sends
+  `create_model`.
 - **Never import a suspiciously cheap listing.** Below the floors in
   `scripts/price_sanity.py` a watch is a fake, not a bargain. `CONFIRM=1` does not wave
   one through.
