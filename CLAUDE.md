@@ -67,6 +67,8 @@ harness/3ceasuri-import/
                                      (python3, NOT a payload; it runs the payloads)
   scripts/olx_api.py               ← in-page API, param→enum map, photo URLs, phone reveal
   scripts/price_sanity.py          ← price floors — suspiciously cheap = fake, dropped
+  scripts/photo_dedup.py           ← byte-identical photos of an imported ad = a relist,
+                                     skipped in pass 1 (`duplicate_photos`)
   scripts/olx-find-smartwatches.py ← category 1943 discovery
   scripts/olx-find-watches.py      ← category 1677 discovery
   scripts/olx-import-smartwatch.py ← wrapper: olx_import.run("smart", globals())

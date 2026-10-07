@@ -111,21 +111,54 @@ def _fetch_json(bu, path):
         return None
 
 
-def search(bu, category_id, offset=0, limit=40, price_from=None, sort="created_at:desc"):
+def search(bu, category_id, offset=0, limit=40, price_from=None, sort="created_at:desc",
+           region_id=None, city_id=None):
     """One page of a category. Returns (offers, total) — ([], None) on failure.
 
     `price_from` is a server-side hint only; the caller re-applies the floor,
     because the API accepts the parameter without its effect being confirmed.
+    `region_id` / `city_id` do filter server-side (see location_filter).
     """
     path = ("/api/v1/offers/?offset=%d&limit=%d&category_id=%d&sort_by=%s"
             % (offset, limit, category_id, sort.replace(":", "%3A")))
     if price_from:
         path += "&filter_float_price%%3Afrom=%d" % price_from
+    if region_id:
+        path += "&region_id=%d" % region_id
+    if city_id:
+        path += "&city_id=%d" % city_id
     d = _fetch_json(bu, path)
     if not d:
         return [], None
     meta = d.get("metadata") or {}
     return (d.get("data") or []), meta.get("total_elements")
+
+
+# OLX does filter by location server-side, which the discovery scripts did not know:
+# a COUNTY run walked the whole category and threw ~75% away as wrong_county
+# (2026-10-07: 154 of 255 watch ads, 170 of 244 smartwatch ads), so it only ever
+# reached the newest few hundred ads of the whole country.
+BUCHAREST_CITY_ID = 1   # verified 2026-10-07: city_id=1 answers only Bucuresti ads
+
+
+def location_filter(bu, county):
+    """search() kwargs that make OLX answer only `county` (location_county() spelling).
+
+    București is a city inside the combined region "Bucuresti - Ilfov", so it filters
+    by city; Ilfov gets that whole region and the caller's client-side county check
+    drops the capital. {} when the county cannot be resolved -- the client-side
+    check still applies, the walk is just slower.
+    """
+    want = norm_label(county)
+    if not want:
+        return {}
+    if want == "bucuresti":
+        return {"city_id": BUCHAREST_CITY_ID}
+    d = _fetch_json(bu, "/api/v1/geo-encoder/regions/")
+    for r in (d or {}).get("data") or []:
+        if r.get("id") and want in [norm_label(p) for p in (r.get("name") or "").split(" - ")]:
+            return {"region_id": int(r["id"])}
+    return {}
 
 
 def offer(bu, ad_id):
@@ -387,6 +420,35 @@ def strip_phones(text):
                 continue
         out.append(line)
     return re.sub(r"\n{3,}", "\n\n", "\n".join(out)).strip()
+
+
+# "Accept schimb cu Tissot Connect sau cu Garmin solar" names the watches the seller
+# would TAKE, not the one for sale. Read as part of the ad, that one sentence routed an
+# André Belfort automatic to the smartwatch importer and seeded its brand as Tissot
+# (304960237, 2026-10-07). Every guess made from free text reads the ad without it.
+_EXCHANGE_RE = re.compile(r"\bschimb(?:uri)?\b", re.I)
+_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def strip_exchange(text):
+    """`text` without the sentences that offer a trade."""
+    if not text:
+        return text or ""
+    return "\n".join(s for s in _SENTENCE_RE.split(text) if not _EXCHANGE_RE.search(s))
+
+
+# A dealer selling two watches in one ad writes one "Pret: N lei" line per watch
+# (310215685: Poljot 440 + Nivada 490; 310214911: Doxa 580 + 570; 2026-10-07). Two
+# prices sit below the three-price stock rule in discovery, so they need their own.
+# Only a labelled price line counts -- "Preț nou: 2500" or "a costat 410€" is the
+# history of ONE watch, not a second one.
+_PRICE_LINE_RE = re.compile(r"(?im)^\W*pre[țt]\w*\s*[:\-]\s*(\d[\d.\s]*\d|\d)")
+
+
+def separately_priced(text):
+    """True when the ad quotes two or more different labelled prices."""
+    amounts = {re.sub(r"\D", "", m) for m in _PRICE_LINE_RE.findall(text or "")}
+    return len(amounts) >= 2
 
 
 def clean_description(html):

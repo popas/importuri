@@ -57,6 +57,25 @@ def mark(path, ad_id, status, reason=None):
     return False
 
 
+def history_imported(history_path):
+    """Every ad id history.jsonl records as imported. Local knowledge only: it may
+    steer how much work to do, never whether a watch is on the site (the admin is
+    the ground truth for that)."""
+    ids = set()
+    try:
+        with open(history_path) as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except ValueError:
+                    continue
+                if r.get("event") == "import" and r.get("id"):
+                    ids.add(str(r["id"]))
+    except OSError:
+        pass
+    return ids
+
+
 def counts(path):
     out = dict.fromkeys(STATUSES, 0)
     for c in load(path).get("candidates", []):

@@ -90,6 +90,13 @@ PROFILES = {
 
 
 
+# The watch's condition, not its movement: "atât estetic cât și mecanic", "mecanic și
+# estetic impecabil". Removed before the movement seed reads the text.
+_CONDITION_MECANIC = re.compile(
+    r"(?:estetic|vizual|optic)\w*\W+(?:\w+\W+){0,3}?mecanic\w*|"
+    r"mecanic\w*\W+(?:\w+\W+){0,3}?(?:estetic|vizual|optic)\w*")
+
+
 def confidence_review(profile, data, images, brand_ids, seller_text=None):
     """The confidence gate, as a pure function. Returns a list of reasons.
 
@@ -220,7 +227,7 @@ def run(profile, g):
         os.path.join(os.path.dirname(__file__), "../../.."))
     sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
     import olx_api, admin_import, infer_fields, price_sanity, contract_draft
-    import candidates, site_api
+    import candidates, site_api, photo_dedup
 
     AD_ID       = os.environ.get("AD_ID", "").strip()
     OVERRIDES   = json.loads(os.environ.get("OVERRIDES", "{}"))
@@ -228,7 +235,12 @@ def run(profile, g):
     DRY_RUN     = os.environ.get("DRY_RUN", "") == "1"
     SKIP_PROMPT = os.environ.get("SKIP_PROMPT", "") == "1"
     HARNESS     = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
-    PHOTO_DIR   = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/.photos", "olx-%s" % AD_ID)
+    # PHOTO_ROOT exists for the offline tests: their fixtures carry REAL ad ids, and
+    # writing stub photos to the real folders overwrote imported ads' photos with
+    # 600-byte junk (found 2026-10-07, after the .contracts wipe of 2026-10-04).
+    PHOTO_DIR   = os.path.join(os.environ.get("PHOTO_ROOT") or
+                               os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/.photos"),
+                               "olx-%s" % AD_ID)
 
     def emit(tag, obj):
         print(tag + ": " + json.dumps(obj, ensure_ascii=False))
@@ -353,6 +365,11 @@ def run(profile, g):
                                       "account_created": (ad.get("user") or {}).get("created"),
                                       "title": title[:80]})
 
+    # --- 1e. two watches, each with its own price ----------------------------
+    if olx_api.separately_priced(text):
+        skip("bulk_lot", {"reason": "bulk_lot: the ad quotes a separate price per watch",
+                          "title": title[:80]})
+
     # --- 2. what OLX already answers -----------------------------------------
     brand_ids = admin_import.load_brand_ids(HARNESS)
     mapped = olx_api.map_params(ad)
@@ -366,7 +383,7 @@ def run(profile, g):
     # would create a new brand row in the DB.
     brand_settled = bool(brand)
     if not brand and conf["brand_from_description"]:
-        brand = admin_import.match_brand(description, brand_ids)
+        brand = admin_import.match_brand(olx_api.strip_exchange(description), brand_ids)
     brand = brand or (brand_label or None)
 
     data = dict(mapped)
@@ -394,7 +411,10 @@ def run(profile, g):
         if m:
             data["year"] = int(m.group(1))
         mv = None
-        low = text.lower()
+        # "Condiție impecabilă, atât estetic cât și mecanic" is the watch's condition,
+        # not its movement -- it seeded a Tudor 1926 automatic as manual (309992586,
+        # 2026-10-07).
+        low = _CONDITION_MECANIC.sub(" ", olx_api.strip_exchange(text).lower())
         for pat, val in ((r"automat|automatic", "automatic"),
                          (r"quartz|baterie", "quartz"),
                          (r"mecanic|manual|cheiț|cheit|remontoar", "manual")):
@@ -426,6 +446,15 @@ def run(profile, g):
             skip("thin_description", {"reason": "thin_description: %d chars"
                                                 % len(description.strip())})
         photos, failed = olx_api.download_photos(bu, images, PHOTO_DIR)
+        # The same photo files as an ad already imported = the same watch relisted,
+        # by the same seller or another account (photo_dedup.py). Decided before the
+        # phone reveal and the draft, which it would make wasted work.
+        dup = photo_dedup.find_duplicate(os.path.dirname(PHOTO_DIR), AD_ID,
+                                         os.path.join(PROJECT_ROOT, "history.jsonl"))
+        if dup and os.environ.get("ALLOW_DUPLICATE_PHOTOS", "") != "1":
+            skip("duplicate_photos", {"reason": "duplicate_photos: %d photo(s) identical to "
+                                                "imported ad %s" % (dup[1], dup[0]),
+                                      "duplicate_of": dup[0], "title": title[:80]})
         # The phone is masked in the JSON and only rendered on click, so it costs a
         # page navigation — do it once here and show it with the contract. SOURCE_URL
         # always comes from the API: a hand-built /d/oferta/ slug lands on an

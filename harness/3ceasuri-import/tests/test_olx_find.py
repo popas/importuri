@@ -38,7 +38,7 @@ def run(script, offers, env=None, admin_counts=None, lookup=None):
 
     `lookup(ids) -> {id: row}` deploys the admin's lookup/ endpoint; without it the
     endpoints are not deployed (the admin's catch-all redirects to /admin/)."""
-    state = {"url": "", "site_calls": [], "pending": {}, "q_counts": 0}
+    state = {"url": "", "site_calls": [], "pending": {}, "q_counts": 0, "paths": []}
     admin_counts = admin_counts or {}
     import site_api
     site_api.reset()
@@ -66,6 +66,10 @@ def run(script, offers, env=None, admin_counts=None, lookup=None):
             return "" if answer is None else json.dumps(answer)
         if 'Accept:"application/json"' in e:
             path = re.search(r'fetch\("([^"]+)"', e).group(1)
+            state["paths"].append(path)
+            if "/geo-encoder/regions/" in path:
+                return json.dumps({"status": 200, "body": json.dumps({"data": [
+                    {"id": 2, "name": "Cluj"}, {"id": 46, "name": "Bucuresti - Ilfov"}]})})
             m = re.search(r"offset=(\d+)", path)
             offset = int(m.group(1)) if m else 0
             page = offers if offset == 0 else []
@@ -329,6 +333,48 @@ check(len(ids(m_cap)) == 2 and ids(m_cap) == ids(m_cap_dom) and "1" not in ids(m
 m_w = run(FIND_WATCH, WATCH_FEED, lookup=lambda ids: {"20": {"pk": 1}})
 check("20" not in ids(m_w) and why(m_w, 20) == "already_imported"
       and m_w["_state"]["q_counts"] == 0, "lookup: classic discovery uses it too")
+
+# --- 2026-10-07: two prices, trade offers, the server-side county filter ------
+# A dealer's two watches in one ad, one "Pret:" line each, sit below the three-price
+# stock rule; a trade offer naming a Garmin made an automatic look like a smartwatch
+# and seeded its brand as Tissot.
+REGRESS = [
+    ad(40, "Ceas Doxa Mecanic", price=580,
+       desc="Ceas Doxa Mecanic\nFabricat in Elvetia.\nPret: 580 lei\n"
+            "Ceas Doxa Automatic\nFabricat in anii 60.\nPret: 570 lei"),
+    ad(41, "Ceas chronograph automatic", price=4499,
+       desc="Se vinde ceas automatic bine intretinut. Accept schimb cu Tissot Connect "
+            "sau cu Garmin solar. Curea piele."),
+    ad(42, "Ceas Seiko 5 automatic", price=900,
+       desc="Pret: 900 lei\nPreț nou: 1400 lei"),               # one watch, NOT two
+]
+m = run(FIND_WATCH, REGRESS)
+check("40" not in ids(m) and why(m, 40) == "bulk_or_stock",
+      "two labelled prices are two watches (%s)" % why(m, 40))
+check("42" in ids(m), "'Pret' + 'Preț nou' is one watch's history, not a second watch")
+_c41 = next((c for c in m.get("CANDIDATES", []) if c["id"] == "41"), {})
+check(_c41.get("looks_smart") is False, "a trade offer naming Garmin is not a smartwatch")
+check(_c41.get("brand") != "Tissot", "a trade offer naming Tissot is not the brand: %s"
+      % _c41.get("brand"))
+m = run(FIND_SMART, [ad(43, "Apple Watch SE 44mm", price=600,
+                        desc="Ceas in stare buna. Accept schimb cu un ceas automatic.")])
+check(next(c for c in m["CANDIDATES"] if c["id"] == "43")["looks_classic"] is False,
+      "a trade offer for an automatic does not make a smartwatch classic")
+
+# COUNTY filters server-side; the client-side check stays as the net
+m = run(FIND_WATCH, WATCH_FEED, env={"COUNTY": "Cluj"})
+_s = [p for p in m["_state"]["paths"] if "/api/v1/offers/?" in p]
+check(_s and all("region_id=2" in p for p in _s), "COUNTY=Cluj -> region_id=2: %s" % _s)
+check(m["STATS"].get("location") == {"region_id": 2}, "STATS reports the filter")
+check("20" in ids(m), "a Cluj ad survives COUNTY=Cluj")
+m = run(FIND_WATCH, WATCH_FEED, env={"COUNTY": "București"})
+_s = [p for p in m["_state"]["paths"] if "/api/v1/offers/?" in p]
+check(_s and all("city_id=1" in p for p in _s), "COUNTY=București -> city_id=1: %s" % _s)
+check(not ids(m) and why(m, 20) == "wrong_county",
+      "the client-side county check still drops what the server let through")
+m = run(FIND_WATCH, WATCH_FEED)
+check(not any("region_id" in p or "city_id" in p for p in m["_state"]["paths"]),
+      "no COUNTY -> no location filter")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

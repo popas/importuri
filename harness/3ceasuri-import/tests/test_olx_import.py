@@ -78,7 +78,14 @@ NOT_DEPLOYED = {"http": 200, "redirected": True, "url": "https://3ceasuri.ro/adm
                 "ctype": "text/html; charset=utf-8", "body": "<!doctype html>"}
 
 
-def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=None):
+# Stub photos go to a scratch folder: the fixture ids are real ads, and the real
+# .photos/olx-<id>/ folders hold their photos.
+import tempfile as _tempfile
+_PHOTO_ROOT = _tempfile.mkdtemp(prefix="olx-test-photos-")
+
+
+def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=None,
+        photo_b64=None):
     """Execute an OLX importer against a canned ad; return (markers, trace).
 
     The stub admin saves the description importWatch() was handed, unless
@@ -113,7 +120,7 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=
                 return "blob:https://3ceasuri.ro/%d" % state["staged"]
             return 1
         if "String(fr.result)" in e:                                    # photo download
-            return "A" * 800
+            return photo_b64 or "A" * 800       # 600 bytes: below photo_dedup.MIN_BYTES
         if 'Accept:"application/json"' in e:                            # the OLX API
             path = re.search(r'fetch\("([^"]+)"', e).group(1)
             state["fetched"].append(path)
@@ -176,7 +183,8 @@ def run(script, ad, env=None, admin_rows_for=None, saved_description=None, site=
              {"targetId": "O", "url": "https://www.olx.ro/moda-frumusete/ceasuri/", "title": "olx"}]}
 
     os.environ.clear()
-    os.environ.update({"PROJECT_ROOT": ROOT, "AD_ID": str(ad["id"]), "PATH": "/usr/bin:/bin"})
+    os.environ.update({"PROJECT_ROOT": ROOT, "AD_ID": str(ad["id"]), "PATH": "/usr/bin:/bin",
+                       "PHOTO_ROOT": _PHOTO_ROOT})
     os.environ.update(env or {})
 
     buf = io.StringIO()
@@ -963,6 +971,68 @@ check(_rq and "exclude_id=%s" % SMART_AD["id"] in _rq[0] and "seller_id=52907768
 m, st = run(SMART, SMART_AD, dict(_env, API="off"), site=deployed_site([created()]))
 check(m.get("RESULT", {}).get("ok") is True and st["imported"] is not None and not st["site_calls"],
       "23: API=off is the kill switch back to the DOM path")
+
+# --- 24. pass-1 regressions of 2026-10-07 -----------------------------------
+import contract_draft as _cd
+
+
+def _draft_of(ad_id):
+    p = _cd.draft_path(ROOT, ad_id)
+    d = json.load(open(p)) if os.path.exists(p) else {}
+    for f in _glob.glob(os.path.join(ROOT, "harness/3ceasuri-import/.contracts",
+                                     "olx-%s.*" % ad_id)):
+        os.remove(f)                     # a fake id never stays in the real drafts folder
+    return d
+
+
+# two watches, each with its own "Pret:" line -> bulk_lot, before any photo is fetched
+_two = dict(CLASSIC_AD, id=900000001, title="Ceas Doxa Mecanic",
+            description="Ceas Doxa Mecanic, anii 60.<br />Pret: 580 lei<br /><br />"
+                        "Ceas Doxa Automatic, anii 60.<br />Pret: 570 lei")
+m, st = run(CLASSIC, _two)
+check(m.get("SKIP", {}).get("reason", "").startswith("bulk_lot")
+      and "EXTRACT_PROMPT" not in m, "24: two labelled prices must skip as bulk_lot: %s"
+      % (m.get("SKIP") or sorted(m)))
+_draft_of(900000001)
+
+# "atât estetic cât și mecanic" is condition, not a hand-wound movement (Tudor 1926)
+_cond = dict(CLASSIC_AD, id=900000002, title="Ceas Tudor 1926 36mm",
+             description="Purtat de doar 3 ori.<br />Condiție impecabilă, atât estetic cât "
+                         "și mecanic.<br />Full set, cutie și acte.")
+m, st = run(CLASSIC, _cond)
+_d = _draft_of(900000002)
+check("EXTRACT_PROMPT" in m and not _d.get("movement") and "movement" in _d.get("_todo", []),
+      "24: a condition phrase must not seed movement=manual: %r" % _d.get("movement"))
+
+# a trade offer names watches the seller would TAKE: never the brand
+_trade = dict(CLASSIC_AD, id=900000003, title="Ceas chronograph automatic",
+              params=[p for p in CLASSIC_AD["params"] if p.get("key") != "brand"],
+              description="Se vinde ceas automatic, bine întreținut.<br />Accept schimb cu "
+                          "Tissot Connect sau cu Garmin solar.<br />Curea piele.")
+m, st = run(CLASSIC, _trade)
+_d = _draft_of(900000003)
+check(_d.get("brand") != "Tissot" and "brand" in _d.get("_todo", []),
+      "24: a trade offer must not seed the brand: %r" % _d.get("brand"))
+check(_d.get("movement") == "automatic", "24: the real movement still seeds: %r" % _d.get("movement"))
+
+# the same photo files as an IMPORTED ad (history.jsonl) -> duplicate_photos
+import tempfile as _tf
+_root = _tf.mkdtemp(prefix="olx-test-dup-")
+_imported = "303404526"            # CLASSIC_AD, imported for real on 2026-08-12
+os.makedirs(os.path.join(_root, "olx-" + _imported))
+_b64 = "QUJD" * 3000               # 9000 bytes decoded: a real-sized photo
+import base64 as _b
+for _n in ("01.jpg", "02.jpg"):
+    open(os.path.join(_root, "olx-" + _imported, _n), "wb").write(_b.b64decode(_b64))
+_dup = dict(CLASSIC_AD, id=900000004)
+m, st = run(CLASSIC, _dup, env={"PHOTO_ROOT": _root}, photo_b64=_b64)
+check(m.get("SKIP", {}).get("reason", "").startswith("duplicate_photos")
+      and m["SKIP"].get("duplicate_of") == _imported and "EXTRACT_PROMPT" not in m,
+      "24: photos identical to an imported ad must skip: %s" % (m.get("SKIP") or sorted(m)))
+m, st = run(CLASSIC, _dup, env={"PHOTO_ROOT": _root, "ALLOW_DUPLICATE_PHOTOS": "1"},
+            photo_b64=_b64)
+check("EXTRACT_PROMPT" in m, "24: ALLOW_DUPLICATE_PHOTOS=1 lets a human wave it through")
+_draft_of(900000004)
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

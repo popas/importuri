@@ -21,8 +21,8 @@
 #   NO_DEDUP=1      skip the admin Stage-1 dedup pass
 #   DEBUG_DROPS=1   also emit DROPPED: [{id,why,snip}]
 #   COUNTY          keep only this județ (olx_api.location_county spelling, e.g.
-#                   "Brașov"); no server-side region filter exists, so this walks
-#                   the whole category and drops everything else as wrong_county
+#                   "Brașov"); OLX filters it server-side (city_id / region_id,
+#                   olx_api.location_filter) and the wrong_county check stays
 #   OUT             candidates file (default .candidates-olx-smart.json)
 #
 # Emits: CANDIDATES: [...]   STATS: {...}   ERROR: {...}
@@ -47,6 +47,7 @@ while not os.path.isdir(os.path.join(PROJECT_ROOT, "harness/3ceasuri-import")) \
     PROJECT_ROOT = os.path.dirname(PROJECT_ROOT)
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts"))
 import olx_api, admin_import, price_sanity, site_api
+import candidates as queue_file   # `candidates` below is this run's dict
 
 MAX_CANDIDATES = int(os.environ.get("MAX_CANDIDATES", "8"))
 MAX_PAGES      = int(os.environ.get("MAX_PAGES", "5"))
@@ -56,6 +57,7 @@ SNIPPET        = int(os.environ.get("SNIPPET", "180"))
 NO_DEDUP       = os.environ.get("NO_DEDUP", "") == "1"
 DEBUG_DROPS    = os.environ.get("DEBUG_DROPS", "") == "1"
 COUNTY         = os.environ.get("COUNTY", "").strip()
+OVERFETCH      = 1.25  # walk until this many x MAX_CANDIDATES look new
 HARNESS        = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
 OUT            = os.environ.get("OUT", os.path.join(PROJECT_ROOT,
                                 "harness/3ceasuri-import/.candidates-olx-smart.json"))
@@ -120,7 +122,7 @@ PRICE_MENTION = re.compile(r"\b(\d{2,6})\s*(?:lei|ron|eur|euro|€)\b", re.I)
 
 
 def is_stock_listing(title, text):
-    if BULK_TITLE.search(title) or BULK.search(text):
+    if BULK_TITLE.search(title) or BULK.search(text) or olx_api.separately_priced(text):
         return True
     quoted = {int(n) for n in PRICE_MENTION.findall(text)}
     return len([n for n in quoted if n >= MIN_RON]) >= 3
@@ -190,7 +192,7 @@ def consider(ad):
         "city": olx_api.location_str(ad),
         "photos": len(ad.get("photos") or []),
         "created": ad.get("created_time"),
-        "looks_classic": bool(CLASSIC_HINT.search(text)),
+        "looks_classic": bool(CLASSIC_HINT.search(olx_api.strip_exchange(text))),
         "text": PHONE_RE.sub("", text)[:1500],
         # The work queue lives in this file: the importer flips this to
         # imported/skipped/error, so "which watch is next" is a command and not
@@ -200,10 +202,13 @@ def consider(ad):
 
 # --- walk the category ------------------------------------------------------
 olx_api.ensure_tab(bu, olx_api.CATEGORY_URL[olx_api.CATEGORY_SMARTWATCH])
+# COUNTY filters server-side; the client-side wrong_county check stays as the net.
+LOCATION = olx_api.location_filter(bu, COUNTY) if COUNTY else {}
+LOCAL_IMPORTED = queue_file.history_imported(os.path.join(PROJECT_ROOT, "history.jsonl"))
 total, pages = None, 0
 for page in range(MAX_PAGES):
     offers, tot = olx_api.search(bu, olx_api.CATEGORY_SMARTWATCH,
-                                 offset=page * 40, limit=40, price_from=MIN_RON)
+                                 offset=page * 40, limit=40, price_from=MIN_RON, **LOCATION)
     pages += 1
     if tot is not None:
         total = tot
@@ -214,7 +219,11 @@ for page in range(MAX_PAGES):
         break
     for ad in offers:
         consider(ad)
-    if len(candidates) >= MAX_CANDIDATES:
+    # already_imported is only dropped by the admin dedup below, so counting raw
+    # candidates stopped the walk short (MAX_CANDIDATES=60 gave 44, then 15 gave 13
+    # on 2026-10-07: the newest ads had just been imported). history.jsonl only
+    # steers how FAR to walk -- the admin lookup still decides what is on the site.
+    if sum(1 for a in candidates if a not in LOCAL_IMPORTED) >= MAX_CANDIDATES * OVERFETCH:
         break
     time.sleep(1.5)
 
@@ -274,4 +283,4 @@ if DEBUG_DROPS:
     emit("DROPPED", samples)
 emit("STATS", {"candidates": len(ordered), "seen": len(seen), "pages": pages,
                "category_total": total, "dropped": dropped,
-               "admin_total": admin_total, "out": OUT})
+               "admin_total": admin_total, "location": LOCATION, "out": OUT})

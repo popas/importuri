@@ -198,7 +198,26 @@ def profile_for(queue, cand):
 
 
 def next_cmd(queue):
+    if target_reached():
+        return "%s\nNEXT: %s stop %s" % (target_reached(), SELF, os.path.relpath(queue, ROOT))
     return "NEXT: %s next %s" % (SELF, os.path.relpath(queue, ROOT))
+
+
+def target_reached():
+    """A TARGET_REACHED: line once this session imported its start --target, else None.
+
+    The target used to be written to state.json and never read: a 30-watch session
+    ran to 31 on 2026-10-07 because nothing said stop.
+    """
+    try:
+        with open(os.path.join(ROOT, "state.json")) as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        return None
+    t, n = st.get("target"), st.get("session_imported") or 0
+    if t and st.get("status") == "running" and n >= int(t):
+        return "TARGET_REACHED: %s of %s imported this session" % (n, t)
+    return None
 
 
 def parse_pair(pair):
@@ -287,7 +306,8 @@ def sheet(queue, ad_id, profile, draft, extract, photos, note=None):
     title = (extract or {}).get("title") or ""
     desc = (draft.get("description") or "").strip()
     if len(desc) > 1200:
-        desc = desc[:1200] + " […]"
+        desc = desc[:1200] + " […] (the full text: \"description\" in %s)" % os.path.relpath(
+            contract_draft.draft_path(ROOT, ad_id), ROOT)
     out = ["AD %s | %s | %s | %s photos | %s %s" % (
         ad_id, profile, quote(title), (extract or {}).get("images", "?"),
         draft.get("price"), draft.get("currency") or "")]
@@ -328,6 +348,9 @@ def sheet(queue, ad_id, profile, draft, extract, photos, note=None):
 
 # --- commands ----------------------------------------------------------------
 def cmd_next(queue):
+    if target_reached():
+        say(next_cmd(queue))
+        return 4
     cand = candidates.next_pending(queue)
     if not cand:
         say("QUEUE_EMPTY: %s" % json.dumps(candidates.counts(queue)),
@@ -663,7 +686,9 @@ def cmd_start(queue, target):
         state = {}
     state = {"_truth": state.get("_truth", "Session bookkeeping ONLY. Ground truth is the "
                                            "3ceasuri.ro admin."),
-             "session_date": datetime.date.today().isoformat(), "target": target,
+             "session_date": datetime.date.today().isoformat(),
+             "session_started": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+             "target": target,
              "queue": os.path.relpath(queue, ROOT), "profile": profile,
              "session_imported": 0, "session_skipped": 0, "status": "running", "note": ""}
     with open(spath, "w") as f:
@@ -683,8 +708,10 @@ def cmd_stop(queue):
         json.dump(state, f, ensure_ascii=False, indent=2)
     reasons = {}
     for c in candidates.load(queue).get("candidates", []):
-        if c.get("status") == "skipped" and str(c.get("ts", "")).startswith(
-                state.get("session_date", "~")):
+        # session_started, not the date: a session that runs past midnight lost the
+        # first day's reasons (7 of 13 reported on 2026-10-07).
+        since = state.get("session_started") or state.get("session_date", "~")
+        if c.get("status") == "skipped" and str(c.get("ts", "")) >= since:
             reasons[c.get("reason")] = reasons.get(c.get("reason"), 0) + 1
     say("SESSION: imported %s, skipped %s | skip reasons today %s | queue %s | status idle" % (
         state.get("session_imported"), state.get("session_skipped"), json.dumps(reasons),
