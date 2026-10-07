@@ -278,6 +278,7 @@ André Belfort:275
 Cronometric:276
 Cimier:277
 Revue Thommen:278
+Franck Muller:279
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
