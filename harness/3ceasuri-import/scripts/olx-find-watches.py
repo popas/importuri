@@ -18,6 +18,7 @@
 #   SNIPPET         chars of ad text per emitted candidate (default 180)
 #   NO_DEDUP=1      skip the admin Stage-1 dedup pass
 #   DEBUG_DROPS=1   also emit DROPPED: [{id,why,snip}]
+#   QUERY           OLX free-text search within the category ("ceas de buzunar")
 #   COUNTY          keep only this județ (olx_api.location_county spelling, e.g.
 #                   "Brașov"); OLX filters it server-side (city_id / region_id,
 #                   olx_api.location_filter) and the wrong_county check stays
@@ -61,6 +62,7 @@ SNIPPET        = int(os.environ.get("SNIPPET", "180"))
 NO_DEDUP       = os.environ.get("NO_DEDUP", "") == "1"
 DEBUG_DROPS    = os.environ.get("DEBUG_DROPS", "") == "1"
 COUNTY         = os.environ.get("COUNTY", "").strip()
+QUERY          = os.environ.get("QUERY", "").strip() or None
 OVERFETCH      = 1.25  # walk until this many x MAX_CANDIDATES look new
 HARNESS        = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
 OUT            = os.environ.get("OUT", os.path.join(PROJECT_ROOT,
@@ -216,7 +218,8 @@ LOCAL_IMPORTED = queue_file.history_imported(os.path.join(PROJECT_ROOT, "history
 total, pages = None, 0
 for page in range(MAX_PAGES):
     offers, tot = olx_api.search(bu, olx_api.CATEGORY_WATCHES,
-                                 offset=page * 40, limit=40, price_from=MIN_RON, **LOCATION)
+                                 offset=page * 40, limit=40, price_from=MIN_RON, query=QUERY,
+                                 **LOCATION)
     pages += 1
     if tot is not None:
         total = tot

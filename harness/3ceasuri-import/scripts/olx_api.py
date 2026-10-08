@@ -112,12 +112,13 @@ def _fetch_json(bu, path):
 
 
 def search(bu, category_id, offset=0, limit=40, price_from=None, sort="created_at:desc",
-           region_id=None, city_id=None):
+           region_id=None, city_id=None, query=None):
     """One page of a category. Returns (offers, total) — ([], None) on failure.
 
     `price_from` is a server-side hint only; the caller re-applies the floor,
     because the API accepts the parameter without its effect being confirmed.
-    `region_id` / `city_id` do filter server-side (see location_filter).
+    `region_id` / `city_id` do filter server-side (see location_filter);
+    `query` is OLX's own free-text search within the category.
     """
     path = ("/api/v1/offers/?offset=%d&limit=%d&category_id=%d&sort_by=%s"
             % (offset, limit, category_id, sort.replace(":", "%3A")))
@@ -127,6 +128,8 @@ def search(bu, category_id, offset=0, limit=40, price_from=None, sort="created_a
         path += "&region_id=%d" % region_id
     if city_id:
         path += "&city_id=%d" % city_id
+    if query:
+        path += "&query=" + urllib.parse.quote(query)
     d = _fetch_json(bu, path)
     if not d:
         return [], None
