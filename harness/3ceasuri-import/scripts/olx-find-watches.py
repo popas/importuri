@@ -36,8 +36,10 @@
 #   ids, so the importer's seller+model dedup is what actually catches those.
 #
 #   A smartwatch in this category is FLAGGED (`looks_smart`), never dropped —
-#   route it to olx-import-smartwatch.py instead of losing it. Same for a wall
-#   clock (`looks_wall`): the site lists those since 2026-08-09.
+#   route it to olx-import-smartwatch.py instead of losing it. A pocket watch is
+#   flagged `looks_pocket` (it imports with category "pocket"); a wall, table or
+#   mantel clock `looks_wall` (the triage skips it: the site stopped listing wall
+#   clocks on 2026-10-08). Flagged rather than dropped: both hints are loose.
 # =============================================================================
 import os, re, json, time, sys
 
@@ -131,6 +133,7 @@ SMART_HINT = re.compile(r"smartwatch|smart\s*watch|apple\s*watch|galaxy\s*watch|
                         r"\bsmart\b|\bwear\s*os\b", re.I)
 WALL_HINT = re.compile(r"ceas(?:uri)?\s+(?:de\s+)?(?:perete|mas[ăa]|birou|[șs]emineu)|"
                        r"pendul|cuc\b|wall clock", re.I)
+POCKET_HINT = re.compile(r"buzunar|pocket\s*watch|savonet", re.I)
 
 seen, candidates, dropped, samples = set(), {}, {}, []
 
@@ -197,6 +200,7 @@ def consider(ad):
         "created": ad.get("created_time"),
         "looks_smart": bool(SMART_HINT.search(olx_api.strip_exchange(text))),
         "looks_wall": bool(WALL_HINT.search(text)),
+        "looks_pocket": bool(POCKET_HINT.search(text)),
         "text": PHONE_RE.sub("", text)[:1500],
         # The work queue lives in this file: the importer flips this to
         # imported/skipped/error, so "which watch is next" is a command and not
@@ -281,7 +285,7 @@ except Exception as e:
 
 emit("CANDIDATES", [{k: c[k] for k in ("id", "price", "cur", "brand", "new_brand",
                                        "business", "seller_name", "photos",
-                                       "looks_smart", "looks_wall")}
+                                       "looks_smart", "looks_wall", "looks_pocket")}
                     | {"snip": re.sub(r"\s+", " ", c["text"])[:SNIPPET]}
                     for c in ordered])
 if DEBUG_DROPS:

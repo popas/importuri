@@ -50,8 +50,8 @@ Edit the `draft` file in place. Change only the fields named in `todo`. Save.
 | `new_model` | only after an `unknown_model` fix, and only for a line the brand really makes that the site lacks: `true` makes pass 2 add it first. |
 | `movement` | judge it from the ad and the photos. If nothing states or shows it, leave it null: the gate will stop the watch, and that is correct. |
 | `reference` | only from text you can READ on a photo or in the ad. **Never derive one from the design.** Null is fine. |
-| `is_wristwatch` | `false` for a wall clock, pocket, mantel, table or alarm clock |
-| `category` | `"wall"` for a wall clock — that plus `is_wristwatch: false` is an IMPORT, not a skip. Unbranded → brand `Fără marcă`, `caseMat` usually `wood`, `diameter` in MILLIMETRES (30 cm = `300`). |
+| `is_wristwatch` | `false` for a pocket watch, wall, mantel, table or alarm clock |
+| `category` | `"pocket"` for a pocket watch — that plus `is_wristwatch: false` is an IMPORT, not a skip. `braceletMat` null (a chain is not a bracelet), `diameter` in MILLIMETRES. Wall, mantel, table and alarm clocks keep `category` null and skip. |
 | `is_bulk_lot` | `true` if one price covers several watches |
 | `notes` | our own classification, if the photos identified a model the seller did not name. |
 | `description` | **the seller's own text, lightly corrected** (user directive 2026-10-04) — it must read as if the author wrote it and still look like the OLX ad. The draft holds their text: keep their sentences, order, person and facts (defects included); fix only diacritics, typos, punctuation, ALL CAPS; drop price, negotiation, shipping/meeting terms, phone, links, contact, sign-offs and copied filler. Add nothing but a brand/model they left out, inside their own sentence — no description of the photos. **Never** write about the seller, the ad or the photos ("vânzătorul precizează", "fotografiile prezintă"), even when the seller did. Gates, all `fix`: `description_unedited` (handed back untouched), `description_meta`, `description_drifted` (mostly not their words). Phone numbers are stripped by the script anyway. |

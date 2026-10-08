@@ -363,16 +363,20 @@ check("REVIEW" in m and any("movement" in r["message"] for r in m["REVIEW"]["rea
       "11: unstated movement must stop for review, got %s" % m.get("REVIEW"))
 check(st["imported"] is None, "11: must not import a movement-guessed watch")
 
-# --- 12. classic: a wall clock imports, a mantel clock skips ---------------
+# --- 12. classic: a pocket watch imports, a wall or mantel clock skips -----
 m, st = run(CLASSIC, CLASSIC_AD, env={"CONFIRM": "1", "OVERRIDES": json.dumps(
-    dict(FILLED_CLASSIC, is_wristwatch=False, category="wall", caseMat="wood",
-         brand="Fără marcă", model="Pendulă cu cuc anii '70"))})
-check("SKIP" not in m, "12: a wall clock must import, got %s" % m.get("SKIP"))
-check(m["INFER"]["category"] == "wall", "12: category not wall")
+    dict(FILLED_CLASSIC, is_wristwatch=False, category="pocket", model="3602"))})
+check("SKIP" not in m, "12: a pocket watch must import, got %s" % m.get("SKIP"))
+check(m["INFER"]["category"] == "pocket", "12: category not pocket")
 m, st = run(CLASSIC, CLASSIC_AD, env={"OVERRIDES": json.dumps(
     dict(FILLED_CLASSIC, is_wristwatch=False))})
 check(m.get("SKIP", {}).get("reason", "").startswith("not a wristwatch"),
-      "12: a non-wall non-wristwatch must skip, got %s" % m.get("SKIP"))
+      "12: a non-pocket non-wristwatch must skip, got %s" % m.get("SKIP"))
+check(st["imported"] is None, "12: a wall or mantel clock must not import")
+import infer_fields
+check(infer_fields.validate({"category": "wall"}) != [],
+      "12: 'wall' is no longer a category (the site stopped listing wall clocks 2026-10-08)")
+check(infer_fields.validate({"category": "pocket"}) == [], "12: 'pocket' must be a category")
 
 # --- 13. dedup Stage 1 short-circuits before any OLX work ------------------
 m, st = run(SMART, SMART_AD,

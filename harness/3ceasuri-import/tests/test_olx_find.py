@@ -215,6 +215,8 @@ WATCH_FEED = [
        desc="Smartwatch in stare buna."),                                # smart in this category
     ad(27, "Pendula de perete cu cuc anii 70", price=700,
        desc="Ceas de perete functional, lemn masiv."),                   # wall clock
+    ad(33, "Ceas de buzunar Molnija 3602 cu capac", price=400,
+       desc="Ceas de buzunar mecanic, functional, cu lant."),            # pocket watch
     ad(28, "Ceas Breitling Avenger Seawolf Amanet BKG", price=9000, business=True,
        desc="Amanet BKG vinde: Ceas Breitling Avenger Seawolf E17370 in stare buna, "
             "mecanism Automatic, 44mm. Garantie 2 ani, factura fiscala."),  # business, ONE watch: KEPT
@@ -242,7 +244,12 @@ check("25" not in got and why(m, 25) == "price_below_floor", "watch: floor not a
 check("26" in got and next(c for c in m["CANDIDATES"] if c["id"] == "26")["looks_smart"] is True,
       "watch: a smartwatch here must be FLAGGED and routed, never dropped")
 check("27" in got and next(c for c in m["CANDIDATES"] if c["id"] == "27")["looks_wall"] is True,
-      "watch: a wall clock must be FLAGGED (the site lists those since 2026-08-09)")
+      "watch: a wall clock must be FLAGGED so the triage skips it (not listed since 2026-10-08)")
+_pocket = next((c for c in m["CANDIDATES"] if c["id"] == "33"), {})
+check(_pocket.get("looks_pocket") is True and _pocket.get("looks_wall") is False,
+      "watch: a pocket watch must be FLAGGED looks_pocket, not looks_wall (%s)" % _pocket)
+check(next(c for c in m["CANDIDATES"] if c["id"] == "20").get("looks_pocket") is False,
+      "watch: a wristwatch must not look like a pocket watch")
 check(next(c for c in m["CANDIDATES"] if c["id"] == "20")["brand"] == "Seiko",
       "watch: known brand not resolved from the OLX brand param")
 saved = json.load(open(m["_out_file"]))

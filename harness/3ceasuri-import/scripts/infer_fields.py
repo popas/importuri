@@ -25,7 +25,7 @@ Flow per watch:
       -> validate() rejects anything that isn't a legal DB value
 
 The OLX importers use the same contract through `profile=`: "classic" is the
-rules above, "smart" swaps in the smartwatch rules (and drops the wall-clock
+rules above, "smart" swaps in the smartwatch rules (and drops the pocket-watch
 ones, which cannot apply to a smartwatch listing). OLX also passes `known=` —
 the fields its structured params already answered. Those are shown as evidence
 to restate, NOT as a merge: a contract field the answer omits is still cleared,
@@ -39,7 +39,7 @@ import json
 # (the Django app is a separate repo, so there is no import-time coupling).
 # ---------------------------------------------------------------------------
 ENUMS = {
-    "category":     ["wrist", "wall"],
+    "category":     ["wrist", "pocket"],
     "currency":     ["RON", "EUR"],
     "condition":    ["new", "excellent", "good", "fair", "broken"],
     "movement":     ["automatic", "manual", "quartz", "smart"],
@@ -174,22 +174,18 @@ RULES_CLASSIC = """
   is silently dropped: if the post only says "anii '70", leave this null and put the
   decade in `variant` instead.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
-- `category` — `wrist` for anything worn on the wrist, `wall` for a clock hung on a
-  wall (pendulum, cuckoo, kitchen, station, cartel). Leave null only when the post
-  genuinely leaves it open; a null on a non-wristwatch stops the import for review.
-- `is_wristwatch` — false for wall/mantel/pendulum/alarm clocks or anything not worn
-  on the wrist. A post with `is_wristwatch: false` AND `category: "wall"` is now
-  IMPORTED, not skipped — wall clocks are listed on the site. Mantel, pocket, table
-  and alarm clocks are still out: mark them `is_wristwatch: false` and leave
-  `category` null so they skip.
-- Wall clocks are usually unbranded. When no maker is named on the dial or in the ad,
-  set `brand` to `Fără marcă` — never invent a maker, and never put "Ceas de perete"
-  in the brand field (it is the category, not the brand). `model` then carries the
-  defining trait: "Pendulă cu cuc anii '70", "Ceas de perete quartz 30 cm".
-  Vintage German/Austrian makers (Junghans, Kienzle, Gustav Becker, Schatz) are real
-  brands — read the dial and the movement plate before falling back to `Fără marcă`.
-- `caseMat` for a wall clock is usually `wood`; `diameter` is stored in MILLIMETRES,
-  so a 30 cm wall clock is `300`.
+- `category` — `wrist` for anything worn on the wrist, `pocket` for a pocket watch
+  (ceas de buzunar: a bow and chain instead of lugs, often a hinged lid — savonette,
+  hunter, lépine). Leave null only when the post genuinely leaves it open; a null on
+  a non-wristwatch stops the import for review.
+- `is_wristwatch` — false for pocket watches and for wall/mantel/pendulum/table/alarm
+  clocks, anything not worn on the wrist. A post with `is_wristwatch: false` AND
+  `category: "pocket"` is IMPORTED, not skipped — pocket watches are listed on the
+  site. Wall, mantel, table and alarm clocks are out (the site stopped listing wall
+  clocks on 2026-10-08): mark them `is_wristwatch: false` and leave `category` null
+  so they skip.
+- A pocket watch has no bracelet: `braceletMat` stays null, a chain is not one.
+  `diameter` is the case size in MILLIMETRES (usually 45-55).
 - Smartwatches (`movement` = smart) fill two extra fields; for everything else
   both stay null. The model line itself goes in `model` ("Watch Series 9",
   "Galaxy Watch 7", "Venu 3") — there is no separate series field.

@@ -95,9 +95,10 @@ real:
   **not** a source-routing signal. Read the snippet whichever sweep found it. Too
   few photos to attribute to individual watches → skip the whole ad, don't guess a
   split.
-- **`looks_smart` / `looks_classic` / `looks_wall`.** Flagged and routed, never
-  dropped — dropping them was how good listings got lost. Route by kind, not by
-  category.
+- **`looks_smart` / `looks_classic` / `looks_pocket` / `looks_wall`.** Flagged and
+  routed, never dropped by the script — dropping them was how good listings got
+  lost. Route by kind, not by category. `looks_wall` is the one the triage drops,
+  after reading the snippet: the site stopped listing wall clocks on 2026-10-08.
 
 Two counter-examples the activation-lock regex must NOT fire on, because both are
 the honest opposite claim: "icloud deconectat" and "contul sters". Likewise the
@@ -139,10 +140,10 @@ What genuinely needs a model, and should not be automated away:
 `quartz` because the DB column is not optional, and that guess **mislabelled a
 1970s Poljot**. An ad that never states its movement stops for review.
 
-Wall clocks import (since 2026-08-09): `is_wristwatch: false` **plus**
-`category: "wall"`. Unbranded ones use brand `Fără marcă`, `caseMat` is usually
-`wood`, and `diameter` is in MILLIMETRES — a 30 cm clock is `300`. Pocket, mantel,
-table and alarm clocks are still out: `is_wristwatch: false` with `category` null.
+Pocket watches import: `is_wristwatch: false` **plus** `category: "pocket"`, with
+`braceletMat` null and `diameter` in MILLIMETRES. Wall, mantel, table and alarm
+clocks are out: `is_wristwatch: false` with `category` null. Wall clocks imported
+from 2026-08-09 until the site stopped listing them on 2026-10-08.
 
 ## 5. Seller phone numbers
 

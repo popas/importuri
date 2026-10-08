@@ -67,8 +67,8 @@ PROFILES = {
         "forced": {},                     # nothing is forced
         "regex_baseline": True,           # diameter + reference + year + movement
         "misroute_check": False,          # the smart importer owns that gate
-        "wall_clock_exempt": True,        # a wall clock IS imported, since 2026-08-09
-        "not_a_watch_reason": "not a wristwatch and not a wall clock",
+        "pocket_exempt": True,            # a pocket watch IS imported
+        "not_a_watch_reason": "not a wristwatch and not a pocket watch",
         "state_entry_category": True,
     },
     "smart": {
@@ -82,7 +82,7 @@ PROFILES = {
                    "displayType": "smart", "category": "wrist"},
         "regex_baseline": False,          # only the diameter regex
         "misroute_check": True,
-        "wall_clock_exempt": False,
+        "pocket_exempt": False,
         "not_a_watch_reason": "not a watch (accessory: strap/charger/case/box)",
         "state_entry_category": False,
     },
@@ -187,9 +187,6 @@ def confidence_review(profile, data, images, brand_ids, seller_text=None, seller
         if data.get("movement") == "smart":
             _review("misrouted_smart", "skip",
                     "this is a smartwatch — import it with olx-import-smartwatch.py instead")
-        if data.get("category") == "wall" and not data.get("caseMat"):
-            _review("wall_no_material", "fix",
-                    "wall clock without a case material (usually wood)", "caseMat")
     else:
         for f in ("connectivity", "compatibility"):
             if not data.get(f):
@@ -659,10 +656,11 @@ def run(profile, g):
         if data.get(f) is None:
             data[f] = v
 
-    # A wall clock IS imported (category="wall", since 2026-08-09). Pocket, mantel,
-    # table and alarm clocks are not: is_wristwatch false with no category skips.
+    # A pocket watch IS imported (category="pocket"). Wall clocks (not listed since
+    # 2026-10-08), mantel, table and alarm clocks are not: is_wristwatch false with no
+    # category skips.
     _not_a_watch = filled.get("is_wristwatch") is False
-    if _not_a_watch and conf["wall_clock_exempt"] and filled.get("category") == "wall":
+    if _not_a_watch and conf["pocket_exempt"] and filled.get("category") == "pocket":
         _not_a_watch = False
     # Neither of these is waived by CONFIRM: every pass 2 sets it, so a CONFIRM guard
     # made both dead code (ad 309588599 imported with is_wristwatch=false, 2026-09-20).

@@ -22,7 +22,7 @@ Env: `MAX_CANDIDATES` (8), `MAX_PAGES` (5 × 40 ads), `MIN_RON` (100), `MIN_EUR`
 Output:
 
 ```
-CANDIDATES: [{id, price, cur, brand, new_brand, business, seller_name, photos, looks_smart, looks_wall, snip}, …]
+CANDIDATES: [{id, price, cur, brand, new_brand, business, seller_name, photos, looks_smart, looks_wall, looks_pocket, snip}, …]
 STATS: {candidates, seen, pages, category_total, dropped:{…}, admin_total, out}
 ```
 
@@ -60,7 +60,8 @@ Apply this table. When none of it fires, `KEEP`.
 | "nu functioneaza", "pentru piese", non-runner sold as a watch | `DROP … parts_only` |
 | too few photos to attribute to one watch | `DROP … unattributable_photos` |
 | `looks_smart: true` | `KEEP` — route it to `olx-import-smartwatch` |
-| `looks_wall: true` | `KEEP` — import with `category: "wall"` |
+| `looks_pocket: true` | `KEEP` — import with `category: "pocket"` |
+| `looks_wall: true` and the snippet is a wall, table or mantel clock | `DROP … not_a_watch` — the site no longer lists them |
 | `business: true` (amanet, reseller) | `KEEP` — business sellers are wanted |
 | a price that seems too low | `KEEP` — the floors already ran; do not second-guess them |
 

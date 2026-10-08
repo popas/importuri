@@ -81,14 +81,14 @@ HINTS = {
                     "no_gsm = GPS/Bluetooth only.",
     "compatibility": "Apple Watch -> ios; Galaxy Watch 4 and newer, Google Pixel Watch -> android; Galaxy Watch 3 "
                      "and older, Garmin, Amazfit, Huawei, Xiaomi, Fitbit -> both.",
-    "is_wristwatch": {"classic": "false for pocket, mantel, table, alarm and wall clocks. A "
+    "is_wristwatch": {"classic": "false for pocket watches and mantel, table, alarm and wall clocks. A "
                                  "wristwatch still sealed in its box or wrap is true.",
                       "smart": "false ONLY when the ad SELLS an accessory (strap, charger, case, "
                                "dock, empty box) - the title and text decide it, not one photo. A "
                                "new watch still sealed in its box or wrap is true."},
-    "category": "'wrist'; 'wall' for a wall clock (with is_wristwatch=false it IMPORTS: brand "
-                "'Fără marcă' if unmarked, caseMat usually wood, diameter in mm - 30 cm = 300); "
-                "null for pocket/mantel/table/alarm clocks.",
+    "category": "'wrist'; 'pocket' for a pocket watch (with is_wristwatch=false it IMPORTS: "
+                "braceletMat null, diameter in mm); null for wall/mantel/table/alarm clocks, "
+                "which skip.",
     "is_bulk_lot": "true when one price covers several watches, or shop stock 'mai multe bucăți'.",
     "notes": "one short sentence ONLY if the operator must know (suspected replica, "
              "iCloud-locked, model read off a photo, movement inferred). Else null.",
