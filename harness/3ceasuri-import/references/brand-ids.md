@@ -288,6 +288,7 @@ Philipp Plein:285
 Molnija:286
 Chase-Durer:287
 Activa:288
+Selza:289
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
