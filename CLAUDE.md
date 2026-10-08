@@ -125,6 +125,13 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
 
 ## Facts that bite
 
+- **What the site lists: wristwatches, smartwatches and pocket watches** (user directive
+  2026-10-08). A pocket watch imports (`is_wristwatch: false` + `category: "pocket"`);
+  wall, mantel, table and alarm clocks skip (`is_wristwatch: false`, `category` null),
+  and discovery's `looks_wall` flag is a triage drop. Wall clocks were imported from
+  2026-08-09 until the site stopped listing them; `category: "wall"` is now refused.
+- **`infer_fields.py` `ENUMS` mirror the Django `TextChoices` by hand.** A choice added
+  to or removed from the site must change here too, or the site rejects the import.
 - **Ground truth for "is this imported / how many are there" is the 3ceasuri.ro admin**,
   never a local file. The old `state.json` counter drifted to 33 while the site held 80+.
 - **A days-old seller account asking a lot is a scam** (user directive 2026-09-22):
@@ -177,8 +184,14 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   fallback to the old `facebook_*` element ids, so imports work either side of that deploy.
 - `$PROJECT_ROOT` and `$CDP_HOST` are placeholders defined once in `olx-session-setup`;
   every skill uses them, so no environment-specific path is baked into any skill.
-- The Django app is a **separate repo**: `../ceasuri` (the sibling checkout of `github.com:popas/ceasuri`; named `../app` on the Linux machine). See
+- The Django app is a **separate repo**, `github.com:popas/ceasuri`: on the Mac it is
+  `~/projects/anunturi/ceasuri`, on the Linux machine the sibling checkout `../app`. See
   `references/django-backend.md`.
+
+## Committing
+
+Commit on `main` and push (`git push origin main`), the same as the Django repo: no
+feature branches, no PRs. Leave other branches and worktrees alone.
 
 ## Adding a new brand
 
