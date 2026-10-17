@@ -297,6 +297,7 @@ OceanX:294
 Nixon:295
 Philipp Blanc:296
 Forsining:297
+Louis XVI:299
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
