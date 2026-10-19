@@ -301,6 +301,7 @@ Louis XVI:299
 Junkers:300
 Optimef:301
 Graham:302
+Lip:303
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
