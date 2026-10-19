@@ -304,6 +304,7 @@ Graham:302
 Lip:303
 Mondaine:304
 Buran:305
+Continuum:338
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
