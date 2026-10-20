@@ -321,6 +321,7 @@ Vulcain:351
 Tavistock & Jones:352
 Cluse:353
 Polaire:354
+Jacques Lemans:355
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
