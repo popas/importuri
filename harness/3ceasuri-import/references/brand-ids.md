@@ -311,6 +311,7 @@ Romanson:341
 Swiss Alpine Military:342
 Converse:343
 Onyxus:344
+Avon:345
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
