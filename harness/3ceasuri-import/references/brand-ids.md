@@ -326,6 +326,7 @@ H.F. Bauer:356
 Heuer:357
 Fiat:358
 Kospet:359
+Victorinox:360
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
