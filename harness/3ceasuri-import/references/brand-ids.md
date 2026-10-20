@@ -324,6 +324,7 @@ Polaire:354
 Jacques Lemans:355
 H.F. Bauer:356
 Heuer:357
+Fiat:358
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
