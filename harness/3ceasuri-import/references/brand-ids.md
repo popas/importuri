@@ -343,6 +343,7 @@ Makita:373
 Titus:374
 Calypso:375
 Constantin Durmont:376
+Boderry:377
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
