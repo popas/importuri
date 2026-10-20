@@ -336,6 +336,7 @@ Addiesdive:366
 Beijing Watch Factory:367
 Baltany:368
 Seagull:369
+Pégoud:370
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
