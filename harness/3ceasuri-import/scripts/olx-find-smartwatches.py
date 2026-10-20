@@ -23,6 +23,7 @@
 #   COUNTY          keep only this județ (olx_api.location_county spelling, e.g.
 #                   "Brașov"); OLX filters it server-side (city_id / region_id,
 #                   olx_api.location_filter) and the wrong_county check stays
+#   EXCLUDE_COUNTY  comma list of județe to drop, e.g. "București,Cluj,Ilfov"
 #   OUT             candidates file (default .candidates-olx-smart.json)
 #
 # Emits: CANDIDATES: [...]   STATS: {...}   ERROR: {...}
@@ -57,6 +58,7 @@ SNIPPET        = int(os.environ.get("SNIPPET", "180"))
 NO_DEDUP       = os.environ.get("NO_DEDUP", "") == "1"
 DEBUG_DROPS    = os.environ.get("DEBUG_DROPS", "") == "1"
 COUNTY         = os.environ.get("COUNTY", "").strip()
+EXCLUDE_COUNTY = [c.strip() for c in os.environ.get("EXCLUDE_COUNTY", "").split(",") if c.strip()]
 OVERFETCH      = 1.25  # walk until this many x MAX_CANDIDATES look new
 HARNESS        = os.path.join(PROJECT_ROOT, "harness/3ceasuri-import/scripts/import-watch.js")
 OUT            = os.environ.get("OUT", os.path.join(PROJECT_ROOT,
@@ -152,6 +154,8 @@ def consider(ad):
         drop("not_active", ad, snip); return
     if COUNTY and olx_api.location_county(ad) != COUNTY:
         drop("wrong_county", ad, snip); return
+    if EXCLUDE_COUNTY and olx_api.location_county(ad) in EXCLUDE_COUNTY:
+        drop("excluded_county", ad, snip); return
     s = olx_api.seller(ad)
     if s["id"] and s["id"] in BLOCK:
         drop("blocklisted_seller", ad, snip); return
