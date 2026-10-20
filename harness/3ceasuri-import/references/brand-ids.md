@@ -340,6 +340,7 @@ Pégoud:370
 Nicely:371
 GaGa Milano:372
 Makita:373
+Titus:374
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
