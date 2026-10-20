@@ -333,6 +333,7 @@ Delbana:363
 Swiss Military Hanowa:364
 Out of Order:365
 Addiesdive:366
+Beijing Watch Factory:367
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
