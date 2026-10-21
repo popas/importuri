@@ -4,7 +4,9 @@
 Run with python3 — this one is NOT a browser-use payload; it runs the payloads:
 
     S=harness/3ceasuri-import/scripts/olx-step.py
-    python3 $S start  <queue> [--target N]           once: preflight + a fresh state.json
+    python3 $S start  <queue> [--target N] [--clear-every K]
+                                                     once: preflight + a fresh state.json;
+                                                     after a CLEAR_CHECKPOINT it resumes
     python3 $S next   <queue>                        pass 1 for the next pending ad
     python3 $S finish <queue> <id> [field=value ...] write the answers, pass 2, log it
     python3 $S skip   <queue> <id> <code> ['reason']   your own judgement skip
@@ -52,6 +54,7 @@ CDP = os.environ.get("BU_CDP_URL", "http://127.0.0.1:9222")
 SELF = "python3 harness/3ceasuri-import/scripts/olx-step.py"
 SCRIPTS = {"smart": "olx-import-smartwatch.py", "classic": "olx-import-watch.py"}
 PAYLOAD_TIMEOUT = 900
+CLEAR_EVERY = 25          # ads per operator context; `start --clear-every 0` turns it off
 
 # One line per field the model may be asked. The long form lives in infer_fields'
 # RULES_*; this is the part a model needs at the moment it types the answer.
@@ -209,7 +212,19 @@ def profile_for(queue, cand):
 def next_cmd(queue):
     if target_reached():
         return "%s\nNEXT: %s stop %s" % (target_reached(), SELF, os.path.relpath(queue, ROOT))
+    if clear_due():
+        return ("%s\nNEXT: run any THEN: line above, then stop and tell the user: type /clear "
+                "and paste the same session prompt again (its `start` resumes this session). "
+                "Run nothing else." % clear_due())
     return "NEXT: %s next %s" % (SELF, os.path.relpath(queue, ROOT))
+
+
+def load_state():
+    try:
+        with open(os.path.join(ROOT, "state.json")) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
 
 
 def target_reached():
@@ -218,14 +233,32 @@ def target_reached():
     The target used to be written to state.json and never read: a 30-watch session
     ran to 31 on 2026-10-07 because nothing said stop.
     """
-    try:
-        with open(os.path.join(ROOT, "state.json")) as f:
-            st = json.load(f)
-    except (OSError, ValueError):
-        return None
+    st = load_state()
     t, n = st.get("target"), st.get("session_imported") or 0
     if t and st.get("status") == "running" and n >= int(t):
         return "TARGET_REACHED: %s of %s imported this session" % (n, t)
+    return None
+
+
+def ads_done(st):
+    return int(st.get("session_imported") or 0) + int(st.get("session_skipped") or 0)
+
+
+def clear_due(st=None):
+    """A CLEAR_CHECKPOINT: line once this context has settled `clear_every` ads, else None.
+
+    The operator's context only grows: on 2026-10-20 a call carried 255K tokens on
+    average for a 5K ad, ~88% of the session's tokens being old ads re-read. A /clear
+    every CLEAR_EVERY ads keeps it near the 43K base. The operator cannot /clear
+    itself, so the driver stops it and the human clears.
+    """
+    st = load_state() if st is None else st
+    every = st.get("clear_every")
+    if not every or st.get("status") != "running":
+        return None
+    n = ads_done(st) - int(st.get("context_from") or 0)
+    if n >= int(every):
+        return "CLEAR_CHECKPOINT: %d ads settled in this context" % n
     return None
 
 
@@ -363,6 +396,9 @@ def cmd_next(queue):
     if target_reached():
         say(next_cmd(queue))
         return 4
+    if clear_due():
+        say(next_cmd(queue))
+        return 5
     cand = candidates.next_pending(queue)
     if not cand:
         say("QUEUE_EMPTY: %s" % json.dumps(candidates.counts(queue)),
@@ -668,7 +704,7 @@ def api_lines(api):
     return out
 
 
-def cmd_start(queue, target):
+def cmd_start(queue, target, clear_every=CLEAR_EVERY):
     doc = candidates.load(queue)
     profile = doc.get("profile") or ("smart" if "smart" in queue else "classic")
     ok, facts = preflight(profile)
@@ -692,24 +728,41 @@ def cmd_start(queue, target):
         except ValueError:
             pass
     spath = os.path.join(ROOT, "state.json")
-    try:
-        with open(spath) as f:
-            state = json.load(f)
-    except Exception:
-        state = {}
+    state = load_state()
+    if resumes(state, queue):
+        # The same prompt is pasted after every /clear: its `start` must carry on, not
+        # zero the counters the target is measured against.
+        state["context_from"] = ads_done(state)
+        with open(spath, "w") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
+        say("RESUMED_SESSION: after a /clear | queue %s %s | imported %s of target %s, "
+            "skipped %s (a new session instead: run stop, then start)" % (
+                os.path.relpath(queue, ROOT), json.dumps(counts), state.get("session_imported"),
+                state.get("target"), state.get("session_skipped")),
+            *(api_lines(api) + [next_cmd(queue)]))
+        return 0
     state = {"_truth": state.get("_truth", "Session bookkeeping ONLY. Ground truth is the "
                                            "3ceasuri.ro admin."),
              "session_date": datetime.date.today().isoformat(),
              "session_started": datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
              "target": target,
              "queue": os.path.relpath(queue, ROOT), "profile": profile,
-             "session_imported": 0, "session_skipped": 0, "status": "running", "note": ""}
+             "session_imported": 0, "session_skipped": 0, "status": "running", "note": "",
+             "clear_every": clear_every, "context_from": 0}
     with open(spath, "w") as f:
         json.dump(state, f, ensure_ascii=False, indent=2)
-    say("READY: %s | queue %s %s | profile %s | target %s%s" % (
+    say("READY: %s | queue %s %s | profile %s | target %s | /clear every %s ads%s" % (
         facts["chrome"], os.path.relpath(queue, ROOT), json.dumps(counts), profile,
-        target, age), *(api_lines(api) + [next_cmd(queue)]))
+        target, clear_every or "- (off)", age), *(api_lines(api) + [next_cmd(queue)]))
     return 0
+
+
+def resumes(state, queue):
+    """True when `start` is the prompt pasted again after a CLEAR_CHECKPOINT: the same
+    queue, still running, the checkpoint reached. Anything else starts afresh."""
+    return (state.get("status") == "running"
+            and state.get("queue") == os.path.relpath(queue, ROOT)
+            and bool(clear_due(state)))
 
 
 def cmd_stop(queue):
@@ -753,7 +806,8 @@ def main(argv):
         return 2
     if cmd == "start":
         t = argv[argv.index("--target") + 1] if "--target" in argv else None
-        return cmd_start(queue, int(t) if t else None)
+        c = argv[argv.index("--clear-every") + 1] if "--clear-every" in argv else CLEAR_EVERY
+        return cmd_start(queue, int(t) if t else None, int(c))
     if cmd == "next":
         return cmd_next(queue)
     if cmd == "finish":

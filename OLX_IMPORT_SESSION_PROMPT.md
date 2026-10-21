@@ -3,8 +3,13 @@
 Paste ONE of these into a fresh session (`/clear` first). Prompt B is the import
 loop; it is written for a cheap model at low effort (Sonnet, `/effort low`), because
 `olx-step.py` does every step that used to need judgement about the harness and
-prints the literal next command. Prompt A is discovery, only when no queue has
-pending ids — it needs more judgement, so run it on the stronger model.
+prints the literal next command. Every 25 ads the driver stops it with
+`CLEAR_CHECKPOINT`: type `/clear` and paste Prompt B again unchanged — its `start`
+resumes the session (counters and target kept). An operator's context only grows: on
+2026-10-20 a call carried 255K tokens on average for a 5K ad, and the /clear keeps it
+near the 43K base (`docs/handover/2026-10-21-token-cost-analysis.md`). Prompt A is
+discovery, only when no queue has pending ids — it needs more judgement, so run it on
+the stronger model.
 
 Queues on disk (2026-09-22) — `python3 harness/3ceasuri-import/scripts/olx-step.py counts <file>`:
 
@@ -33,7 +38,7 @@ ERROR/NOT_SAVED in a row: stop and invoke the olx-troubleshooting skill.
 
   # run everything from the root of this repo
   S="python3 harness/3ceasuri-import/scripts/olx-step.py"; Q=harness/3ceasuri-import/<queue file>
-  $S start $Q --target <N>        # once
+  $S start $Q --target <N>        # once; after a /clear the same line resumes
 
 Per watch:
   1. $S next $Q
@@ -51,6 +56,8 @@ Per watch:
      - SKIPPED  -> next watch.
      - NEW_BRAND ... THEN: git ... -> run that git command exactly.
   4. Stop at the target or QUEUE_EMPTY: run `$S stop $Q` and report its SESSION line.
+  5. CLEAR_CHECKPOINT -> run any THEN: line first, then stop WITHOUT running `stop`
+     and tell me: "/clear, then paste Prompt B again". Run nothing else.
 
 Your own judgement skip (instead of filling the sheet):
   $S skip $Q <id> <code> 'short reason'

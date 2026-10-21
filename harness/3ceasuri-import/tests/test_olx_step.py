@@ -67,6 +67,58 @@ check('"bulk_lot": 1' in out and '"repost": 1' in out and '"old"' not in out,
 check(json.load(open(os.path.join(root, "state.json")))["status"] == "idle",
       "stop sets the state idle")
 
+# the /clear checkpoint: `clear_every` ads settled in this context -> `next` stops the
+# operator without touching the queue, and the line tells the human to /clear
+CLEAR = dict(RUNNING, target=50, session_imported=15, session_skipped=10, clear_every=25,
+             context_from=0)
+root, q = project(CLEAR, PENDING)
+rc, out = step(root, "next", q)
+check(rc == 5 and "CLEAR_CHECKPOINT: 25 ads" in out and "/clear" in out
+      and "olx-step.py next" not in out,
+      "next at the checkpoint must say CLEAR_CHECKPOINT and no next, got rc=%s %r" % (rc, out))
+check(json.load(open(q))["candidates"][0]["status"] == "pending",
+      "next at the checkpoint must not touch the queue")
+
+# the outcome that reaches the checkpoint already prints it instead of `next`
+root, q = project(dict(CLEAR, session_skipped=9),
+                  [{"id": "1", "status": "pending", "photos": 1}])
+rc, out = step(root, "next", q)
+check("SKIPPED 1" in out and "CLEAR_CHECKPOINT: 25 ads" in out,
+      "the 25th settled ad must end on the checkpoint: %r" % out)
+
+# counted from context_from: after a resume the next 25 run on
+root, q = project(dict(CLEAR, context_from=25), [{"id": "1", "status": "pending", "photos": 1}])
+rc, out = step(root, "next", q)
+check("CLEAR_CHECKPOINT" not in out and "SKIPPED 1" in out, "after a resume: %r" % out)
+
+# the target wins over the checkpoint: stop, not /clear
+root, q = project(dict(CLEAR, target=15), PENDING)
+rc, out = step(root, "next", q)
+check(rc == 4 and "TARGET_REACHED" in out and "CLEAR_CHECKPOINT" not in out,
+      "target and checkpoint together: %r" % out)
+
+# a state.json from before the checkpoint existed never stops
+root, q = project(dict(RUNNING, target=None, session_imported=40), [
+    {"id": "1", "status": "pending", "photos": 1}])
+rc, out = step(root, "next", q)
+check("CLEAR_CHECKPOINT" not in out, "no clear_every in the state: %r" % out)
+
+# `start` after the checkpoint resumes (same queue, running); anything else is fresh.
+# Checked on the function: `start` itself needs Chrome for its preflight.
+import importlib.util
+spec = importlib.util.spec_from_file_location("olx_step", STEP)
+olx_step = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(olx_step)
+qrel = "harness/3ceasuri-import/.candidates-test.json"
+qabs = os.path.join(olx_step.ROOT, qrel)
+check(olx_step.resumes(dict(CLEAR, queue=qrel), qabs), "start at the checkpoint resumes")
+check(not olx_step.resumes(dict(CLEAR, queue=qrel, context_from=25), qabs),
+      "start before the checkpoint is a fresh session")
+check(not olx_step.resumes(dict(CLEAR, queue="harness/3ceasuri-import/.other.json"), qabs),
+      "start on another queue is a fresh session")
+check(not olx_step.resumes(dict(CLEAR, queue=qrel, status="idle"), qabs),
+      "start after stop is a fresh session")
+
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:
     print("  -", f)
