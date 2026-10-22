@@ -345,6 +345,7 @@ Calypso:375
 Constantin Durmont:376
 Boderry:377
 Ailang:378
+Rousseau:379
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
