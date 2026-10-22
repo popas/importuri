@@ -349,6 +349,7 @@ Rousseau:379
 Baltic:380
 Zee Lane:381
 Catena:382
+Lemania:383
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
