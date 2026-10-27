@@ -355,6 +355,7 @@ Off-White:385
 Antonio Martos:386
 Bremont:387
 CMI:388
+Velocity:389
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
