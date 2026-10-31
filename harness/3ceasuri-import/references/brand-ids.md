@@ -371,6 +371,7 @@ UBlast:401
 Super Speed:402
 Marc Ecko:403
 Pintime:404
+Montegrappa:405
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
