@@ -369,6 +369,7 @@ Wille Freres:399
 Grovana:400
 UBlast:401
 Super Speed:402
+Marc Ecko:403
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
