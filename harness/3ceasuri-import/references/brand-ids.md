@@ -367,6 +367,7 @@ Dunhill:397
 Richelieu:398
 Wille Freres:399
 Grovana:400
+UBlast:401
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
