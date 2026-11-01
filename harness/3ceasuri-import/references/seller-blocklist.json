@@ -87,6 +87,21 @@
       "id": "446554396",
       "name": "OLX Team Member",
       "reason": "user directive 2026-11-01: handle impersonates OLX staff. Ad 311307337 'Ceas Tag Heuer Kirium' (1200 RON, 2026-10-30) used a screenshot of another seller's TAG S/el listing as photo 1; ad 311278109 'Zenith Automatic Gold Plated' (4820.24 RON = 950 EUR, 2026-10-29) has an AI-generated six-panel collage ('Documents Art', 'Atmospheric Box') and English eBay-style copy. Account dormant since 2021, then high-value watches with borrowed/generated images. Earlier import 308444640 (Tissot Le Locle, 2026-09-30) taken down."
+    },
+    {
+      "id": "1380542566",
+      "name": "Cori",
+      "reason": "user directive 2026-11-01: unbranded 'Ceas automatic' ads that are Tudor Black Bay / Breitling replicas with the brand left out of the title ('bay 40 mm', 'tip bay 37 mm eta'): 311077426 (650 RON), 311077842 (700 RON), 311077927 (2500 RON), all posted 2026-10-30. All three skipped suspected_counterfeit in the București 1031 sweep."
+    },
+    {
+      "id": "15308198",
+      "name": "florin",
+      "reason": "user directive 2026-11-01: Hublot replicas with the brand spaced out to dodge search filters ('H u b l o t Clasic', 'H u b.l o t Turbilon', 'Skeletron') at 450-500 RON (a genuine Hublot is 25,000+ RON): 282707457, 292391498, 292391821, 292393172, 292393207. Skipped suspected_counterfeit in the nat-1023 and București 1031 sweeps. NOTE: 'Florin' is a common handle; other Florin accounts are unrelated, block by id only."
+    },
+    {
+      "id": "1381254747",
+      "name": "Paradisul_ceasurilor",
+      "reason": "user directive 2026-11-01: luxury pieces far below market, posted within hours on 2026-10-30: 311298287 'Montblanc Villeret Tourbillon' 1850 RON (genuine: six figures EUR), 311305637 'Breitling Navitimer Chronograph' 6000 RON, 311308377 'Ceas de lux Breitling Chronometre' 2500 RON. All skipped suspected_counterfeit in the București 1031 sweep."
     }
   ]
 }
