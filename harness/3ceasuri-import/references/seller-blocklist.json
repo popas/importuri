@@ -82,6 +82,11 @@
       "id": "1381241363",
       "name": "watch",
       "reason": "user directive 2026-10-31: 29 Rolex Datejust ads posted 2026-10-23 within an hour, each at 6000-6250 RON (a genuine Datejust is ~35,000 RON and up), titles copied from catalogue references (278271, 278274, ...). Replica stock; all 29 dropped at triage in the București 1031 sweep."
+    },
+    {
+      "id": "446554396",
+      "name": "OLX Team Member",
+      "reason": "user directive 2026-11-01: handle impersonates OLX staff. Ad 311307337 'Ceas Tag Heuer Kirium' (1200 RON, 2026-10-30) used a screenshot of another seller's TAG S/el listing as photo 1; ad 311278109 'Zenith Automatic Gold Plated' (4820.24 RON = 950 EUR, 2026-10-29) has an AI-generated six-panel collage ('Documents Art', 'Atmospheric Box') and English eBay-style copy. Account dormant since 2021, then high-value watches with borrowed/generated images. Earlier import 308444640 (Tissot Le Locle, 2026-09-30) taken down."
     }
   ]
 }
