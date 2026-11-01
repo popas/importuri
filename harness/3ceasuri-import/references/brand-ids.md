@@ -378,6 +378,7 @@ Hirsch:407
 La Cantina:409
 Helfer:410
 Military Royale:411
+Canyon:412
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
