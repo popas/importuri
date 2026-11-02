@@ -165,9 +165,18 @@ def location_filter(bu, county):
 
 
 def offer(bu, ad_id):
-    """One ad in full, or None if it is gone."""
-    d = _fetch_json(bu, "/api/v1/offers/%s/" % ad_id)
-    return (d or {}).get("data")
+    """One ad in full, or None if it is gone.
+
+    _fetch_json answers None for a gone ad AND for a CDP timeout (the OLX tab
+    parked on a heavy ad page can stall Runtime.evaluate). Two more tries
+    keep a stall from being logged as a removed ad; a real 404 just costs them.
+    """
+    for attempt in range(3):
+        d = _fetch_json(bu, "/api/v1/offers/%s/" % ad_id)
+        if d:
+            return d.get("data")
+        time.sleep(3 * (attempt + 1))
+    return None
 
 
 # --- photos ------------------------------------------------------------------
