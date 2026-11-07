@@ -23,6 +23,14 @@ command. It replaces `olx-session-setup`, the two importer skills and
 `import-verify-state` for that loop — do not load them. The read-order below is for
 discovery, troubleshooting and changing the harness.
 
+**One subagent per ad** (user directive 2026-11-07). The orchestrating session does
+not run `next`/`finish` itself: it spawns a fresh agent (Agent tool, `model: sonnet`)
+with `Read harness/3ceasuri-import/references/per-ad-agent.md and follow it.
+QUEUE=<file> TARGET=<N>`, waits for its one-line answer, and only then spawns the
+next — strictly sequential (one Chrome, one OLX tab, one `state.json`). Every agent
+starts with an empty context, so `CLEAR_CHECKPOINT` no longer stops the loop. The
+orchestrator pushes the agents' commits (history, NEW_BRAND) every ~10 ads.
+
 ## Read-order (discovery / troubleshooting / harness work)
 
 1. `OLX_Listing_Automation_Plan.md` — the orchestrator (≤60 lines): the loop and the

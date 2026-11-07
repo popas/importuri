@@ -25,6 +25,23 @@ Old queues are fine: a gone ad skips itself as `not_active`, and an imported one
 
 ---
 
+## Prompt C — the import loop, one agent per ad (DEFAULT since 2026-11-07)
+
+```
+Import OLX watches into 3ceasuri.ro. Target: <N> imports.
+Queue: harness/3ceasuri-import/<queue file>
+
+Run `python3 harness/3ceasuri-import/scripts/olx-step.py start <queue> --target <N>`
+once, then loop: spawn ONE agent (model sonnet) with the prompt
+  Read harness/3ceasuri-import/references/per-ad-agent.md and follow it.
+  QUEUE=harness/3ceasuri-import/<queue file>  TARGET=<N>
+wait for its one-line answer, note it, spawn the next. Never two at once.
+Stop on TARGET_REACHED / QUEUE_EMPTY (run `stop`, push) or BLOCKED (invoke
+olx-troubleshooting). Every ~10 ads: git add history.jsonl, commit, push.
+```
+
+Prompt B below is what each agent does for its one ad; it still works on its own.
+
 ## Prompt B — the import loop (paste once; it runs to the end)
 
 ```
