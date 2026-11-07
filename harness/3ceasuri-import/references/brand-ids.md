@@ -395,6 +395,7 @@ Zaria:426
 Chronostar:427
 Regata:428
 Leijona:429
+Time Force:430
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
