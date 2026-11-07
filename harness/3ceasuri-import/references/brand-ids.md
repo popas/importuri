@@ -388,6 +388,7 @@ Avontuur:419
 Emporio Limited:420
 Viwa Fit:421
 Cristian Lay:422
+Braun:423
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
