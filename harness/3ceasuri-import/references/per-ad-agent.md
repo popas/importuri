@@ -48,7 +48,10 @@ yourself.
 3. Run the sheet's `finish` command with every MUST ANSWER field plus any field you
    can fill. `true/false/null` bare, text in single quotes.
    - `model`: the line; one of the sheet's MODELS when it is this watch's (exact
-     spelling). A real line the site lacks → keep it and add `new_model=true`.
+     spelling). A real line the site lacks → keep it and add `new_model=true`
+     on the FIRST finish — a model not in MODELS without it is refused, and the
+     one retry is often already spent on the description. A generic family
+     ("G-Shock") is not a model: name the exact one or reuse a listed one.
    - `variant`: dial/edition/colour/nickname; never size, GPS/Cellular, condition.
    - No maker mark → `brand='Fără marcă'`; never `Alt brand`. Check the brand the
      draft guessed against the text/photo — pass 1 sometimes picks a wrong one.
@@ -59,7 +62,8 @@ yourself.
      compatibility `ios|android|both` (Apple → ios; Galaxy Watch 4+ and Pixel →
      android; the rest → both).
 4. `IMPORTED` → done. `FIX` → supply the named field (or rewrite the description)
-   and run `finish` ONCE more. `NEW_BRAND … THEN: git …` → run that git command
+   and run `finish` ONCE more, repeating every field of the first finish
+   (model, `new_model=true`, …) — the retry is a full answer, not a patch. `NEW_BRAND … THEN: git …` → run that git command
    exactly (commit only; the orchestrator pushes).
 
 Judgement skip instead of finishing:
