@@ -172,7 +172,10 @@ def offer(bu, ad_id):
     keep a stall from being logged as a removed ad; a real 404 just costs them.
     """
     for attempt in range(3):
-        d = _fetch_json(bu, "/api/v1/offers/%s/" % ad_id)
+        # 2026-11-07: Akamai answered /api/v1/offers/<id>/ with 403 for hours while
+        # the list endpoint and /api/v2/offers/<id>/ (same shape) answered 200.
+        d = (_fetch_json(bu, "/api/v1/offers/%s/" % ad_id)
+             or _fetch_json(bu, "/api/v2/offers/%s/" % ad_id))
         if d:
             return d.get("data")
         time.sleep(3 * (attempt + 1))
