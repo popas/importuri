@@ -2,6 +2,87 @@
 
 Issue: #2. Commits: 0e83a2b (driver fixes), 02bd4a8 (eval), 63dbc45 (loop + decide).
 
+## Cum folosești scriptul — pas cu pas
+
+**1. Pornește Chrome-ul cu CDP** (cum îl pornești de obicei; de exemplu):
+
+```bash
+google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.chrome-olx" &
+curl -s http://127.0.0.1:9222/json/version     # trebuie să răspundă cu JSON
+```
+
+**2. În acel Chrome:** autentifică-te pe `https://3ceasuri.ro/admin/` și pe olx.ro, și
+lasă deschis un tab pe `https://www.olx.ro/`. (Un profil `--user-data-dir` păstrat
+reține login-urile de la o rulare la alta.)
+
+**3. Verifică `claude`** (o singură dată pe mașină):
+
+```bash
+claude -p "Reply with OK" </dev/null           # trebuie să scrie OK
+```
+
+**4. Alege coada și vezi câte anunțuri are în așteptare:**
+
+```bash
+cd ~/projects/anunturi/importuri
+ls harness/3ceasuri-import/.candidates-*.json
+python3 harness/3ceasuri-import/scripts/olx-step.py counts harness/3ceasuri-import/.candidates-olx-watches-nat-1107b.json
+#   {"pending": 33, "imported": 100, ...}
+```
+
+Fără anunțuri `pending` → întâi descoperire (Prompt A în `OLX_IMPORT_SESSION_PROMPT.md`).
+
+**5. Prima dată, un test mic** (un singur anunț, fără commit/push):
+
+```bash
+python3 harness/3ceasuri-import/scripts/olx-loop.py \
+    harness/3ceasuri-import/.candidates-olx-watches-nat-1107b.json --target 1 --no-push
+```
+
+Atenție: și testul importă de-adevăratelea pe site; `--no-push` oprește doar git-ul.
+
+**6. Rularea propriu-zisă.** Pentru rulări lungi, într-un `tmux` (să nu se oprească
+dacă închizi terminalul) și cu un log:
+
+```bash
+tmux new -s olx
+cd ~/projects/anunturi/importuri
+python3 harness/3ceasuri-import/scripts/olx-loop.py \
+    harness/3ceasuri-import/.candidates-olx-watches-nat-1107b.json --target 30 \
+    2>&1 | tee -a olx-loop.log
+#   Ctrl-b apoi d = lași tmux-ul să ruleze;  tmux attach -t olx = te întorci la el
+```
+
+**7. Ce vezi:** câte o linie pe anunț (`IMPORTED …`, `SKIPPED …`), la fiecare 10 anunțuri
+un `PROGRESS: …` (și un push pe GitHub), la final `DONE: imported N, skipped N, errors N
+| … | model $X`. Un anunț durează de obicei 30–90 s.
+
+**8. Dacă vrei să-l oprești:** Ctrl-C. Face push la ce s-a importat și lasă sesiunea
+deschisă; **aceeași comandă** o reia de unde a rămas (contoarele și ținta se păstrează).
+
+**9. Dacă se oprește singur** — uită-te la ultima linie:
+
+- `TARGET_REACHED` / `QUEUE_EMPTY` → gata, totul e salvat și împins.
+- `OLX_BLOCKED` → OLX refuză browserul. Închide Chrome-ul, pornește-l din nou (pașii 1–2),
+  apoi rulează aceeași comandă.
+- `BROWSER_FAILURE`, `PREFLIGHT_FAILED`, `three ERROR in a row` → vezi tabelul „When it
+  stops” mai jos (sau cere-i lui Claude Code să folosească skill-ul `olx-troubleshooting`),
+  apoi aceeași comandă.
+
+**10. O țintă nouă pe aceeași coadă** cât timp sesiunea e încă deschisă (după un
+Ctrl-C sau o blocare): `--target` nou e ignorat la reluare. Închide sesiunea, apoi pornește:
+
+```bash
+python3 harness/3ceasuri-import/scripts/olx-step.py stop harness/3ceasuri-import/<coada>
+python3 harness/3ceasuri-import/scripts/olx-loop.py harness/3ceasuri-import/<coada> --target 50
+```
+
+**11. Verificare la final:** `counts` pe coadă (pasul 4), `git log --oneline -3` (commit-urile
+„history: OLX import loop …”), iar adevărul e în admin: `https://3ceasuri.ro/admin/`.
+
+**Model mai ieftin** (nerecomandat — ratează mai multe skip-uri, vezi evals mai jos):
+`--model haiku --effort medium`.
+
 ## What changed
 
 Until 2026-11-08 an import ran inside a Claude Code session: an Opus orchestrator
