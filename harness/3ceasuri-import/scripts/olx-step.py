@@ -434,6 +434,8 @@ def cmd_next(queue):
                       {"AD_ID": ad_id, "CANDIDATES_FILE": queue},
                       os.path.join(RUNS, "olx-%s-pass1.log" % ad_id))
     m = parse_markers(out)
+    if "BLOCKED" in m:
+        return blocked(ad_id, m["BLOCKED"])
     if "SKIP" in m:
         settle(queue, ad_id, "skipped", (m["SKIP"].get("reason") or "skip").split(" ")[0])
         logged = log_line("SKIP", m["SKIP"])
@@ -459,6 +461,31 @@ def cmd_next(queue):
             "  Three ERRORs in a row -> stop and invoke olx-troubleshooting.")
         return 0
     return no_marker(queue, ad_id, out, "pass1")
+
+
+def blocked(ad_id, b):
+    """OLX refused the read: nothing was written and the ad stays pending. Not an
+    ERROR - three of those used to burn three ads as `error` before the loop stopped."""
+    say("OLX_BLOCKED %s: %s - the ad stays pending, nothing was written." % (ad_id, b.get("msg")),
+        "NEXT: stop the loop and tell the user: OLX is refusing this browser. A fresh CDP "
+        "Chrome (or waiting) clears it; retrying now only extends the block.")
+    return 2
+
+
+def tidy_model(model, brand, models=None):
+    """The model as the site spells it: no leading brand ('Suunto RUN' -> 'RUN') and a
+    MODELS entry's own spelling when one matches case-insensitively ('RUN' -> 'Run').
+    A MODELS entry that itself starts with the brand is kept as it is."""
+    if not isinstance(model, str):
+        return model
+    m = model.strip()
+    canon = {k.lower(): k for k in (models or [])}
+    if m.lower() in canon:
+        return canon[m.lower()]
+    if brand and len(m) > len(brand) and m.lower().startswith(brand.lower()) \
+            and not m[len(brand)].isalnum():
+        m = m[len(brand):].lstrip(" -–") or m
+    return canon.get(m.lower(), m)
 
 
 def no_marker(queue, ad_id, out, which):
@@ -521,6 +548,10 @@ def cmd_finish(queue, ad_id, pairs):
         say("BAD_ANSWER: %s - nothing was run; fix the command and repeat it."
             % "; ".join(bad))
         return 1
+    if answers.get("model"):
+        brand = answers.get("brand", draft.get("brand"))
+        answers["model"] = tidy_model(answers["model"], brand,
+                                      st.get("models") if brand == draft.get("brand") else None)
     draft.update(answers)
     contract_draft.write(dpath, draft)
 
@@ -530,6 +561,8 @@ def cmd_finish(queue, ad_id, pairs):
                       os.path.join(RUNS, "olx-%s-pass2-%d.log" % (ad_id, attempt)))
     m = parse_markers(out)
 
+    if "BLOCKED" in m:
+        return blocked(ad_id, m["BLOCKED"])
     if "RESULT" in m and m["RESULT"].get("ok"):
         return imported(queue, ad_id, m, cand)
     if "SKIP" in m:
@@ -735,7 +768,7 @@ def cmd_start(queue, target, clear_every=CLEAR_EVERY):
         state["context_from"] = ads_done(state)
         with open(spath, "w") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
-        say("RESUMED_SESSION: after a /clear | queue %s %s | imported %s of target %s, "
+        say("RESUMED_SESSION: queue %s %s | imported %s of target %s, "
             "skipped %s (a new session instead: run stop, then start)" % (
                 os.path.relpath(queue, ROOT), json.dumps(counts), state.get("session_imported"),
                 state.get("target"), state.get("session_skipped")),
@@ -758,11 +791,14 @@ def cmd_start(queue, target, clear_every=CLEAR_EVERY):
 
 
 def resumes(state, queue):
-    """True when `start` is the prompt pasted again after a CLEAR_CHECKPOINT: the same
-    queue, still running, the checkpoint reached. Anything else starts afresh."""
+    """True when `start` finds this queue's session still running.
+
+    Every per-ad agent (user directive 2026-11-07) runs `start` first, and so does the
+    prompt pasted after a /clear: both carry on. Until 2026-11-08 only the checkpoint
+    resumed, so each agent zeroed session_imported and TARGET_REACHED never fired.
+    A new session on the same queue: `stop`, then `start`."""
     return (state.get("status") == "running"
-            and state.get("queue") == os.path.relpath(queue, ROOT)
-            and bool(clear_due(state)))
+            and state.get("queue") == os.path.relpath(queue, ROOT))
 
 
 def cmd_stop(queue):

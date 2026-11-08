@@ -92,8 +92,9 @@ def ensure_tab(bu, url=None, tabs=None):
 
 
 # --- the API ----------------------------------------------------------------
-def _fetch_json(bu, path):
-    """GET `path` from the page context and parse it. Returns None on failure."""
+def _fetch_json(bu, path, statuses=None):
+    """GET `path` from the page context and parse it. Returns None on failure.
+    `statuses`, a list, collects each HTTP status seen (a block vs a gone ad)."""
     expr = ('(async () => { try { const r = await fetch(%s, {headers:{Accept:"application/json"}});'
             ' const t = await r.text();'
             ' return JSON.stringify({status:r.status, body:t}); }'
@@ -103,6 +104,8 @@ def _fetch_json(bu, path):
         env = json.loads(bu.js(expr))
     except Exception:
         return None
+    if statuses is not None:
+        statuses.append(env.get("status"))
     if env.get("status") != 200:
         return None
     try:
@@ -164,21 +167,32 @@ def location_filter(bu, county):
     return {}
 
 
+class Blocked(Exception):
+    """OLX's edge refused every read of an ad (403/429): a block, not a gone ad."""
+
+
 def offer(bu, ad_id):
-    """One ad in full, or None if it is gone.
+    """One ad in full, or None if it is gone. Raises Blocked when OLX refuses.
 
     _fetch_json answers None for a gone ad AND for a CDP timeout (the OLX tab
     parked on a heavy ad page can stall Runtime.evaluate). Two more tries
     keep a stall from being logged as a removed ad; a real 404 just costs them.
     """
+    seen = []
     for attempt in range(3):
         # 2026-11-07: Akamai answered /api/v1/offers/<id>/ with 403 for hours while
         # the list endpoint and /api/v2/offers/<id>/ (same shape) answered 200.
-        d = (_fetch_json(bu, "/api/v1/offers/%s/" % ad_id)
-             or _fetch_json(bu, "/api/v2/offers/%s/" % ad_id))
+        d = (_fetch_json(bu, "/api/v1/offers/%s/" % ad_id, seen)
+             or _fetch_json(bu, "/api/v2/offers/%s/" % ad_id, seen))
         if d:
             return d.get("data")
         time.sleep(3 * (attempt + 1))
+    # 2026-11-08: CloudFront answered BOTH endpoints with an HTML 403 after ~380 reads
+    # in one browser session; it was logged as "did not load" and burned three ads as
+    # `error`. A gone ad answers 404/410, so 403/429 on every read is the block.
+    if seen and all(s in (403, 429) for s in seen):
+        raise Blocked("OLX answered %s to every read of ad %s - the browser is blocked "
+                      "(not a gone ad)" % (seen[-1], ad_id))
     return None
 
 

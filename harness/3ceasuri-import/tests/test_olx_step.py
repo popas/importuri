@@ -103,7 +103,8 @@ root, q = project(dict(RUNNING, target=None, session_imported=40), [
 rc, out = step(root, "next", q)
 check("CLEAR_CHECKPOINT" not in out, "no clear_every in the state: %r" % out)
 
-# `start` after the checkpoint resumes (same queue, running); anything else is fresh.
+# `start` on the running session's queue resumes - every per-ad agent runs it, and
+# zeroing the counters there kept TARGET_REACHED from ever firing (2026-11-08).
 # Checked on the function: `start` itself needs Chrome for its preflight.
 import importlib.util
 spec = importlib.util.spec_from_file_location("olx_step", STEP)
@@ -112,12 +113,52 @@ spec.loader.exec_module(olx_step)
 qrel = "harness/3ceasuri-import/.candidates-test.json"
 qabs = os.path.join(olx_step.ROOT, qrel)
 check(olx_step.resumes(dict(CLEAR, queue=qrel), qabs), "start at the checkpoint resumes")
-check(not olx_step.resumes(dict(CLEAR, queue=qrel, context_from=25), qabs),
-      "start before the checkpoint is a fresh session")
+check(olx_step.resumes(dict(CLEAR, queue=qrel, context_from=25), qabs),
+      "start before the checkpoint resumes too (a per-ad agent starts every ad)")
 check(not olx_step.resumes(dict(CLEAR, queue="harness/3ceasuri-import/.other.json"), qabs),
       "start on another queue is a fresh session")
 check(not olx_step.resumes(dict(CLEAR, queue=qrel, status="idle"), qabs),
       "start after stop is a fresh session")
+
+# the model as the site spells it: no leading brand, the MODELS entry's own case
+tm = olx_step.tidy_model
+check(tm("Suunto RUN", "Suunto", ["Run", "Race"]) == "Run", "brand stripped, MODELS case")
+check(tm("Apple Watch Series 9", "Apple", ["Watch Series 9"]) == "Watch Series 9",
+      "Apple Watch Series 9 -> Watch Series 9")
+check(tm("Swatch Irony", "Swatch", ["Swatch Irony"]) == "Swatch Irony",
+      "a MODELS entry that starts with the brand is kept")
+check(tm("Applewatch", "Apple") == "Applewatch", "no strip inside a word")
+check(tm("Casio", "Casio") == "Casio", "a model equal to the brand is kept")
+check(tm("Fenix 8", "Garmin", None) == "Fenix 8" and tm(None, "Garmin") is None,
+      "nothing to tidy")
+
+# OLX refusing the browser: OLX_BLOCKED, rc 2, the ad stays pending (not `error`)
+fake = os.path.join(tempfile.mkdtemp(prefix="olx-step-fake-"), "bu.py")
+with open(fake, "w") as f:
+    f.write('import sys; sys.stdin.read(); print(\'BLOCKED: {"ad_id": "9", '
+            '"msg": "OLX answered 403 to every read of ad 9"}\')\n')
+root, q = project(dict(RUNNING, session_imported=0), [{"id": "9", "status": "pending", "photos": 5}])
+p = subprocess.run([sys.executable, STEP, "next", q], capture_output=True, text=True, timeout=60,
+                   env={"PROJECT_ROOT": root, "PATH": os.environ.get("PATH", ""),
+                        "BROWSER_USE": "%s %s" % (sys.executable, fake)})
+check(p.returncode == 2 and "OLX_BLOCKED 9" in p.stdout, "blocked next: rc=%s %r" % (p.returncode, p.stdout))
+check(json.load(open(q))["candidates"][0]["status"] == "pending", "a blocked ad stays pending")
+
+# offer(): 403 on every read raises Blocked; a 404 is a gone ad (None)
+sys.path.insert(0, os.path.join(ROOT, "harness/3ceasuri-import/scripts"))
+import olx_api
+olx_api.time.sleep = lambda s: None
+class FakeBU:
+    def __init__(self, status):
+        self.status = status
+    def js(self, expr):
+        return json.dumps({"status": self.status, "body": "<HTML>blocked</HTML>"})
+try:
+    olx_api.offer(FakeBU(403), "9")
+    check(False, "offer() on 403 must raise Blocked")
+except olx_api.Blocked:
+    pass
+check(olx_api.offer(FakeBU(404), "9") is None, "offer() on 404 is a gone ad")
 
 print("FAILURES:" if fails else "ALL CHECKS PASSED")
 for f in fails:

@@ -28,7 +28,8 @@ yourself.
   a row → answer `BLOCKED: <last error>`.
 - `TARGET_REACHED` or `QUEUE_EMPTY` → answer that word.
 - `CLEAR_CHECKPOINT` → run `$S start $Q --target <TARGET>` once, then `next` again.
-- `PREFLIGHT_FAILED` / `BROWSER_FAILURE` → answer `BLOCKED: <line>`.
+- `PREFLIGHT_FAILED` / `BROWSER_FAILURE` / `OLX_BLOCKED` → answer `BLOCKED: <line>`
+  (from `finish` too: `OLX_BLOCKED` there means OLX refused the browser; do not retry).
 - A sheet (`AD … DECIDE … NEXT: … finish …`) → handle that ONE ad, then answer.
 
 ## The sheet

@@ -414,7 +414,11 @@ def run(profile, g):
 
     # --- 1. read the ad ------------------------------------------------------
     switch_tab(OLX_TAB)
-    ad = olx_api.offer(bu, AD_ID)
+    try:
+        ad = olx_api.offer(bu, AD_ID)
+    except olx_api.Blocked as e:
+        emit("BLOCKED", {"ad_id": AD_ID, "msg": str(e)})   # the queue stays pending
+        raise SystemExit(1)
     if not ad:
         die("OLX ad %s did not load — removed, expired, or the bot check is in the way" % AD_ID)
     if ad.get("status") != "active":

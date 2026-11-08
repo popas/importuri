@@ -38,6 +38,12 @@ print(js('(async () => { const r = await fetch("/api/v1/offers/<AD_ID>/",'
 opening `https://www.olx.ro/d/oferta/…`. Genuinely gone → mark the candidate
 `skipped` and move on; nothing was written.
 
+`OLX_BLOCKED <id>` (driver) / `BLOCKED:` (payload) — OLX's edge answered 403/429 to
+every read of the ad: the browser is blocked, the ad is NOT gone and stays `pending`.
+2026-11-08: CloudFront refused `/api/v1|v2/offers/<id>/` after ~380 reads in one Chrome
+session while the search API still answered; a freshly started CDP Chrome cleared it.
+Stop the loop, tell the user, resume once a probe of the ad API answers 200.
+
 `SKIP: ad is not active` is **not** a failure — OLX marks sold and withdrawn ads
 that way.
 
