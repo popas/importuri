@@ -3959,3 +3959,13 @@
 {"source": "olx", "id": "301781732", "url": "https://www.olx.ro/d/oferta/cartier-tank-25705-amanet-bkg-IDkqfdi.html", "brand": "Cartier", "model": "Tank", "price": 8000, "currency": "RON", "images": 6, "category": "wrist", "seller_id": "2393965", "seller_name": "Amanet BKG", "business": true, "event": "import", "ts": "2026-11-08T23:21:54"}
 {"source": "olx", "id": "311655255", "url": "https://www.olx.ro/d/oferta/caravelle-by-bulova-IDl5FLF.html", "brand": "Bulova", "model": "Caravelle", "price": 700, "currency": "RON", "images": 7, "category": "wrist", "seller_id": "770122514", "seller_name": "Onit", "business": false, "event": "import", "ts": "2026-11-08T23:23:09"}
 {"source": "olx", "id": "307814861", "url": "https://www.olx.ro/d/oferta/ceas-barbatesc-nikken-IDkPyHP.html", "brand": "Nikken", "model": "Diver", "price": 600, "currency": "RON", "images": 4, "category": "wrist", "seller_id": "453774533", "seller_name": "Mihaita", "business": false, "event": "import", "ts": "2026-11-08T23:24:39"}
+{"id": "311665074", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T00:43:32"}
+{"id": "311664983", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T00:43:33"}
+{"id": "311664839", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T00:43:44"}
+{"source": "olx", "id": "311632625", "url": "https://www.olx.ro/d/oferta/ceas-diesel-dz4309-IDl5zSF.html", "brand": "Diesel", "model": "Mega Chief", "price": 550, "currency": "RON", "images": 8, "category": "wrist", "seller_id": "1378283190", "seller_name": "Alexandru Gramnea", "business": false, "event": "import", "ts": "2026-11-09T00:44:50"}
+{"id": "293465308", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T00:45:04"}
+{"id": "293465271", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T00:45:19"}
+{"id": "295270176", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T00:45:29"}
+{"id": "295337883", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T00:45:29"}
+{"id": "295337417", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T00:45:39"}
+{"id": "295337112", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T00:45:49"}
