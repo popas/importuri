@@ -14,8 +14,10 @@ python3 evals/per-ad/eval.py score               # every results/*.jsonl -> repo
   mismatched_photos). Each case is the sheet the agent saw, rebuilt from `.runs/` and
   `.contracts/`. `build` regenerates them from local logs (only on the machine that ran
   the imports; it overwrites the set — commit only on purpose).
-- The prompt is built at run time from the CURRENT `per-ad-agent.md` ("The sheet" rules)
-  and `olx-step.py`'s `sheet()`, so a change to the instructions is what gets tested.
+- The prompt and the `claude -p` call are `harness/3ceasuri-import/scripts/decide.py` —
+  the same module `olx-loop.py` uses in production — fed the sheet `olx-step.py`'s
+  `sheet()` renders, with the CURRENT `per-ad-agent.md` "The sheet" rules. A change to
+  the instructions, the hints or the framing is what gets tested.
 - The reference is what production did (Sonnet agents): the site-accepted fields, or
   the skip. A Sonnet config therefore measures Sonnet's self-consistency; a
   disagreement is not automatically an error — `report.md` lists every diff.

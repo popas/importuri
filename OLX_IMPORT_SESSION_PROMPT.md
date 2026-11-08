@@ -25,7 +25,24 @@ Old queues are fine: a gone ad skips itself as `not_active`, and an imported one
 
 ---
 
-## Prompt C — the import loop, one agent per ad (DEFAULT since 2026-11-07)
+## The import loop as a script (DEFAULT since 2026-11-08, issue #2)
+
+No session prompt: run it in a terminal from the repo root, with the CDP Chrome up
+(admin signed in, an olx.ro tab):
+
+```bash
+python3 harness/3ceasuri-import/scripts/olx-loop.py harness/3ceasuri-import/<queue file> --target <N>
+#   [--model sonnet] [--effort high] [--push-every 10] [--no-push]
+```
+
+One line per ad, a PROGRESS line at every push, DONE at the end. It stops by itself on
+TARGET_REACHED / QUEUE_EMPTY (session stopped, pushed) and on OLX_BLOCKED /
+BROWSER_FAILURE / three ERROR in a row (session left running: fix the cause, run the
+same command again and it resumes). Ctrl-C is safe: it pushes and leaves the session
+running. The model is asked only the sheet's decision (`scripts/decide.py`); which
+model and effort: `evals/per-ad/report.md`.
+
+## Prompt C — the import loop, one agent per ad (fallback; default 2026-11-07..08)
 
 ```
 Import OLX watches into 3ceasuri.ro. Target: <N> imports.

@@ -18,3 +18,4 @@ harness/3ceasuri-import/.runs/
 
 # session bookkeeping, rewritten by every olx-step.py start (history.jsonl is the record)
 state.json
+.olx-loop.lock

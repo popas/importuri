@@ -23,7 +23,14 @@ command. It replaces `olx-session-setup`, the two importer skills and
 `import-verify-state` for that loop — do not load them. The read-order below is for
 discovery, troubleshooting and changing the harness.
 
-**One subagent per ad** (user directive 2026-11-07). The orchestrating session does
+**Default since 2026-11-08: the loop is a script** (issue #2), run in a terminal, no
+orchestrating session: `python3 harness/3ceasuri-import/scripts/olx-loop.py <queue>
+--target N` (`--model sonnet --effort high` by default, chosen with `evals/per-ad/`). It
+runs `olx-step.py` itself and calls a model only for the decision (`scripts/decide.py`:
+one `claude -p` per sheet); FIX retries, NEW_BRAND commits and the push every 10 ads are
+code. Re-running the same command resumes the session after a stop on OLX_BLOCKED.
+
+**Fallback: one subagent per ad** (user directive 2026-11-07). The orchestrating session does
 not run `next`/`finish` itself: it spawns a fresh agent (Agent tool,
 `subagent_type: olx-per-ad` — `.claude/agents/olx-per-ad.md`, which pins `model: sonnet`;
 the orchestrator stays on the session's model) with `QUEUE=<file> TARGET=<N>`, waits for its one-line answer, and only then spawns the
@@ -73,6 +80,10 @@ harness/3ceasuri-import/
   scripts/olx-log-result.py        ← history.jsonl + state.json (python3, NOT a payload)
   scripts/olx-step.py              ← THE LOOP DRIVER: start/next/finish/skip/stop
                                      (python3, NOT a payload; it runs the payloads)
+  scripts/olx-loop.py              ← THE LOOP as one script: sequences olx-step.py, asks
+                                     decide.py per sheet (python3; default since 11-08)
+  scripts/decide.py                ← the one model call: sheet -> prompt -> `claude -p`
+                                     -> JSON decision (also what evals/per-ad/ measures)
   scripts/olx_api.py               ← in-page API, param→enum map, photo URLs, phone reveal
   scripts/price_sanity.py          ← price floors — suspiciously cheap = fake, dropped
   scripts/photo_dedup.py           ← byte-identical photos of an imported ad = a relist,
@@ -98,6 +109,7 @@ harness/3ceasuri-import/
   tests/                           ← offline stubs: python3 tests/test_*.py (no browser)
 archive/facebook/                  ← the archived FB source (see its README)
 docs/superpowers/specs/            ← design docs; read the two newest before changing the flow
+evals/per-ad/                      ← offline model/effort eval of the decision step (README)
 ```
 
 Skills live ONLY in `.claude/skills/` (each a `SKILL.md`). `harness/` holds the scripts
@@ -113,9 +125,10 @@ own process — that is the whole point, so don't reimplement their steps as ind
 via `bind(globals())` or, for `olx_import.run(profile, globals())`, straight from the
 globals dict.
 
-**Three scripts are the exception and ARE run with `python3`**: `candidates.py` (the
-work queue), `olx-log-result.py` (history + counters) and `olx-step.py` (the loop
-driver — it pipes the payloads into browser-use for you).
+**Four scripts are the exception and ARE run with `python3`**: `candidates.py` (the
+work queue), `olx-log-result.py` (history + counters), `olx-step.py` (the loop
+driver — it pipes the payloads into browser-use for you) and `olx-loop.py` (the loop
+over the driver).
 
 Data flows one direction per watch: **`candidates.py next` → pass 1 (dedup → read the
 ad → seeded draft + `EXTRACT_PROMPT` + photos, no DB write) → you edit the draft's

@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
-"""Per-ad model eval: which model + effort can run the one-ad import agent.
+"""Per-ad model eval: which model + effort can make the per-ad import decision.
 
     python3 evals/per-ad/eval.py build                  # once: cases.jsonl + photos/
     python3 evals/per-ad/eval.py run haiku low          # one config -> results/haiku-low.jsonl
     python3 evals/per-ad/eval.py score                  # every results/*.jsonl -> report.md
 
 Offline: no browser, no OLX, nothing written to the site. Each case is the sheet a
-per-ad agent saw (rebuilt from .runs/ and .contracts/), sent through `claude -p`
-with the "The sheet" rules of per-ad-agent.md. The model answers in JSON instead of
-running `finish`/`skip`.
+per-ad agent saw (rebuilt from .runs/ and .contracts/), sent through the SAME call
+`olx-loop.py` makes in production (`scripts/decide.py`: prompt + `claude -p`).
 
 The reference is what PRODUCTION did (Sonnet agents, 2026-11-07/08): the fields the
 site accepted, or the judgement skip. So a Sonnet config measures how consistent
@@ -24,22 +23,19 @@ import os
 import random
 import re
 import shutil
-import subprocess
 import sys
-import tempfile
-import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "../.."))
 H = os.path.join(ROOT, "harness/3ceasuri-import")
 sys.path.insert(0, os.path.join(H, "scripts"))
+import decide        # noqa: E402  - the production prompt + claude call (olx-loop.py)
 import infer_fields  # noqa: E402
 import olx_import    # noqa: E402
 
 CASES = os.path.join(HERE, "cases.jsonl")
 PHOTOS = os.path.join(HERE, "photos")
 RESULTS = os.path.join(HERE, "results")
-AGENT_MD = os.path.join(H, "references/per-ad-agent.md")
 
 JUDGEMENT_SKIPS = {"not_a_watch": 4, "bulk_lot": 4, "suspected_counterfeit": 3,
                    "mismatched_photos": 1}
@@ -140,63 +136,20 @@ def build():
 
 
 # --- run -------------------------------------------------------------------------
-EVAL_HEADER = """EVAL MODE. You are the per-ad import agent, but in this run you execute NO
-command: no olx-step.py, no finish, no skip, no Write. You may only Read the photos the
-sheet names. Decide exactly as the rules below say, then answer with ONE JSON object and
-nothing else:
-
-{"action": "finish" or "skip",
- "skip_code": null or one of suspected_counterfeit|bulk_lot|not_a_watch|mismatched_photos,
- "fields": {every DECIDE field except description: its value; plus "new_model": true if needed},
- "description": "the description you would write (finish only), else null"}
-
-The rules the real agent follows:
-
-"""
-
-
 def prompt_for(case, step):
-    rules = open(AGENT_MD).read().split("## The sheet", 1)[1].split("## Answer", 1)[0]
+    """The production prompt (decide.build_prompt) for the sheet this case's agent saw."""
     photos = [os.path.join(HERE, p) for p in case["photos"]]
     sh = step.sheet("evals/queue.json", case["id"], case["profile"], case["seed"],
                     case["extract"], photos, models=case["models"])
-    sh = re.sub(r"write it with the Write tool to \S+ \(plain text, no quotes\); finish picks it up\.",
-                'put it in the answer\'s "description".', sh)
-    sh = "\n".join(l for l in sh.splitlines()
-                   if not l.startswith(("NEXT:", "  Pass ONLY the fields")))
-    if "[…]" in sh:
-        sh += "\nFULL SELLER TEXT:\n" + case["seller_text"]
-    return EVAL_HEADER + "## The sheet" + rules + "\n---\nTHE SHEET:\n" + sh + "\n"
-
-
-def parse_answer(text):
-    m = re.search(r"\{.*\}", text or "", re.S)
-    if not m:
-        return None
-    try:
-        return json.loads(m.group(0))
-    except ValueError:
-        return None
+    return decide.build_prompt(sh, case["seller_text"])
 
 
 def run_one(case, model, effort, step):
-    cmd = ["claude", "-p", "--model", model, "--effort", effort, "--output-format", "json",
-           "--allowedTools", "Read", "--add-dir", PHOTOS]
-    cwd = tempfile.mkdtemp(prefix="per-ad-eval-")      # no project CLAUDE.md / memory
-    t0 = time.time()
-    try:
-        p = subprocess.run(cmd, input=prompt_for(case, step), capture_output=True, text=True,
-                           cwd=cwd, timeout=600)
-        out = json.loads(p.stdout)
-    except Exception as e:                              # timeout, bad JSON, CLI failure
-        out = {"is_error": True, "result": "%s: %s" % (type(e).__name__, e)}
-    finally:
-        shutil.rmtree(cwd, ignore_errors=True)
+    r = decide.call(prompt_for(case, step), model, effort, [PHOTOS])
     return {"id": case["id"], "model": model, "effort": effort,
-            "served_by": list((out.get("modelUsage") or {}).keys()),
-            "error": bool(out.get("is_error")), "raw": out.get("result"),
-            "answer": parse_answer(out.get("result")), "cost_usd": out.get("total_cost_usd"),
-            "seconds": round(time.time() - t0, 1), "turns": out.get("num_turns")}
+            "served_by": r["served_by"], "error": r["error"], "raw": r["raw"],
+            "answer": r["answer"], "cost_usd": r["cost_usd"],
+            "seconds": r["seconds"], "turns": r["turns"]}
 
 
 def run(model, effort, jobs=6, limit=None):

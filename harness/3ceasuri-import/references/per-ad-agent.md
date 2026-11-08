@@ -9,6 +9,11 @@ orchestrating session never sees a sheet or a photo: it spawns an agent of type
 waits for its one-line answer, logs it, and spawns the next agent — strictly one at
 a time (all agents share one Chrome, one OLX tab and one `state.json`).
 
+Since 2026-11-08 the default loop is `scripts/olx-loop.py` (no agents): it sends the
+"The sheet" section below, with the sheet, to `claude -p` through `scripts/decide.py`.
+So that section is the decision rulebook for BOTH loops — change it here, re-run
+`evals/per-ad/`.
+
 Everything below is addressed to the agent.
 
 ---
