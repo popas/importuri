@@ -135,7 +135,7 @@ Lucien Rochat:130
 San Martin:131
 Nautica:132
 Radiant:133
-Baume et Mercier:134
+Baume et Mercier:298
 Oppo:135
 Honor:136
 Nokia:137
@@ -265,7 +265,7 @@ Moskva:262
 Duxot:263
 Wrangler:264
 North Edge:265
-Baume & Mercier:266
+Baume & Mercier:298
 Q&Q:267
 D1 Milano:268
 Yema:269

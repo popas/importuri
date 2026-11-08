@@ -149,6 +149,10 @@ field}`: `action: fix` means supply the named field and re-run pass 2 once,
   maker mark is stored as `Fără marcă` (id 54); the importer rewrites a final answer of
   "Alt brand" to it. OLX's own "Alt brand" dropdown label means "a brand OLX does not
   list", NOT "unbranded" — read the real maker off the dial/caseback/box first.
+- **Baume & Mercier is ONE brand, id 298** (user directive 2026-11-08). "Baume & Mercier"
+  and "Baume et Mercier" both map to 298 in `BRAND_IDS` and `brand-ids.md`; the stored
+  name is "Baume & Mercier". The old ids 134 and 266 are not used — never create a
+  third row for a spelling variant.
 - **The listing description is the seller's text, lightly corrected** (user directive
   2026-10-04, replacing the 2026-10-03 "rewrite it as descriptively as possible"): it
   must read as if the author wrote it and still look like the OLX ad. Fix diacritics,

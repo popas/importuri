@@ -53,6 +53,8 @@ yourself.
      one retry is often already spent on the description. A generic family
      ("G-Shock") is not a model: name the exact one or reuse a listed one.
    - `variant`: dial/edition/colour/nickname; never size, GPS/Cellular, condition.
+   - Baume & Mercier (also "Baume et Mercier", "B&M") → always
+     `brand='Baume & Mercier'` (site id 298); never create a new brand for it.
    - No maker mark → `brand='Fără marcă'`; never `Alt brand`. Check the brand the
      draft guessed against the text/photo — pass 1 sometimes picks a wrong one.
    - Enums: movement `automatic|manual|quartz|smart`; category `wrist|pocket`;
