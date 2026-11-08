@@ -77,7 +77,8 @@ harness/3ceasuri-import/
                                      profiles `classic` / `smart` (NO API call — the agent
                                      in the loop fills it)
   scripts/contract_draft.py        ← the seeded contract draft: build / write / read, _todo
-  scripts/candidates.py            ← the work queue (python3, NOT a browser payload)
+  scripts/candidates.py            ← the work queue (python3, NOT a browser payload);
+                                     `candidates.py queues` = every queue + pending, as a table
   scripts/olx-log-result.py        ← history.jsonl + state.json (python3, NOT a payload)
   scripts/olx-step.py              ← THE LOOP DRIVER: start/next/finish/skip/stop
                                      (python3, NOT a payload; it runs the payloads)

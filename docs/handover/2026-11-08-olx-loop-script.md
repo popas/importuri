@@ -45,16 +45,24 @@ probabil va trebui să te autentifici din nou.
 claude -p "Reply with OK" </dev/null           # trebuie să scrie OK
 ```
 
-**4. Alege coada și vezi câte anunțuri are în așteptare:**
+**4. Alege coada** — cozile cu anunțuri în așteptare, cele mai pline primele:
 
 ```bash
 cd ~/projects/anunturi/importuri
-ls harness/3ceasuri-import/.candidates-*.json
-python3 harness/3ceasuri-import/scripts/olx-step.py counts harness/3ceasuri-import/.candidates-olx-watches-nat-1107b.json
-#   {"pending": 33, "imported": 100, ...}
+python3 harness/3ceasuri-import/scripts/candidates.py queues          # --all: și cele goale
+#   | Coadă                                | Tip   | Pending | Importate | Sărite | Erori | Generată   |
+#   |:-------------------------------------|:------|--------:|----------:|-------:|------:|:-----------|
+#   | .candidates-olx-smart-nat-1107b.json | smart |      24 |       100 |     36 |     0 | 2026-11-07 |
+#   ...
+#   cozi cu pending: 11 · anunțuri pending: 145 · cozi goale ascunse: 38 (--all le arată)
+#   Pornește: python3 harness/3ceasuri-import/scripts/olx-loop.py harness/3ceasuri-import/<coada> --target 10
 ```
 
-Fără anunțuri `pending` → întâi descoperire (Prompt A în `OLX_IMPORT_SESSION_PROMPT.md`).
+Ultima linie e comanda gata de copiat, pentru coada cu cele mai multe `pending` (sau
+pentru cea cu o sesiune încă deschisă, marcată cu `*`). O singură coadă:
+`python3 harness/3ceasuri-import/scripts/olx-step.py counts harness/3ceasuri-import/<coada>`.
+
+Nicio coadă cu `pending` → creează una (secțiunea [Cum creezi o coadă nouă](#cum-creezi-o-coadă-nouă)).
 
 **5. Prima dată, un test mic** (un singur anunț, fără commit/push):
 
@@ -108,6 +116,74 @@ python3 harness/3ceasuri-import/scripts/olx-loop.py harness/3ceasuri-import/<coa
 
 **Model mai ieftin** (nerecomandat — ratează mai multe skip-uri, vezi evals mai jos):
 `--model haiku --effort medium`.
+
+## Cum creezi o coadă nouă
+
+O coadă e un fișier `harness/3ceasuri-import/.candidates-*.json` cu anunțurile de luat, fiecare
+cu un `status` (`pending` → `imported` / `skipped` / `error`). O face **descoperirea**: caută
+pe OLX cele mai noi anunțuri dintr-o categorie, aruncă ce e sigur de aruncat și scrie fișierul.
+Când `candidates.py queues` nu mai arată nimic cu `pending`, sau vrei anunțuri mai noi, faci
+una nouă.
+
+**Ce-ți trebuie:** Chrome-ul CDP pornit (pasul 1), autentificat pe olx.ro **și** în admin —
+descoperirea întreabă adminul ce e deja pe site. Scripturile `olx-find-*.py` sunt payload-uri
+browser-use: se dau pe stdin lui `browser-use`, **nu** se rulează cu `python3`.
+
+```bash
+cd ~/projects/anunturi/importuri
+export BU_CDP_URL=http://127.0.0.1:9222
+
+# ceasuri clasice (categoria 1677), toată țara
+MAX_CANDIDATES=150 MAX_PAGES=25 \
+OUT=harness/3ceasuri-import/.candidates-olx-watches-nat-1109.json \
+browser-use < harness/3ceasuri-import/scripts/olx-find-watches.py
+
+# smartwatch-uri (categoria 1943), toată țara
+MAX_CANDIDATES=150 MAX_PAGES=25 \
+OUT=harness/3ceasuri-import/.candidates-olx-smart-nat-1109.json \
+browser-use < harness/3ceasuri-import/scripts/olx-find-smartwatches.py
+```
+
+> **`OUT` suprascrie fără să întrebe.** Un fișier care există deja e înlocuit cu totul, cu tot
+> cu statusurile lui. Fără `OUT`, scriptul scrie în `.candidates-olx-watches.json` /
+> `.candidates-olx-smart.json`, care **există deja** — dă-i mereu un nume nou.
+> `candidates.py queues --all` arată numele luate.
+
+**Numele cozii**, ca până acum: `.candidates-olx-<watches|smart>-<regiune>-<LLZZ>.json` —
+regiunea `nat` (toată țara), `bucuresti`, `ilfov`, `cluj`…; data ca lună+zi (`1109` = 9
+noiembrie); a doua coadă din aceeași zi primește o literă (`nat-1109b`).
+
+| Variabilă | Implicit | Ce face |
+|---|---|---|
+| `MAX_CANDIDATES` | `8` | câte anunțuri intră în coadă, cel mult |
+| `MAX_PAGES` | `5` | câte pagini de 40 de anunțuri citește, cele mai noi primele; se oprește mai devreme când a strâns destule |
+| `COUNTY` | — | doar un județ, scris **exact** cu diacritice (ș, ț cu virgulă): `"București"`, `"Ilfov"`, `"Cluj"`, `"Brașov"`, `"Constanța"`, `"Iași"`, `"Timiș"` — `"Brasov"` aruncă tot (`wrong_county`) |
+| `EXCLUDE_COUNTY` | — | județe de scos, despărțite prin virgulă: `"București,Ilfov"` (aceeași grafie) |
+| `QUERY` | — | căutare text în categorie, de ex. `"ceas de buzunar"` — doar `olx-find-watches.py` |
+| `MIN_RON` / `MIN_EUR` | `100`/`20` clasice, `150`/`30` smart | prețul minim (sub el anunțul nu intră) |
+| `DEBUG_DROPS=1` | — | afișează și anunțurile aruncate, cu motivul |
+
+Exemple: `COUNTY="București" MAX_CANDIDATES=60 OUT=…/.candidates-olx-watches-bucuresti-1109.json`;
+restul țării fără capitală: `EXCLUDE_COUNTY="București,Ilfov"`.
+
+**Ce afișează:** o linie `CANDIDATES: [...]` (un rând scurt pe anunț) și una `STATS:` —
+`candidates` = câte au intrat în coadă, `dropped` = câte s-au aruncat și de ce,
+`admin_total` = câte ceasuri are site-ul acum, `out` = fișierul scris. Un `ERROR:` cu „OLX
+returned no offers” = nu ești logat pe olx.ro sau OLX blochează browserul (vezi pasul 9).
+
+**Ce aruncă singur:** anunțuri inactive, fără preț sau sub pragul de preț, replici declarate,
+accesorii, intervale de preț, stoc de magazin declarat, vânzători din blocklist și tot ce e
+**deja importat pe site**. **Ce nu aruncă:** anunțurile *sărite* în cozile vechi — reapar
+într-o coadă nouă și bucla le judecă din nou (cele dispărute de pe OLX se sar singure, ca
+`not_active`). Loturi, piese, poze care nu se potrivesc: le prinde bucla, la import.
+
+**Apoi:** `candidates.py queues` (coada nouă trebuie să apară cu `pending`) și pornești bucla
+pe ea (pașii 5–6).
+
+**Varianta prin Claude Code:** cere „Prompt A” din `OLX_IMPORT_SESSION_PROMPT.md`. Claude
+pregătește sesiunea, rulează descoperirea prin skill-ul `olx-find-watches` /
+`olx-find-smartwatches` și raportează `STATS` și câte anunțuri au intrat în coadă.
+Spune-i ce nume să aibă coada (`OUT`), altfel o scrie peste cea implicită.
 
 ## Cum îmbunătățești bucla după ce rulează singură
 

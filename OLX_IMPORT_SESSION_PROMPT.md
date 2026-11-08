@@ -11,14 +11,15 @@ near the 43K base (`docs/handover/2026-10-21-token-cost-analysis.md`). Prompt A 
 discovery, only when no queue has pending ids — it needs more judgement, so run it on
 the stronger model.
 
-Queues on disk (2026-09-22) — `python3 harness/3ceasuri-import/scripts/olx-step.py counts <file>`:
+Which queues have pending ids, as a table (most pending first; `--all` adds the empty
+ones; the last line is the command that starts the loop on the fullest):
 
-| File | Profile | Region | Generated | Pending |
-|---|---|---|---|---|
-| `.candidates-olx-smart-bi.json` | smart | București + Ilfov | 09-20 | 6 |
-| `.candidates-olx-smart.json` | smart | all | 09-19 | 218 |
-| `.candidates-olx-watches.json` | classic | all | 09-19 | 179 |
-| `.candidates-olx-watches-bi.json` | classic | București + Ilfov | 09-20 | 0 |
+```bash
+python3 harness/3ceasuri-import/scripts/candidates.py queues
+```
+
+None pending → a new queue: Prompt A below, or the discovery commands in
+`docs/handover/2026-11-08-olx-loop-script.md`, section „Cum creezi o coadă nouă”.
 
 Old queues are fine: a gone ad skips itself as `not_active`, and an imported one as
 `already_imported`.
@@ -163,6 +164,9 @@ Run OLX discovery for 3ceasuri.ro. Invoke `olx-session-setup`, then exactly ONE 
 me which if I have not said. Report the STATS: line and the pending count, then stop.
 Do not import anything.
 ```
+
+Give it a NEW `OUT=` file name (e.g. `.candidates-olx-watches-nat-1109.json`): the
+script overwrites `OUT` without asking, and the default names are existing queues.
 
 ---
 

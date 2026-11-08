@@ -113,5 +113,67 @@ _p = subprocess.run([sys.executable,
                     input="EXTRACT: {}", capture_output=True, text=True)
 check(_p.returncode == 0 and "NOT_LOGGED" in _p.stdout, "logger: a non-marker line must be a no-op")
 
+# `queues`: every queue file in the harness dir, most pending first, as a table
+_root = tempfile.mkdtemp()
+_h = os.path.join(_root, "harness/3ceasuri-import")
+os.makedirs(_h)
+def _queue(name, statuses, profile="smart", generated="2026-11-01T10:00:00", where=_h):
+    json.dump({"generated": generated, "profile": profile,
+               "candidates": [{"id": str(i), "status": s} for i, s in enumerate(statuses)]},
+              open(os.path.join(where, name), "w"))
+_queue(".candidates-olx-smart-a.json", ["pending", "imported", "skipped"])
+_queue(".candidates-olx-watches-b.json", ["pending"] * 3 + ["error"], profile="classic",
+       generated="2026-10-01T10:00:00")
+_queue(".candidates-olx-smart-c.json", ["pending", "pending", "imported"],
+       generated="2026-11-05T10:00:00")
+_queue(".candidates-olx-smart-done.json", ["imported", "skipped"])
+open(os.path.join(_h, ".candidates-olx-torn.json"), "w").write('{"candidates": [')
+open(os.path.join(_h, "not-a-queue.json"), "w").write("{}")
+
+_rows = candidates.summary(_h)
+check([r["file"] for r in _rows] == [".candidates-olx-watches-b.json",
+                                     ".candidates-olx-smart-c.json",
+                                     ".candidates-olx-smart-a.json",
+                                     ".candidates-olx-smart-done.json",
+                                     ".candidates-olx-torn.json"],
+      "queues: order must be most pending first, then the newer queue: %s"
+      % [r["file"] for r in _rows])
+_b = _rows[0]
+check((_b["pending"], _b["error"], _b["profile"], _b["generated"]) == (3, 1, "classic", "2026-10-01"),
+      "queues: row fields wrong: %s" % _b)
+check("unreadable" in _rows[-1], "queues: a torn file must be a row marked unreadable, not a crash")
+
+_out = candidates.report(_h, _root)
+_lines = _out.splitlines()
+check(_lines[0].startswith("| Coadă") and _lines[1].startswith("|:-"),
+      "queues: the table header is missing: %r" % _lines[:2])
+_table = _lines[:_lines.index("")]
+check(len(_table) == 6 and len({len(l) for l in _table}) == 1,
+      "queues: header + separator + 4 shown queues, all the same width: %r" % _table)
+check("smart-done" not in _out, "queues: an empty queue is hidden without --all")
+check("nu se poate citi" in _out, "queues: an unreadable queue must still be shown")
+check("cozi goale ascunse: 1" in _out, "queues: the hidden count is missing")
+check("olx-loop.py harness/3ceasuri-import/.candidates-olx-watches-b.json --target 10" in _out,
+      "queues: the start command must name the queue with the most pending")
+check("smart-done" in candidates.report(_h, _root, show_all=True), "queues: --all shows empty ones")
+
+# a session still open on a queue: marked, and it is the one the command resumes
+json.dump({"status": "running", "queue": "harness/3ceasuri-import/.candidates-olx-smart-a.json"},
+          open(os.path.join(_root, "state.json"), "w"))
+_out = candidates.report(_h, _root)
+check(".candidates-olx-smart-a.json *" in _out and "sesiune deschisă" in _out,
+      "queues: the queue with an open session must be marked")
+check("olx-loop.py harness/3ceasuri-import/.candidates-olx-smart-a.json" in _out,
+      "queues: an open session must be the queue the start command resumes")
+
+# nothing pending anywhere: say how to make a new queue instead of a start command
+_e = tempfile.mkdtemp()
+_queue(".candidates-olx-smart-x.json", ["imported"], where=_e)
+_out = candidates.report(_e, _root)
+check("Creează una" in _out and "olx-loop.py" not in _out,
+      "queues: with nothing pending it must point to queue creation: %r" % _out)
+check("Creează una" in candidates.report(tempfile.mkdtemp(), _root),
+      "queues: no queue files at all must point to queue creation")
+
 print("\n".join(fails) if fails else "ALL CHECKS PASSED")
 sys.exit(1 if fails else 0)
