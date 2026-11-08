@@ -85,6 +85,8 @@ harness/3ceasuri-import/
                                      decide.py per sheet (python3; default since 11-08)
   scripts/decide.py                ← the one model call: sheet -> prompt -> `claude -p`
                                      -> JSON decision (also what evals/per-ad/ measures)
+  scripts/chrome-cdp.sh            ← start/stop/status/backup/restore the CDP Chrome on its
+                                     persistent profile (~/.hermes/chrome-debug, NOT in git)
   scripts/olx_api.py               ← in-page API, param→enum map, photo URLs, phone reveal
   scripts/price_sanity.py          ← price floors — suspiciously cheap = fake, dropped
   scripts/photo_dedup.py           ← byte-identical photos of an imported ad = a relist,

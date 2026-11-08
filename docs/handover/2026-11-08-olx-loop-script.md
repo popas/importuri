@@ -4,16 +4,40 @@ Issue: #2. Commits: 0e83a2b (driver fixes), 02bd4a8 (eval), 63dbc45 (loop + deci
 
 ## Cum folosești scriptul — pas cu pas
 
-**1. Pornește Chrome-ul cu CDP** (cum îl pornești de obicei; de exemplu):
+**1. Pornește Chrome-ul cu CDP** pe profilul persistent `~/.hermes/chrome-debug`:
 
 ```bash
-google-chrome --remote-debugging-port=9222 --user-data-dir="$HOME/.chrome-olx" &
-curl -s http://127.0.0.1:9222/json/version     # trebuie să răspundă cu JSON
+harness/3ceasuri-import/scripts/chrome-cdp.sh start     # deschide și tab-urile olx.ro + admin
+harness/3ceasuri-import/scripts/chrome-cdp.sh status    # CDP up? ce profil?
 ```
 
-**2. În acel Chrome:** autentifică-te pe `https://3ceasuri.ro/admin/` și pe olx.ro, și
-lasă deschis un tab pe `https://www.olx.ro/`. (Un profil `--user-data-dir` păstrat
-reține login-urile de la o rulare la alta.)
+Scriptul rulează exact comanda folosită până acum (`--remote-debugging-address=0.0.0.0
+--remote-debugging-port=9222 '--remote-allow-origins=*' --user-data-dir="$HOME/.hermes/chrome-debug"
+--no-first-run --no-default-browser-check`) și așteaptă până răspunde CDP-ul. Alte
+valori: `CHROME_PROFILE=… CDP_PORT=… CDP_ADDRESS=…` în fața comenzii.
+
+> `0.0.0.0` înseamnă că oricine ajunge la portul 9222 (de ex. din rețeaua locală) poate
+> controla browserul, autentificat în admin, fără parolă. Dacă nu-l comanzi de pe altă
+> mașină, `CDP_ADDRESS=127.0.0.1 …/chrome-cdp.sh start` îl ține doar pe acest calculator.
+
+**2. Prima dată pe profil:** autentifică-te în tab-urile deschise (`3ceasuri.ro/admin`
+și olx.ro). Profilul e un folder — login-urile, cookie-urile și setările rămân în
+`~/.hermes/chrome-debug` și sunt acolo la fiecare pornire cu același folder. Folderul stă
+**în afara repo-ului** intenționat: conține o sesiune de admin activă; nu-l comite.
+
+**Backup / mutare a profilului** (cu Chrome închis):
+
+```bash
+harness/3ceasuri-import/scripts/chrome-cdp.sh stop
+harness/3ceasuri-import/scripts/chrome-cdp.sh backup            # -> ~/.hermes/backups/chrome-debug-<dată>.tar.gz
+harness/3ceasuri-import/scripts/chrome-cdp.sh restore ~/.hermes/backups/chrome-debug-<dată>.tar.gz
+```
+
+Backup-ul lasă pe dinafară cache-urile (cea mai mare parte din cei ~1,2 GB; Chrome le
+reface). `restore` mută profilul curent deoparte (`…before-restore-<dată>`), nu-l șterge.
+Pe Linux, Chrome criptează cookie-urile cu cheia din keyring-ul utilizatorului: un backup
+pus înapoi pe același calculator/utilizator își păstrează login-urile; pe altă mașină
+probabil va trebui să te autentifici din nou.
 
 **3. Verifică `claude`** (o singură dată pe mașină):
 
@@ -63,8 +87,10 @@ deschisă; **aceeași comandă** o reia de unde a rămas (contoarele și ținta 
 **9. Dacă se oprește singur** — uită-te la ultima linie:
 
 - `TARGET_REACHED` / `QUEUE_EMPTY` → gata, totul e salvat și împins.
-- `OLX_BLOCKED` → OLX refuză browserul. Închide Chrome-ul, pornește-l din nou (pașii 1–2),
-  apoi rulează aceeași comandă.
+- `OLX_BLOCKED` → OLX refuză browserul. `chrome-cdp.sh restart`, apoi aceeași comandă.
+  Dacă blocajul rămâne și după restart (profilul persistent păstrează cookie-urile
+  olx.ro), șterge cookie-urile olx.ro din acel Chrome (Settings → Privacy → Site data)
+  sau așteaptă o vreme.
 - `BROWSER_FAILURE`, `PREFLIGHT_FAILED`, `three ERROR in a row` → vezi tabelul „When it
   stops” mai jos (sau cere-i lui Claude Code să folosească skill-ul `olx-troubleshooting`),
   apoi aceeași comandă.
