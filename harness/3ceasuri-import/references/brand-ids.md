@@ -402,6 +402,7 @@ Wenger:433
 Georg Jensen:434
 Slow:435
 Code41:436
+Rochas:437
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
