@@ -40,7 +40,8 @@ TARGET_REACHED / QUEUE_EMPTY (session stopped, pushed) and on OLX_BLOCKED /
 BROWSER_FAILURE / three ERROR in a row (session left running: fix the cause, run the
 same command again and it resumes). Ctrl-C is safe: it pushes and leaves the session
 running. The model is asked only the sheet's decision (`scripts/decide.py`); which
-model and effort: `evals/per-ad/report.md`.
+model and effort: `evals/per-ad/report.md`. Full guide (options, every stop line, how to
+resume, the decision call): `docs/handover/2026-11-08-olx-loop-script.md`.
 
 ## Prompt C — the import loop, one agent per ad (fallback; default 2026-11-07..08)
 

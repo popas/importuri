@@ -29,6 +29,7 @@ orchestrating session: `python3 harness/3ceasuri-import/scripts/olx-loop.py <que
 runs `olx-step.py` itself and calls a model only for the decision (`scripts/decide.py`:
 one `claude -p` per sheet); FIX retries, NEW_BRAND commits and the push every 10 ads are
 code. Re-running the same command resumes the session after a stop on OLX_BLOCKED.
+Guide: `docs/handover/2026-11-08-olx-loop-script.md`.
 
 **Fallback: one subagent per ad** (user directive 2026-11-07). The orchestrating session does
 not run `next`/`finish` itself: it spawns a fresh agent (Agent tool,
