@@ -1,6 +1,12 @@
 {
   "_comment": "Shop cards: photos that advertise a seller's business (logo card, storefront, 'why buy from us' panel), dropped from every import by photo_dedup.shop_cards. Keyed by the md5 of the file OLX serves. Learned automatically when one file sits beside two different watches; commit the file so the other machine drops them too. Delete an entry that is really a photo of a watch.",
   "cards": {
+    "18e09e5ea7d1cab1c4001a8e8236b3bb": {
+      "added": "2026-11-08",
+      "also_on": "olx-310992986",
+      "example": "olx-311552615/08.jpg",
+      "seller": "AME Shop Hermes Ostroveni"
+    },
     "301bc0ead6b83e42eb3aaa3d0eafb379": {
       "added": "2026-10-07",
       "also_on": "olx-309214089",
@@ -103,6 +109,12 @@
       "example": "olx-310885540/05.jpg",
       "seller": "Telefoane Mures"
     },
+    "9b28ae4feab096de632046e9b38060c7": {
+      "added": "2026-11-08",
+      "also_on": "olx-293851245",
+      "example": "olx-276275574/01.jpg",
+      "seller": "SC Chrisphone Srl"
+    },
     "b09b5b4a2e8377c8ce7d1173ae3657b2": {
       "added": "2026-10-07",
       "also_on": "olx-304460733",
@@ -120,6 +132,12 @@
       "also_on": "olx-307146247",
       "example": "olx-308078056/08.jpg",
       "seller": "ROW-Collection"
+    },
+    "c72a4452fe7f3d0c5278ab4a2ffb7aba": {
+      "added": "2026-11-08",
+      "also_on": "olx-309974162",
+      "example": "olx-310425610/05.jpg",
+      "seller": "L'Amanet - Amanet-Valcea.Ro"
     },
     "d30d5535b82aeb54e9c63b961860fee7": {
       "added": "2026-10-17",
