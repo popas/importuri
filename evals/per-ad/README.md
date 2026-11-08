@@ -23,7 +23,7 @@ marked `"added"` and survive a `build`.
   imports, 12 judgement skips (not_a_watch, bulk_lot, suspected_counterfeit,
   mismatched_photos). Each case is the sheet the agent saw, rebuilt from `.runs/` and
   `.contracts/`. `build` regenerates them from local logs (only on the machine that ran
-  the imports; it overwrites the set — commit only on purpose).
+  the imports; it re-picks the random part of the set, `add`ed cases stay — commit only on purpose).
 - The prompt and the `claude -p` call are `harness/3ceasuri-import/scripts/decide.py` —
   the same module `olx-loop.py` uses in production — fed the sheet `olx-step.py`'s
   `sheet()` renders, with the CURRENT `per-ad-agent.md` "The sheet" rules. A change to
