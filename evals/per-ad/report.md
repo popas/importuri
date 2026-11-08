@@ -1,13 +1,13 @@
 # Per-ad model eval
 
-Reference: production Sonnet answers (site-accepted fields / judgement skips). 36 cases. Regenerate: `python3 evals/per-ad/eval.py score`.
+Reference: production Sonnet answers (site-accepted fields / judgement skips). 37 cases. Regenerate: `python3 evals/per-ad/eval.py score`.
 
 | config | decision ok | skips caught | good ads skipped | model | variant | other fields | unknown model | invalid | desc gate | desc ≈ ref | $/ad | s/ad |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | haiku-high | 83% | 6/12 | 0 | 79% | 58% | 83% | 1 | 0 | 2 | 0.79 | 0.005 | 19 |
 | haiku-low | 83% | 6/12 | 0 | 75% | 62% | 82% | 1 | 0 | 3 | 0.78 | 0.004 | 12 |
 | haiku-medium | 86% | 7/12 | 0 | 79% | 46% | 83% | 0 | 0 | 2 | 0.80 | 0.005 | 14 |
-| sonnet-high | 92% | 9/12 | 0 | 71% | 67% | 87% | 0 | 0 | 1 | 0.86 | 0.070 | 11 |
+| sonnet-high | 92% | 9/12 | 0 | 72% | 68% | 87% | 0 | 0 | 1 | 0.86 | 0.071 | 11 |
 | sonnet-low | 86% | 7/12 | 0 | 79% | 58% | 88% | 0 | 0 | 1 | 0.90 | 0.065 | 9 |
 | sonnet-medium | 89% | 8/12 | 0 | 75% | 46% | 90% | 0 | 0 | 2 | 0.88 | 0.066 | 9 |
 

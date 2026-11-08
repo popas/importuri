@@ -109,6 +109,48 @@ python3 harness/3ceasuri-import/scripts/olx-loop.py harness/3ceasuri-import/<coa
 **Model mai ieftin** (nerecomandat — ratează mai multe skip-uri, vezi evals mai jos):
 `--model haiku --effort medium`.
 
+## Cum îmbunătățești bucla după ce rulează singură
+
+Nici scriptul, nici Claude nu învață între rulări: se îmbunătățesc doar fișierele — regulile
+(`per-ad-agent.md` „The sheet”, `HINTS` din `olx-step.py`), codul driverului și evals.
+Bucla de îmbunătățire:
+
+**1. Fiecare rulare lasă urme** (în `harness/3ceasuri-import/.runs/`, gitignored):
+
+| Fișier | Ce conține |
+|---|---|
+| `olx-loop-<data-ora>.json` | rezumatul rulării: importuri/skip-uri/erori, FIX pe cod, skip pe cod, cost, apeluri model, fiecare anunț |
+| `olx-<id>-decision.json` | pentru fiecare anunț: foaia, fiecare răspuns JSON al modelului (și al doilea, după FIX), fiecare răspuns al driverului, costul |
+| `olx-<id>-pass1.log`, `-pass2-N.log` | ieșirea brută a importerului |
+| `history.jsonl` (în git) | fiecare import și skip, cu motivul |
+
+La final scriptul afișează și pe ecran: `FIX: description_drifted 3, … | SKIP: bulk_lot 2, …
+| $0.08 and 1.3 model calls per decided ad`. Un FIX sau un skip care crește de la o rulare
+la alta e primul semn că o regulă trebuie schimbată.
+
+**2. Analiza:** deschide Claude Code în repo și cere, de exemplu, „analizează ultima rulare
+olx-loop” (sau „anunțul 123 a ieșit greșit: modelul trebuia să fie X”). Claude citește
+fișierele de mai sus, caută tipare și propune o reparație în reguli sau în cod.
+
+**3. Cazul problemă intră în evals, cu răspunsul corect:**
+
+```bash
+python3 evals/per-ad/eval.py add <id> --expect import --set model=Seamaster --set variant=null
+python3 evals/per-ad/eval.py add <id> --expect skip:bulk_lot      # trebuia sărit
+```
+
+**4. Reparația se verifică înainte de commit** — întâi pe cazul care a cerut-o, apoi pe tot setul:
+
+```bash
+python3 evals/per-ad/eval.py run sonnet high --only <id>
+python3 evals/per-ad/eval.py run sonnet high && python3 evals/per-ad/eval.py score
+```
+
+Dacă scorul pe tot setul nu scade, reparația intră în git.
+
+**5. Corecturile tale din admin** sunt cel mai bun semnal: un anunț pe care îl repari pe site
+= un caz pentru pasul 3.
+
 ## What changed
 
 Until 2026-11-08 an import ran inside a Claude Code session: an Opus orchestrator

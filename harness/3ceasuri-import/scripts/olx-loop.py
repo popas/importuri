@@ -26,6 +26,7 @@ import argparse
 import collections
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -41,6 +42,7 @@ H = os.path.join(ROOT, "harness/3ceasuri-import")
 STEP = os.environ.get("OLX_STEP") or os.path.join(HERE, "olx-step.py")
 LOCK = os.path.join(ROOT, ".olx-loop.lock")
 PHOTOS = os.path.join(H, ".photos")
+RUNS = os.path.join(H, ".runs")
 PUSH_FILES = ["history.jsonl", "harness/3ceasuri-import/scripts/import-watch.js",
               "harness/3ceasuri-import/references/brand-ids.md",
               "harness/3ceasuri-import/references/shop-cards.json"]
@@ -67,6 +69,12 @@ class Loop:
         self.cost = 0.0
         self.t0 = time.time()
         self.since_push = 0
+        self.run_id = time.strftime("%Y%m%d-%H%M%S")
+        self.fixes = collections.Counter()      # FIX / BAD_ANSWER codes this run
+        self.skip_codes = collections.Counter()
+        self.calls = 0                          # model calls
+        self.ads = []                           # one summary per decided ad
+        self.rec = None                         # the decision record of the ad in hand
 
     # --- the model ---------------------------------------------------------------
     def ask(self, prompt):
@@ -74,7 +82,14 @@ class Loop:
         for attempt in range(2):
             r = decide.call(prompt, self.model, self.effort, [PHOTOS])
             self.cost += r["cost_usd"] or 0
+            self.calls += 1
             bad = decide.valid(r["answer"])
+            if self.rec is not None:
+                self.rec["events"].append({
+                    "type": "model", "answer": r["answer"], "invalid": bad, "error": r["error"],
+                    "raw": None if r["answer"] and not bad else (r["raw"] or "")[:4000],
+                    "cost_usd": r["cost_usd"], "seconds": r["seconds"],
+                    "served_by": r["served_by"], "turns": r["turns"]})
             if not bad:
                 return r["answer"]
             prompt += ("\n---\nYour reply could not be used (%s). Reply with ONLY the JSON "
@@ -83,7 +98,52 @@ class Loop:
 
     # --- one ad --------------------------------------------------------------------
     def handle(self, sheet):
+        """Decide one sheet; every model answer and driver reply goes to
+        .runs/olx-<id>-decision.json (a list: one record per time the ad was handled)."""
         ad_id = sheet.split()[1]
+        self.rec = {"run": self.run_id, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "model": self.model, "effort": self.effort, "sheet": sheet, "events": []}
+        cost0, calls0, outcome = self.cost, self.calls, "error"
+        try:
+            outcome = self._handle(ad_id, sheet)
+            return outcome
+        finally:
+            self.rec.update(outcome=outcome, cost_usd=round(self.cost - cost0, 4),
+                            calls=self.calls - calls0)
+            path = os.path.join(RUNS, "olx-%s-decision.json" % ad_id)
+            try:
+                old = json.load(open(path)) if os.path.exists(path) else []
+            except ValueError:
+                old = []
+            os.makedirs(RUNS, exist_ok=True)
+            with open(path, "w") as f:
+                json.dump(old + [self.rec], f, ensure_ascii=False, indent=1)
+            self.ads.append({"id": ad_id, "outcome": outcome, "cost_usd": self.rec["cost_usd"],
+                             "calls": self.rec["calls"]})
+            self.rec = None
+
+    def drive(self, *args):
+        """olx-step.py, with its reply kept in the decision record."""
+        rc, out, head = step(*args)
+        if self.rec is not None:
+            self.rec["events"].append({"type": "driver", "cmd": args[0],
+                                       "args": [str(a) for a in args[3:]], "rc": rc,
+                                       "out": out[:3000]})
+        if head.startswith("SKIPPED"):
+            self.note_skip(head)
+        elif head.startswith("FIX"):
+            for code in re.findall(r"^  (\w+): ", out, re.M):
+                self.fixes[code] += 1
+        elif head.startswith("BAD_ANSWER"):
+            self.fixes["BAD_ANSWER"] += 1
+        return rc, out, head
+
+    def note_skip(self, head):
+        """'SKIPPED <id>: <code> …' -> the code, counted for the summary."""
+        rest = head.split(":", 1)[1].strip() if ":" in head else ""
+        self.skip_codes[(rest.split() or ["?"])[0].rstrip(":,")] += 1
+
+    def _handle(self, ad_id, sheet):
         fields = decide.decide_fields(sheet)
         full = None
         if "[…]" in sheet:
@@ -99,7 +159,7 @@ class Loop:
                 return "error"
             if answer.get("action") == "skip":
                 note = (answer.get("fields") or {}).get("notes") or ""
-                rc, out, head = step("skip", self.queue, ad_id, answer["skip_code"], note)
+                rc, out, head = self.drive("skip", self.queue, ad_id, answer["skip_code"], note)
                 say(head)
                 return "skipped"
             desc = answer.get("description")
@@ -108,7 +168,8 @@ class Loop:
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 with open(path, "w") as f:
                     f.write(desc.strip() + "\n")
-            rc, out, head = step("finish", self.queue, ad_id, *decide.finish_pairs(answer, fields))
+            rc, out, head = self.drive("finish", self.queue, ad_id,
+                                       *decide.finish_pairs(answer, fields))
             if head.startswith("IMPORTED"):
                 say(head)
                 self.brand_commits(out)
@@ -156,9 +217,24 @@ class Loop:
     def progress(self, final=False):
         mins = (time.time() - self.t0) / 60
         n = sum(self.stats.values())
+        decided = len(self.ads)
         say("%s: imported %d, skipped %d, errors %d | %.1f ads/min | model $%.2f (%s %s)" % (
             "DONE" if final else "PROGRESS", self.stats["imported"], self.stats["skipped"],
             self.stats["error"], n / mins if mins else 0, self.cost, self.model, self.effort))
+        top = lambda c: ", ".join("%s %d" % kv for kv in c.most_common()) or "-"
+        say("  FIX: %s | SKIP: %s | $%.3f and %.1f model calls per decided ad (%d)" % (
+            top(self.fixes), top(self.skip_codes), self.cost / decided if decided else 0,
+            self.calls / decided if decided else 0, decided))
+        if final:
+            path = os.path.join(RUNS, "olx-loop-%s.json" % self.run_id)
+            os.makedirs(RUNS, exist_ok=True)
+            with open(path, "w") as f:
+                json.dump({"run": self.run_id, "queue": self.queue, "model": self.model,
+                           "effort": self.effort, "minutes": round(mins, 1),
+                           "stats": self.stats, "fixes": self.fixes,
+                           "skip_codes": self.skip_codes, "cost_usd": round(self.cost, 4),
+                           "model_calls": self.calls, "ads": self.ads}, f, indent=1)
+            say("  run summary: %s" % os.path.relpath(path, ROOT))
 
     # --- the loop ------------------------------------------------------------------
     def run(self):
@@ -180,6 +256,7 @@ class Loop:
                 outcome = self.handle(out)
             elif head.startswith("SKIPPED"):
                 say(head)
+                self.note_skip(head)
                 outcome = "skipped"
             elif head.startswith("ERROR"):
                 say(head)

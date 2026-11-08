@@ -7,7 +7,17 @@ Offline: no browser, no OLX, nothing written to the site.
 python3 evals/per-ad/eval.py run haiku low       # one config -> results/haiku-low.jsonl
 python3 evals/per-ad/eval.py run sonnet high     # models: haiku|sonnet|opus, effort: low|medium|high|xhigh|max
 python3 evals/per-ad/eval.py score               # every results/*.jsonl -> report.md
+
+# a real ad that went wrong, with the right answer (default: what production did)
+python3 evals/per-ad/eval.py add <id> --expect import --set model=Seamaster
+python3 evals/per-ad/eval.py add <id> --expect skip:bulk_lot
+python3 evals/per-ad/eval.py run sonnet high --only <id>[,<id>]   # re-run only those rows
 ```
+
+`add` needs the ad's local logs (`.runs/`, `.contracts/`, `.photos/` — the machine that
+imported it). For an import the expected fields are the contract's (what production
+sent): check the printed fields and correct the wrong ones with `--set`. Added cases are
+marked `"added"` and survive a `build`.
 
 - `cases.jsonl` + `photos/` — 36 ads from the 2026-11-07/08 runs: 12 classic and 12 smart
   imports, 12 judgement skips (not_a_watch, bulk_lot, suspected_counterfeit,

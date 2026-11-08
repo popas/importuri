@@ -3,7 +3,10 @@
 
     python3 evals/per-ad/eval.py build                  # once: cases.jsonl + photos/
     python3 evals/per-ad/eval.py run haiku low          # one config -> results/haiku-low.jsonl
+    python3 evals/per-ad/eval.py run sonnet high --only 298522676   # re-run just these cases
     python3 evals/per-ad/eval.py score                  # every results/*.jsonl -> report.md
+    python3 evals/per-ad/eval.py add <id> [--expect import|skip:<code>] [--set field=value ...]
+                                                        # put one real (problem) ad in the set
 
 Offline: no browser, no OLX, nothing written to the site. Each case is the sheet a
 per-ad agent saw (rebuilt from .runs/ and .contracts/), sent through the SAME call
@@ -24,6 +27,7 @@ import random
 import re
 import shutil
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "../.."))
@@ -100,39 +104,95 @@ def build():
         rnd.shuffle(pool)
         picked += pool[:n]
 
-    shutil.rmtree(PHOTOS, ignore_errors=True)
-    os.makedirs(PHOTOS)
-    with open(CASES, "w") as out:
-        for e in picked:
-            ad_id = e["id"]
-            run = json.load(open(os.path.join(H, ".runs/olx-%s.json" % ad_id)))
-            final = json.load(open(os.path.join(H, ".contracts/olx-%s.json" % ad_id)))
-            ep = _pass1(ad_id)
-            known, title, text = _known_and_text(ep["prompt"])
-            todo = final.get("_todo") or ep.get("todo") or []
-            seed = dict(final)                       # fields nobody was asked keep their value
-            for f in todo:
-                seed[f] = known.get(f)
-            seed["description"] = text
-            seed["new_model"] = None
-            photos = []
-            for i, p in enumerate((run.get("photos") or [])[:2]):
-                dst = os.path.join(PHOTOS, "%s-%02d.jpg" % (ad_id, i + 1))
-                shutil.copy(p, dst)
-                photos.append(os.path.relpath(dst, HERE))
-            imp = e["event"] == "import"
-            out.write(json.dumps({
-                "id": ad_id, "profile": run["profile"], "extract": run.get("extract"),
-                "models": run.get("models"), "photos": photos, "seed": seed,
-                "seller_title": title, "seller_text": text,
-                "expected": {"decision": "import" if imp else "skip",
-                             "skip_code": None if imp else e["reason"].split(":")[0],
-                             "fields": {f: final.get(f) for f in todo if f != "description"} if imp else None,
-                             "description": final.get("description") if imp else None},
-            }, ensure_ascii=False) + "\n")
-    print("built %d cases -> %s" % (len(picked), os.path.relpath(CASES, ROOT)))
+    added = [c for c in load_cases() if c.get("added")]          # `add`ed cases survive
+    cases = [make_case(e["id"], "import" if e["event"] == "import" else "skip",
+                       None if e["event"] == "import" else e["reason"].split(":")[0])
+             for e in picked]
+    ids = {c["id"] for c in cases}
+    write_cases(cases + [c for c in added if c["id"] not in ids])
+    print("built %d cases (+%d added kept) -> %s" % (len(cases), len(added), os.path.relpath(CASES, ROOT)))
     print(collections.Counter(c["expected"]["decision"] + ":" + (c["expected"]["skip_code"] or c["profile"])
-                              for c in map(json.loads, open(CASES))))
+                              for c in load_cases()))
+
+
+def load_cases():
+    return [json.loads(l) for l in open(CASES)] if os.path.exists(CASES) else []
+
+
+def write_cases(cases):
+    with open(CASES, "w") as out:
+        for c in cases:
+            out.write(json.dumps(c, ensure_ascii=False) + "\n")
+    keep = {os.path.basename(p) for c in cases for p in c["photos"]}
+    for f in os.listdir(PHOTOS):                                  # photos of dropped cases
+        if f not in keep:
+            os.remove(os.path.join(PHOTOS, f))
+
+
+def make_case(ad_id, decision, skip_code=None, sets=()):
+    """One case from an ad's local logs (.runs/ + .contracts/ + .photos/): the inputs of
+    the sheet its agent saw, and what is expected. For an import the expected fields are
+    the contract's (what production sent); `sets` ('field=value') corrects them."""
+    for need in (".runs/olx-%s-pass1.log", ".runs/olx-%s.json", ".contracts/olx-%s.json"):
+        if not os.path.exists(os.path.join(H, need % ad_id)):
+            raise SystemExit("no %s - the ad was never through pass 1 on this machine"
+                             % (need % ad_id))
+    run = json.load(open(os.path.join(H, ".runs/olx-%s.json" % ad_id)))
+    final = json.load(open(os.path.join(H, ".contracts/olx-%s.json" % ad_id)))
+    ep = _pass1(ad_id)
+    known, title, text = _known_and_text(ep["prompt"])
+    todo = final.get("_todo") or ep.get("todo") or []
+    seed = dict(final)                       # fields nobody was asked keep their value
+    for f in todo:
+        seed[f] = known.get(f)
+    seed["description"] = text
+    seed["new_model"] = None
+    os.makedirs(PHOTOS, exist_ok=True)
+    photos = []
+    for i, p in enumerate((run.get("photos") or [])[:2]):
+        dst = os.path.join(PHOTOS, "%s-%02d.jpg" % (ad_id, i + 1))
+        shutil.copy(p, dst)
+        photos.append(os.path.relpath(dst, HERE))
+    imp = decision == "import"
+    fields = {f: final.get(f) for f in todo if f != "description"} if imp else None
+    if sets:
+        if not imp:
+            raise SystemExit("--set only applies to an expected import")
+        parse = _step().parse_pair
+        for pair in sets:
+            k, v = parse(pair)
+            fields[k] = v
+    return {
+        "id": ad_id, "profile": run["profile"], "extract": run.get("extract"),
+        "models": run.get("models"), "photos": photos, "seed": seed,
+        "seller_title": title, "seller_text": text,
+        "expected": {"decision": "import" if imp else "skip",
+                     "skip_code": None if imp else skip_code,
+                     "fields": fields,
+                     "description": final.get("description") if imp else None},
+    }
+
+
+def add(ad_id, expect=None, sets=()):
+    """Put one real ad in the set - typically one that went wrong - with the right answer."""
+    if expect is None:                           # default: what production did
+        last = [e for e in map(json.loads, open(os.path.join(ROOT, "history.jsonl")))
+                if str(e.get("id")) == str(ad_id)]
+        if not last:
+            raise SystemExit("%s is not in history.jsonl - pass --expect" % ad_id)
+        e = last[-1]
+        expect = "import" if e["event"] == "import" else "skip:" + e["reason"].split(":")[0]
+    decision, _, code = expect.partition(":")
+    if decision not in ("import", "skip") or (decision == "skip" and code not in decide.SKIP_CODES):
+        raise SystemExit("--expect is import or skip:<%s>" % "|".join(decide.SKIP_CODES))
+    case = make_case(str(ad_id), decision, code or None, sets)
+    case["added"] = time.strftime("%Y-%m-%d")
+    write_cases([c for c in load_cases() if c["id"] != case["id"]] + [case])
+    print("added %s: expected %s" % (ad_id, json.dumps(case["expected"]["fields"] if decision == "import"
+                                                        else expect, ensure_ascii=False)))
+    if decision == "import":
+        print("check the expected fields above; correct any with --set field=value and add again")
+    print("not scored until the next `run` of each config")
 
 
 # --- run -------------------------------------------------------------------------
@@ -152,12 +212,20 @@ def run_one(case, model, effort, step):
             "seconds": r["seconds"], "turns": r["turns"]}
 
 
-def run(model, effort, jobs=6, limit=None):
-    cases = [json.loads(l) for l in open(CASES)][:limit]
-    step = _step()
+def run(model, effort, jobs=6, limit=None, only=None):
+    """Every case -> results/<model>-<effort>.jsonl. `only` (ids) re-runs just those
+    and replaces their rows, keeping the rest - to check one fix on the case that needed it."""
+    cases = load_cases()[:limit]
     os.makedirs(RESULTS, exist_ok=True)
     path = os.path.join(RESULTS, "%s-%s.jsonl" % (model, effort))
+    kept = []
+    if only:
+        cases = [c for c in cases if c["id"] in only]
+        if os.path.exists(path):
+            kept = [l for l in open(path) if json.loads(l)["id"] not in only]
+    step = _step()
     with open(path, "w") as out, concurrent.futures.ThreadPoolExecutor(jobs) as ex:
+        out.writelines(kept)
         for i, r in enumerate(ex.map(lambda c: run_one(c, model, effort, step), cases), 1):
             out.write(json.dumps(r, ensure_ascii=False) + "\n")
             out.flush()
@@ -273,9 +341,15 @@ if __name__ == "__main__":
     if a[:1] == ["build"]:
         build()
     elif a[:1] == ["run"] and len(a) >= 3:
-        run(a[1], a[2], limit=int(a[3]) if len(a) > 3 else None)
+        only = set(a[a.index("--only") + 1].split(",")) if "--only" in a else None
+        lim = a[3] if len(a) > 3 and a[3].isdigit() else None
+        run(a[1], a[2], limit=int(lim) if lim else None, only=only)
     elif a[:1] == ["score"]:
         score()
+    elif a[:1] == ["add"] and len(a) >= 2:
+        exp = a[a.index("--expect") + 1] if "--expect" in a else None
+        sets = [a[i + 1] for i, x in enumerate(a) if x == "--set"]
+        add(a[1], exp, sets)
     else:
         print(__doc__)
         sys.exit(1)

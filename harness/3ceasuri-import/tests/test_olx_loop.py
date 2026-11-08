@@ -103,6 +103,16 @@ check(prompts and "Write tool" not in prompts[0] and "NEXT:" not in prompts[0]
       and "THE SHEET:" in prompts[0], "the prompt is the framed sheet")
 check("DONE: imported 1, skipped 0" in p.stdout, "summary: %r" % p.stdout)
 check(not os.path.exists(os.path.join(tmp, ".olx-loop.lock")), "the lock is released")
+runs = os.path.join(tmp, "harness/3ceasuri-import/.runs")
+dec = json.load(open(os.path.join(runs, "olx-9-decision.json")))
+check(len(dec) == 1 and dec[0]["outcome"] == "imported" and dec[0]["calls"] == 1
+      and [e["type"] for e in dec[0]["events"]] == ["model", "driver"]
+      and dec[0]["events"][0]["answer"]["fields"]["model"] == "Run Pro"
+      and dec[0]["sheet"].startswith("AD 9"), "decision log: %r" % dec)
+summ = [f for f in os.listdir(runs) if f.startswith("olx-loop-")]
+check(summ and json.load(open(os.path.join(runs, summ[0])))["stats"] == {"imported": 1},
+      "run summary file: %r" % summ)
+check("$0.070 and 1.0 model calls per decided ad (1)" in p.stdout, "cost line: %r" % p.stdout)
 
 # 2. FIX -> one retry; the retry leaves out new_model and keeps it (merged)
 p, steps, prompts, tmp, q = run(
@@ -119,6 +129,10 @@ check(len(fin) == 2 and "new_model=true" in fin[1] and "model=Run Pro" in fin[1]
 check(len(prompts) == 2 and "THE DRIVER ANSWERED:" in prompts[1] and "description_meta" in prompts[1],
       "the retry prompt carries the FIX lines")
 check(p.returncode == 0, "fix run exits 0: %s" % p.stdout)
+check("FIX: description_meta 1" in p.stdout, "FIX codes counted: %r" % p.stdout)
+dec = json.load(open(os.path.join(tmp, "harness/3ceasuri-import/.runs/olx-9-decision.json")))
+check([e["type"] for e in dec[0]["events"]] == ["model", "driver", "model", "driver"]
+      and dec[0]["calls"] == 2, "the retry is in the decision log")
 
 # 3. a judgement skip, then OLX_BLOCKED: exit 2, the session is NOT stopped
 p, steps, prompts, tmp, q = run(
@@ -131,6 +145,7 @@ sk = [s for s in steps if s[0] == "skip"]
 check(sk and sk[0][2:] == ["9", "bulk_lot", "3 watches, one price"], "skip argv: %r" % sk)
 check(p.returncode == 2 and "OLX_BLOCKED" in p.stdout and not any(s[0] == "stop" for s in steps),
       "blocked: exit 2, no stop: %s %r" % (p.returncode, steps))
+check("SKIP: bulk_lot 1" in p.stdout, "skip codes counted: %r" % p.stdout)
 
 # 4. an unusable reply is re-asked once; a second one marks the ad `error`
 p, steps, prompts, tmp, q = run(
