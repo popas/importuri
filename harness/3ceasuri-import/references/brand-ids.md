@@ -408,6 +408,7 @@ ARSA:439
 Swiss Gold:440
 Bering:441
 Tuareg:442
+G-Shock:443
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
