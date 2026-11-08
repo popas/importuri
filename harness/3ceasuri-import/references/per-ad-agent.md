@@ -1,9 +1,9 @@
 # Per-ad agent — the instructions for ONE ad
 
 The import loop runs one fresh subagent per ad (user directive 2026-11-07). The
-orchestrating session never sees a sheet or a photo: it spawns an agent with
+orchestrating session never sees a sheet or a photo: it spawns an agent of type
+`olx-per-ad` (`.claude/agents/olx-per-ad.md`, pinned to Sonnet) with the prompt
 
-    Read harness/3ceasuri-import/references/per-ad-agent.md and follow it.
     QUEUE=<queue file>  TARGET=<N>
 
 waits for its one-line answer, logs it, and spawns the next agent — strictly one at
