@@ -411,6 +411,7 @@ Tuareg:442
 G-Shock:443
 Glenaw:444
 Phoibos:445
+Nikken:446
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
