@@ -90,5 +90,11 @@ check(any("series" in p for p in problems), "9: unknown key not rejected: %s" % 
 _missing, problems = contract_draft.read(os.path.join(tempfile.mkdtemp(), "nope.json"), "smart")
 check(problems and "could not read" in problems[0], "10: a missing draft must be reported: %s" % problems)
 
+# 11. `year` is asked even when something filled it (2026-11-08: the regex baseline took
+#     service/battery/history dates) - and only once
+for prof in ("classic", "smart"):
+    t = contract_draft.todo_fields(dict(BASE, year=2025), prof)
+    check(t.count("year") == 1, "11: year asked once on %s even when filled: %s" % (prof, t))
+
 print("\n".join(fails) if fails else "ALL CHECKS PASSED")
 sys.exit(1 if fails else 0)

@@ -83,10 +83,13 @@ REQUIRED_BY_PROFILE = {
 # corrected, in their voice), so it is always asked.
 ALWAYS_ASK = {
     "classic": ["model", "variant", "movement", "reference", "is_wristwatch", "is_bulk_lot",
-                "notes", "description"],
+                "notes", "description", "year"],
     "smart":   ["model", "variant", "connectivity", "compatibility", "is_wristwatch",
-                "is_bulk_lot", "notes", "description"],
+                "is_bulk_lot", "notes", "description", "year"],
 }
+# `year` is always asked (2026-11-08): the regex baseline took the first 19xx/20xx in the
+# text and nobody checked it - 21 of 261 imports got a service, battery, purchase-range or
+# history date ("revizie în 2025", "Anul: 1988–1995", "în 1956, la Bonneville").
 # `brand` is asked only when neither the OLX param nor the title named a known one --
 # otherwise a required field sat null OUTSIDE the todo list, so the only way past the
 # draft check was to edit a field the model had been told to leave alone.
@@ -170,9 +173,10 @@ RULES_CLASSIC = """
   when the seller did. Plain text, no markdown, no emoji; as long as theirs, no longer.
   The gate stops a text about the seller/ad/photos (`description_meta`) and one that is
   mostly not their words (`description_drifted`).
-- `year` — ONE year as an integer. `id_year` is a numeric input, so a decade range
-  is silently dropped: if the post only says "anii '70", leave this null and put the
-  decade in `variant` instead.
+- `year` — ONE year as an integer: the year the watch was made, or bought new. Not a
+  service, battery, warranty or history date; a range ("1988–1995", "2020-Now") -> null.
+  `id_year` is a numeric input, so a decade is silently dropped: if the post only says
+  "anii '70", leave this null and put the decade in `variant` instead.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
 - `category` — `wrist` for anything worn on the wrist, `pocket` for a pocket watch
   (ceas de buzunar: a bow and chain instead of lugs, often a hinged lid — savonette,
@@ -255,8 +259,9 @@ RULES_SMART = """
   when the seller did. Plain text, no markdown, no emoji; as long as theirs, no longer.
   The gate stops a text about the seller/ad/photos (`description_meta`) and one that is
   mostly not their words (`description_drifted`).
-- `year` — ONE year as an integer, and only when stated. A smartwatch generation
-  is NOT a year; leave it null and let `model` carry the generation.
+- `year` — ONE year as an integer, and only when stated: the year it was made or bought
+  new. Not a service, battery or warranty date. A smartwatch generation is NOT a year;
+  leave it null and let `model` carry the generation.
 - `price` — for THIS watch. `priceNote` = "negociabil", "fix", etc.
 - `is_bulk_lot` — true when one price covers several watches, or when the ad is
   shop stock offering "mai multe bucăți".

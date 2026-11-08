@@ -95,8 +95,11 @@ HINTS = {
     "is_bulk_lot": "true when one price covers several watches, or shop stock 'mai multe bucăți'.",
     "notes": "one short sentence ONLY if the operator must know (suspected replica, "
              "iCloud-locked, model read off a photo, movement inferred). Else null.",
-    "year": "ONE integer, only when stated. A decade -> null (put it in variant). A smartwatch "
-            "generation is not a year.",
+    "year": "the year the watch was MADE or bought NEW, as ONE integer, only when the ad says it "
+            "('an fabricație 2019', 'din 1965', 'factura din 2016'). NOT a service, battery, "
+            "warranty or history date ('revizie în 2025', 'bateria schimbată 2025', 'în 1956 "
+            "a câștigat'). A range ('1988–1995', '2020-Now') or a decade -> null (a decade goes "
+            "in variant). A smartwatch generation is not a year.",
     "diameter": "case size in mm, a number. Only when stated or legible.",
     "gender": "only when the ad or the watch makes it clear.",
     "condition": "as the ad describes it.",

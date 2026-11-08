@@ -255,6 +255,16 @@ rate by 8 points.
 - `finish` strips a leading brand from `model` ("Suunto RUN" → "Run") and takes the
   site's spelling from the brand's MODELS list.
 
+## The year (same day, later)
+
+`year` is now always asked (`infer_fields.ALWAYS_ASK`, both profiles) and pass 1 no
+longer seeds it: the regex took the first 19xx/20xx anywhere in the text. Of 21 imports
+(2026-11-07/08) it set unasked, 7 were wrong — a service, a battery change, two ranges,
+a history date, "2020-Now", a street name ("Str. 1 Decembrie 1918"). Rule: the year the
+watch was made or bought new; never a service/battery/warranty/history date; a range or
+a decade -> null. Eval: 10 of those ads added; Sonnet high answers the year right on 31
+of 32 cases (the 32nd: right year, broken JSON - production re-asks).
+
 ## Fallbacks
 
 - **One agent per ad** from a Claude Code session: Prompt C in

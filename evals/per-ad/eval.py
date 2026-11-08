@@ -199,7 +199,14 @@ def add(ad_id, expect=None, sets=()):
 def prompt_for(case, step):
     """The production prompt (decide.build_prompt) for the sheet this case's agent saw."""
     photos = [os.path.join(HERE, p) for p in case["photos"]]
-    sh = step.sheet("evals/queue.json", case["id"], case["profile"], case["seed"],
+    seed = dict(case["seed"])
+    todo = list(seed.get("_todo") or [])
+    for f in infer_fields.ALWAYS_ASK[case["profile"]]:   # today's rules ask it, unseeded
+        if f not in todo:
+            todo.append(f)
+            seed[f] = None
+    seed["_todo"] = todo
+    sh = step.sheet("evals/queue.json", case["id"], case["profile"], seed,
                     case["extract"], photos, models=case["models"])
     return decide.build_prompt(sh, case["seller_text"])
 

@@ -87,9 +87,8 @@ def baseline(ad, profile, brand_ids):
                       r"([A-Z0-9][A-Z0-9\-\./ ]{2,20}[A-Z0-9])", text, re.I)
         if m and any(c.isdigit() for c in m.group(1)):
             data["reference"] = m.group(1).strip(" .")
-        m = re.search(r"\b((?:19|20)\d{2})\b", text)
-        if m:
-            data["year"] = int(m.group(1))
+        # no year here (2026-11-08): the first 19xx/20xx in the text was a service, battery
+        # or history date often enough; `year` is always asked instead (infer_fields.ALWAYS_ASK).
         low = text.lower()
         for pat, val in ((r"automat|automatic", "automatic"),
                          (r"quartz|baterie", "quartz"),
