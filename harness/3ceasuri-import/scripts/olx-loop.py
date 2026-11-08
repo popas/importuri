@@ -12,7 +12,8 @@ the fields, the description, or a judgement skip. Everything mechanical is code:
 `field=value` pairs, the description file, the FIX retry (merged onto the first answer,
 so it can never drop a field), the NEW_BRAND commit, the push every N ads.
 
-Stops on TARGET_REACHED / QUEUE_EMPTY (runs `stop`), on OLX_BLOCKED / BROWSER_FAILURE /
+Stops on TARGET_REACHED / QUEUE_EMPTY (runs `stop`, which moves a queue with nothing
+pending to .candidates-done/), on OLX_BLOCKED / BROWSER_FAILURE /
 PREFLIGHT_FAILED / three ERROR in a row (the session stays running: run the same
 command again to resume). One loop at a time: one Chrome, one OLX tab, one state.json.
 
@@ -240,6 +241,8 @@ class Loop:
     def run(self):
         rc, out, head = step("start", self.queue, "--target", self.target, "--clear-every", "0")
         say(head)
+        if head.startswith("QUEUE_EMPTY"):     # finished earlier: `stop` archived it
+            return 0
         if rc != 0:
             return 2
         errors_in_row = 0
@@ -247,7 +250,10 @@ class Loop:
             rc, out, head = step("next", self.queue)
             if rc in (3, 4) or head.startswith(("TARGET_REACHED", "QUEUE_EMPTY")):
                 say(head)
-                step("stop", self.queue)
+                _, out, _ = step("stop", self.queue)
+                for line in out.splitlines():
+                    if line.startswith("ARCHIVED"):
+                        say(line)
                 return 0
             if rc == 5:                    # CLEAR_CHECKPOINT of a session started elsewhere
                 step("start", self.queue, "--target", self.target)

@@ -175,5 +175,46 @@ check("Creează una" in _out and "olx-loop.py" not in _out,
 check("Creează una" in candidates.report(tempfile.mkdtemp(), _root),
       "queues: no queue files at all must point to queue creation")
 
+# archive: a finished queue leaves the work folder for .candidates-done/, kept whole
+_a = tempfile.mkdtemp()
+_queue(".candidates-olx-smart-busy.json", ["pending", "imported"], where=_a)
+_queue(".candidates-olx-smart-fin.json", ["imported", "error"], where=_a)
+_busy, _fin = (os.path.join(_a, n) for n in (".candidates-olx-smart-busy.json",
+                                             ".candidates-olx-smart-fin.json"))
+check(candidates.archive(_busy) is None and os.path.exists(_busy),
+      "archive: a queue with pending work must stay put")
+_dest = candidates.archive(_fin)
+check(_dest == os.path.join(_a, candidates.DONE_DIR, ".candidates-olx-smart-fin.json")
+      and not os.path.exists(_fin) and os.path.exists(_dest),
+      "archive: a finished queue moves into .candidates-done/: %r" % _dest)
+check(candidates.counts(_dest)["error"] == 1, "archive: the moved queue keeps its error entries")
+check(candidates.archived(_fin) == _dest and candidates.archived(_busy) is None,
+      "archived: finds the moved queue by its old path, and only that one")
+check([r["file"] for r in candidates.summary(_a)] == [".candidates-olx-smart-busy.json"],
+      "archive: `queues` no longer sees an archived queue")
+# the same name finished twice (discovery reuses its default OUT): the first one survives
+_queue(".candidates-olx-smart-fin.json", ["skipped"], where=_a)
+_dest2 = candidates.archive(_fin)
+check(_dest2 and _dest2 != _dest and candidates.counts(_dest)["error"] == 1
+      and candidates.counts(_dest2)["skipped"] == 1,
+      "archive: a name already archived must not be overwritten: %r" % _dest2)
+open(os.path.join(_a, ".candidates-olx-torn.json"), "w").write('{"candidates": [')
+check(candidates.archive(os.path.join(_a, ".candidates-olx-torn.json")) is None,
+      "archive: an unreadable queue is never moved")
+
+# archive_all (`candidates.py archive`): every finished queue but the open session's
+_b = tempfile.mkdtemp()
+_bh = os.path.join(_b, "harness/3ceasuri-import")
+os.makedirs(_bh)
+for _n, _s in (("open", ["imported"]), ("old", ["skipped"]), ("busy", ["pending"])):
+    _queue(".candidates-olx-smart-%s.json" % _n, _s, where=_bh)
+json.dump({"status": "running", "queue": "harness/3ceasuri-import/.candidates-olx-smart-open.json"},
+          open(os.path.join(_b, "state.json"), "w"))
+check(candidates.archive_all(_bh, _b) == [".candidates-olx-smart-old.json"],
+      "archive_all: moves only finished queues, never the one a session is open on")
+check(sorted(r["file"] for r in candidates.summary(_bh)) ==
+      [".candidates-olx-smart-busy.json", ".candidates-olx-smart-open.json"],
+      "archive_all: the busy queue and the open session's queue stay")
+
 print("\n".join(fails) if fails else "ALL CHECKS PASSED")
 sys.exit(1 if fails else 0)

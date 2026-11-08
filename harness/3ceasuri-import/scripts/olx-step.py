@@ -11,7 +11,9 @@ Run with python3 — this one is NOT a browser-use payload; it runs the payloads
     python3 $S finish <queue> <id> [field=value ...] write the answers, pass 2, log it
     python3 $S skip   <queue> <id> <code> ['reason']   your own judgement skip
     python3 $S counts <queue>
-    python3 $S stop   <queue>                        end of session: report + status idle
+    python3 $S stop   <queue>                        end of session: report + status idle;
+                                                     a queue with nothing pending moves to
+                                                     .candidates-done/ (ARCHIVED:)
 
 Why it exists. The loop used to be five hand-typed steps per watch, each printing a
 few KB of JSON for the model to parse: pass 1, read the draft, edit it, pass 2 piped
@@ -818,9 +820,16 @@ def cmd_stop(queue):
         since = state.get("session_started") or state.get("session_date", "~")
         if c.get("status") == "skipped" and str(c.get("ts", "")) >= since:
             reasons[c.get("reason")] = reasons.get(c.get("reason"), 0) + 1
-    say("SESSION: imported %s, skipped %s | skip reasons today %s | queue %s | status idle" % (
-        state.get("session_imported"), state.get("session_skipped"), json.dumps(reasons),
-        json.dumps(candidates.counts(queue))))
+    lines = ["SESSION: imported %s, skipped %s | skip reasons today %s | queue %s | status idle"
+             % (state.get("session_imported"), state.get("session_skipped"),
+                json.dumps(reasons), json.dumps(candidates.counts(queue)))]
+    # Last thing the session does with its queue, after the state went idle: a queue
+    # with nothing pending leaves the work folder (user request 2026-11-09).
+    done = candidates.archive(queue)
+    if done:
+        lines.append("ARCHIVED: %s -> %s (nothing pending)" % (
+            os.path.relpath(queue, ROOT), os.path.relpath(done, ROOT)))
+    say(*lines)
     return 0
 
 
@@ -841,6 +850,16 @@ def main(argv):
     cmd, queue = argv[1], os.path.abspath(os.path.join(ROOT, argv[2])) \
         if not os.path.isabs(argv[2]) else argv[2]
     if not os.path.exists(queue):
+        if candidates.archived(queue):
+            # Finished and archived by an earlier `stop`: the same answer as `next` on
+            # an empty queue, so the loop, the per-ad agent and its orchestrator all
+            # already know to stop here.
+            say("QUEUE_EMPTY: %s is finished - archived to %s" % (
+                    os.path.relpath(queue, ROOT),
+                    os.path.relpath(candidates.archived(queue), ROOT)),
+                "NEXT: nothing left in this queue; pick another: "
+                "python3 harness/3ceasuri-import/scripts/candidates.py queues")
+            return 3
         say("NO_QUEUE: %s does not exist" % queue)
         return 2
     if cmd == "start":

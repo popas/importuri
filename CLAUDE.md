@@ -78,7 +78,8 @@ harness/3ceasuri-import/
                                      in the loop fills it)
   scripts/contract_draft.py        ← the seeded contract draft: build / write / read, _todo
   scripts/candidates.py            ← the work queue (python3, NOT a browser payload);
-                                     `candidates.py queues` = every queue + pending, as a table
+                                     `candidates.py queues` = every queue + pending, as a table;
+                                     `candidates.py archive` = finished queues -> .candidates-done/
   scripts/olx-log-result.py        ← history.jsonl + state.json (python3, NOT a payload)
   scripts/olx-step.py              ← THE LOOP DRIVER: start/next/finish/skip/stop
                                      (python3, NOT a payload; it runs the payloads)
@@ -105,6 +106,8 @@ harness/3ceasuri-import/
   .runs/                           ← olx-step.py: raw payload logs + run state (gitignored)
   .candidates-olx-smart.json       ← 1943 discovery output; the work queue
   .candidates-olx-watches.json     ← 1677 discovery output; the work queue
+  .candidates-done/                ← finished queues (0 pending): `olx-step.py stop` moves its
+                                     queue here; kept for the `error` entries (gitignored)
   references/brand-ids.md          ← brand→ID mapping source of truth
   references/olx-lore.md           ← why the rules are the rules; read when troubleshooting
   references/seller-blocklist.json ← never-import sellers (`olx_sellers`; `authors` = FB)

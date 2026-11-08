@@ -156,6 +156,20 @@ check(len(prompts) == 2 and "could not be used" in prompts[1], "one corrective r
 check(json.load(open(q))["candidates"][0]["status"] == "error", "no usable answer -> error")
 check(not any(s[0] in ("finish", "skip") for s in steps), "nothing sent to the driver")
 
+# 4b. the queue runs out: stop's ARCHIVED line is shown; a later run on the archived
+#     queue is QUEUE_EMPTY at start: exit 0, nothing else run
+p, steps, prompts, tmp, q = run(
+    [START, {"cmd": "next", "rc": 3, "out": "QUEUE_EMPTY: {}"},
+     {"cmd": "stop", "rc": 0, "out": "SESSION: imported 0\nARCHIVED: q.json -> done/q.json "
+                                     "(nothing pending)"}], [])
+check(p.returncode == 0 and "ARCHIVED: q.json -> done/q.json" in p.stdout,
+      "stop's ARCHIVED line is printed: %s %r" % (p.returncode, p.stdout))
+p, steps, prompts, tmp, q = run(
+    [{"cmd": "start", "rc": 3, "out": "QUEUE_EMPTY: q.json is finished - archived to done/q.json"}],
+    [])
+check(p.returncode == 0 and [s[0] for s in steps] == ["start"] and not prompts,
+      "start on an archived queue: exit 0, no next/stop/model: %s %r" % (p.returncode, steps))
+
 # 5. three ERROR in a row stop the loop
 p, steps, prompts, tmp, q = run(
     [START] + [{"cmd": "next", "rc": 0, "out": "ERROR %d: did not load" % i} for i in range(3)],

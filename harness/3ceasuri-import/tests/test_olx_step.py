@@ -67,6 +67,26 @@ check('"bulk_lot": 1' in out and '"repost": 1' in out and '"old"' not in out,
 check(json.load(open(os.path.join(root, "state.json")))["status"] == "idle",
       "stop sets the state idle")
 
+# that queue had nothing pending: `stop` moved it out of the work folder, whole
+done = os.path.join(root, "harness/3ceasuri-import/.candidates-done/.candidates-test.json")
+check("ARCHIVED: harness/3ceasuri-import/.candidates-test.json -> "
+      "harness/3ceasuri-import/.candidates-done/.candidates-test.json" in out
+      and not os.path.exists(q) and len(json.load(open(done))["candidates"]) == 3,
+      "stop archives a queue with nothing pending: %r" % out)
+# ...and any later command on it is QUEUE_EMPTY (rc 3), not NO_QUEUE: start resolves it
+# before its preflight, so no Chrome is needed here
+for cmd in ("start", "next"):
+    rc, out2 = step(root, cmd, q)
+    check(rc == 3 and out2.startswith("QUEUE_EMPTY: harness/3ceasuri-import/.candidates-test.json "
+                                      "is finished") and "candidates.py queues" in out2,
+          "%s on an archived queue: rc=%s %r" % (cmd, rc, out2))
+
+# a queue with work left stays where it is after `stop` (TARGET_REACHED, Ctrl-C...)
+root, q = project(RUNNING, PENDING)
+rc, out = step(root, "stop", q)
+check(rc == 0 and "ARCHIVED" not in out and os.path.exists(q),
+      "stop leaves a queue with pending ads in place: %r" % out)
+
 # the /clear checkpoint: `clear_every` ads settled in this context -> `next` stops the
 # operator without touching the queue, and the line tells the human to /clear
 CLEAR = dict(RUNNING, target=50, session_imported=15, session_skipped=10, clear_every=25,

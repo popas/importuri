@@ -11,6 +11,8 @@ Also usable from the shell, deliberately without a browser:
     python3 candidates.py next   harness/3ceasuri-import/.candidates-olx-smart.json
     python3 candidates.py counts harness/3ceasuri-import/.candidates-olx-smart.json
     python3 candidates.py queues [--all]    every queue and what it has left, as a table
+    python3 candidates.py archive           move every finished queue to .candidates-done/
+                                            (`olx-step.py stop` does it for its own queue)
 """
 
 import glob
@@ -91,6 +93,53 @@ def counts(path):
     return _count(load(path))
 
 
+# A finished queue (nothing pending) leaves the work folder for this subfolder, so the
+# folder holds only queues with work left. Moved, never deleted: its `error` entries
+# are recorded nowhere else (history.jsonl logs imports and skips only).
+DONE_DIR = ".candidates-done"
+
+
+def archive(path):
+    """Move the queue at `path` into DONE_DIR beside it when nothing in it is pending.
+    Returns the new path, or None when it still has work or cannot be read.
+
+    Never overwrites: discovery's default OUT names (.candidates-olx-smart.json) get
+    reused, so a name already archived gets a timestamp."""
+    try:
+        if counts(path)["pending"]:
+            return None
+    except (OSError, ValueError, AttributeError):
+        return None
+    done = os.path.join(os.path.dirname(os.path.abspath(path)), DONE_DIR)
+    os.makedirs(done, exist_ok=True)
+    dest = os.path.join(done, os.path.basename(path))
+    if os.path.exists(dest):
+        stem, ext = os.path.splitext(os.path.basename(path))
+        dest = os.path.join(done, "%s-%s%s" % (stem, time.strftime("%Y%m%d-%H%M%S"), ext))
+    os.replace(path, dest)
+    return dest
+
+
+def archived(path):
+    """Where `archive` put the queue that was at `path`, or None."""
+    dest = os.path.join(os.path.dirname(os.path.abspath(path)), DONE_DIR,
+                        os.path.basename(path))
+    return dest if os.path.exists(dest) else None
+
+
+def archive_all(harness, root):
+    """`candidates.py archive`: every finished queue in `harness`, except the one a
+    session is still open on (its `stop` archives it). Returns the moved file names."""
+    running = running_queue(root)
+    moved = []
+    for r in summary(harness):
+        if "unreadable" in r or r.get("pending") or r["path"] == running:
+            continue
+        if archive(r["path"]):
+            moved.append(r["file"])
+    return moved
+
+
 def summary(directory):
     """One row per queue (.candidates-*.json) in `directory`: most pending first,
     the newer queue first among equals. A file that does not parse is a row with
@@ -168,7 +217,8 @@ def report(harness, root, show_all=False):
         out += [table(shown, running), ""]
     out.append("cozi cu pending: %d · anunțuri pending: %d%s" % (
         len(with_pending), sum(r["pending"] for r in with_pending),
-        " · cozi goale ascunse: %d (--all le arată)" % hidden if hidden else ""))
+        " · cozi goale ascunse: %d (--all le arată, `archive` le mută în %s/)"
+        % (hidden, DONE_DIR) if hidden else ""))
     if running and any(r["path"] == running for r in shown):
         out.append("* sesiune deschisă: aceeași comandă o reia; un --target nou e ignorat "
                    "până la `olx-step.py stop <coada>`")
@@ -181,13 +231,19 @@ def report(harness, root, show_all=False):
     return "\n".join(out)
 
 
-USAGE = "usage: candidates.py next|counts <file>   |   candidates.py queues [--all]"
+USAGE = ("usage: candidates.py next|counts <file>   |   candidates.py queues [--all]"
+         "   |   candidates.py archive")
 
 if __name__ == "__main__":
+    harness = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if len(sys.argv) >= 2 and sys.argv[1] == "queues":
-        harness = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         print(report(harness, os.path.dirname(os.path.dirname(harness)),
                      show_all="--all" in sys.argv[2:]))
+        sys.exit(0)
+    if len(sys.argv) >= 2 and sys.argv[1] == "archive":
+        moved = archive_all(harness, os.path.dirname(os.path.dirname(harness)))
+        print("\n".join(moved + ["arhivate: %d cozi fără pending -> %s/"
+                                 % (len(moved), os.path.join(harness, DONE_DIR))]))
         sys.exit(0)
     if len(sys.argv) < 3:
         print(USAGE)

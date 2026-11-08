@@ -94,7 +94,9 @@ deschisă; **aceeași comandă** o reia de unde a rămas (contoarele și ținta 
 
 **9. Dacă se oprește singur** — uită-te la ultima linie:
 
-- `TARGET_REACHED` / `QUEUE_EMPTY` → gata, totul e salvat și împins.
+- `TARGET_REACHED` / `QUEUE_EMPTY` → gata, totul e salvat și împins. O coadă rămasă fără
+  pending e mutată în `harness/3ceasuri-import/.candidates-done/` (linia `ARCHIVED:`);
+  aceeași comandă pe ea răspunde apoi `QUEUE_EMPTY … is finished`.
 - `OLX_BLOCKED` → OLX refuză browserul. `chrome-cdp.sh restart`, apoi aceeași comandă.
   Dacă blocajul rămâne și după restart (profilul persistent păstrează cookie-urile
   olx.ro), șterge cookie-urile olx.ro din acel Chrome (Settings → Privacy → Site data)
@@ -281,7 +283,7 @@ end the same line as `DONE:`.
 
 | Line | Exit | Session | What to do |
 |---|---|---|---|
-| `TARGET_REACHED` / `QUEUE_EMPTY` | 0 | stopped (`stop`), pushed | nothing; a new run starts a new session |
+| `TARGET_REACHED` / `QUEUE_EMPTY` | 0 | stopped (`stop`), pushed; a queue with nothing pending moved to `.candidates-done/` (`ARCHIVED:`) | nothing; a new run starts a new session (on an archived queue it says `QUEUE_EMPTY … is finished` and exits 0) |
 | `OLX_BLOCKED <id>` | 2 | left running, ad stays `pending` | OLX refuses this browser (403/429 on the ad API). Restart the CDP Chrome or wait, then run the **same command**: it resumes |
 | `BROWSER_FAILURE` / `PREFLIGHT_FAILED` | 2 | left running | fix Chrome / the admin login (`olx-troubleshooting` skill), run the same command |
 | `STOPPED: three ERROR in a row` | 2 | left running | `olx-troubleshooting`; then the same command |

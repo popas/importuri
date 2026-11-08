@@ -3,7 +3,8 @@ __pycache__/
 # discovery work queues (default and per-county); local state, the admin is the record
 harness/3ceasuri-import/.candidates.json
 harness/3ceasuri-import/.candidates-olx-*.json
-# finished queues (0 pending), moved out of the way; kept for their `error` entries
+# finished queues (0 pending): `olx-step.py stop` / `candidates.py archive` move them
+# here; kept for their `error` entries, which history.jsonl does not record
 harness/3ceasuri-import/.candidates-done/
 
 # per-post photos saved for the extraction contract (regenerated per run)
