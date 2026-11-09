@@ -413,6 +413,7 @@ Glenaw:444
 Phoibos:445
 Nikken:446
 Harmoniq:447
+Maxcom:448
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
