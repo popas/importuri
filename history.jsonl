@@ -4000,3 +4000,13 @@
 {"id": "303422841", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T03:30:30"}
 {"id": "310891208", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T03:30:57"}
 {"id": "310891057", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T03:31:19"}
+{"id": "310891933", "source": "olx", "reason": "not_a_watch: HTC Vive VR headset kit (headset, controllers, base stations, link box), not a watch.", "event": "skip", "ts": "2026-11-09T03:32:15"}
+{"source": "olx", "id": "309601432", "url": "https://www.olx.ro/d/oferta/apple-watch-ultra-2-49mm-titanium-IDkX3tu.html", "brand": "Apple", "model": "Watch Ultra 2", "price": 2300, "currency": "RON", "images": 6, "seller_id": "19154292", "seller_name": "Sorin", "business": false, "event": "import", "ts": "2026-11-09T03:33:56"}
+{"source": "olx", "id": "310891416", "url": "https://www.olx.ro/d/oferta/vand-ceas-smart-fw74-aurum-slim-IDl2t3G.html", "brand": "Maxcom", "model": "FW74 Aurum Slim", "price": 300, "currency": "RON", "images": 2, "seller_id": "10521140", "seller_name": "Vladut Adr", "business": false, "event": "import", "ts": "2026-11-09T03:35:30"}
+{"source": "olx", "id": "310891405", "url": "https://www.olx.ro/d/oferta/smartwatch-z7-ultra-IDl2t3w.html", "brand": "Fără marcă", "model": "Z7 Ultra", "price": 170, "currency": "RON", "images": 4, "seller_id": "3705307", "seller_name": "Stefan", "business": false, "event": "import", "ts": "2026-11-09T03:37:03"}
+{"id": "308374021", "source": "olx", "reason": "not_a_watch: Wireless access point (Zyxel NWA1123ACv3), not a watch.", "event": "skip", "ts": "2026-11-09T03:37:08"}
+{"id": "308162617", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T03:37:24"}
+{"id": "310696188", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T03:37:38"}
+{"source": "olx", "id": "309120400", "url": "https://www.olx.ro/d/oferta/fitbit-sense-2-smartwatch-gps-kli-ro-IDkW2kU.html", "brand": "Fitbit", "model": "Sense 2", "price": 650, "currency": "RON", "images": 2, "seller_id": "368113613", "seller_name": "Kli Amanet - KLI.ro", "business": true, "event": "import", "ts": "2026-11-09T03:39:05"}
+{"id": "310072865", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T03:39:24"}
+{"id": "308385636", "source": "olx", "reason": "bulk_lot: Two Samsung Galaxy Watch3 (gold and black) sold for one price.", "event": "skip", "ts": "2026-11-09T03:40:08"}
