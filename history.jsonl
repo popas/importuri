@@ -4020,3 +4020,4 @@
 {"id": "310117717", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T03:47:41"}
 {"id": "309334987", "source": "olx", "reason": "thin_description: description looks thin (35 chars)", "event": "skip", "ts": "2026-11-09T03:48:58"}
 {"source": "olx", "id": "310589297", "url": "https://www.olx.ro/d/oferta/apple-watch-series-9-IDl1csN.html", "brand": "Apple", "model": "Watch Series 9", "price": 999, "currency": "RON", "images": 8, "seller_id": "1378725743", "seller_name": "Million Store", "business": true, "event": "import", "ts": "2026-11-09T03:50:45"}
+{"source": "olx", "id": "302680610", "url": "https://www.olx.ro/d/oferta/huawei-watch-3-pro-classic-IDku13k.html", "brand": "Huawei", "model": "Watch 3 Pro", "price": 600, "currency": "RON", "images": 6, "seller_id": "8613467", "seller_name": "Daniel", "business": false, "event": "import", "ts": "2026-11-09T03:52:43"}
