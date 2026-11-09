@@ -3993,3 +3993,10 @@
 {"source": "olx", "id": "310205163", "url": "https://www.olx.ro/d/oferta/smartwatch-galaxy-watch6-44mm-IDkZAx5.html", "brand": "Samsung", "model": "Galaxy Watch 4", "price": 350, "currency": "RON", "images": 2, "seller_id": "30395735", "seller_name": "george", "business": false, "event": "import", "ts": "2026-11-09T03:19:41"}
 {"source": "olx", "id": "293570708", "url": "https://www.olx.ro/d/oferta/ceas-garmin-approach-s12-IDjRN9q.html", "brand": "Garmin", "model": "Approach S12", "price": 250, "currency": "RON", "images": 5, "seller_id": "3502269", "seller_name": "Lucian", "business": false, "event": "import", "ts": "2026-11-09T03:21:14"}
 {"source": "olx", "id": "311591724", "url": "https://www.olx.ro/d/oferta/garmin-fenix-7s-solar-IDl5peY.html", "brand": "Garmin", "model": "Fenix 7S", "price": 1000, "currency": "RON", "images": 3, "seller_id": "4007105", "seller_name": "Stoiciu Cristian", "business": false, "event": "import", "ts": "2026-11-09T03:22:40"}
+{"id": "310253908", "source": "olx", "reason": "bulk_lot: Photo shows two Galaxy Watch 8 Classic boxes (white and black) from a shop that lists several watches; skipped as bulk_lot.", "event": "skip", "ts": "2026-11-09T03:29:32"}
+{"id": "310778857", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-09T03:29:44"}
+{"id": "304028867", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T03:29:44"}
+{"id": "304029645", "source": "olx", "reason": "bulk_lot: The photo shows about 6 Galaxy Watch8 boxes with watches in several colours (shop stock). The text offers Silver and Graphite.", "event": "skip", "ts": "2026-11-09T03:30:29"}
+{"id": "303422841", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T03:30:30"}
+{"id": "310891208", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T03:30:57"}
+{"id": "310891057", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-09T03:31:19"}
