@@ -4045,3 +4045,13 @@
 {"id": "303178404", "source": "olx", "reason": "repost (seller match)", "event": "skip", "ts": "2026-11-10T15:25:55"}
 {"source": "olx", "id": "311362859", "url": "https://www.olx.ro/d/oferta/smartwatch-amazfit-t-rex-ultra-2-nou-debi-gsm-mobile-brasov-IDl4rHB.html", "brand": "Amazfit", "model": "T-Rex Ultra 2", "price": 2100, "currency": "RON", "images": 3, "seller_id": "328126153", "seller_name": "DeBi Mobile GSM", "business": true, "event": "import", "ts": "2026-11-10T15:27:32"}
 {"source": "olx", "id": "300962099", "url": "https://www.olx.ro/d/oferta/apple-watch-ultra-3-49-mm-black-ti-ocean-band-sigilat-IDkmNZp.html", "brand": "Apple", "model": "Watch Ultra 3", "price": 3499, "currency": "RON", "images": 3, "seller_id": "3838217", "seller_name": "Magazin Gsm Telefoane Beclean 2012", "business": true, "event": "import", "ts": "2026-11-10T15:29:05"}
+{"id": "309285260", "source": "olx", "reason": "bulk_lot", "event": "skip", "ts": "2026-11-11T18:24:56"}
+{"id": "311662958", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-11T18:25:07"}
+{"id": "311662793", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-11T18:25:20"}
+{"id": "311662698", "source": "olx", "reason": "thin_description: description looks thin (26 chars)", "event": "skip", "ts": "2026-11-11T18:25:58"}
+{"id": "307091533", "source": "olx", "reason": "too_few_images: 1 photo(s) at discovery", "event": "skip", "ts": "2026-11-11T18:25:59"}
+{"id": "311617667", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-11T18:26:34"}
+{"id": "311651461", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-11T18:26:52"}
+{"id": "308913190", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-11T18:27:07"}
+{"id": "310778857", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-11T18:27:18"}
+{"id": "310362070", "source": "olx", "reason": "already imported (external_listing_id match)", "event": "skip", "ts": "2026-11-11T18:27:32"}
