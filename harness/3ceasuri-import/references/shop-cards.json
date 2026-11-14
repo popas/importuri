@@ -1,6 +1,12 @@
 {
   "_comment": "Shop cards: photos that advertise a seller's business (logo card, storefront, 'why buy from us' panel), dropped from every import by photo_dedup.shop_cards. Keyed by the md5 of the file OLX serves. Learned automatically when one file sits beside two different watches; commit the file so the other machine drops them too. Delete an entry that is really a photo of a watch.",
   "cards": {
+    "0cdd98e5e1823c7f783324d2734ca1dc": {
+      "added": "2026-11-15",
+      "also_on": "olx-291582369",
+      "example": "olx-291580102/05.jpg",
+      "seller": "ionelioneladrian"
+    },
     "18e09e5ea7d1cab1c4001a8e8236b3bb": {
       "added": "2026-11-08",
       "also_on": "olx-310992986",
@@ -48,6 +54,12 @@
       "also_on": "olx-304467653",
       "example": "olx-301793854/08.jpg",
       "seller": "ROW-Collection"
+    },
+    "4546d98573ea4eba24140b3e93c0ac09": {
+      "added": "2026-11-15",
+      "also_on": "olx-291584240",
+      "example": "olx-291580102/06.jpg",
+      "seller": "ionelioneladrian"
     },
     "5aa262210a687dae6ef714c14536603e": {
       "added": "2026-10-13",
@@ -108,6 +120,18 @@
       "also_on": "olx-310878063",
       "example": "olx-310885540/05.jpg",
       "seller": "Telefoane Mures"
+    },
+    "947083438e57b77b9aefaf5ffe85fe53": {
+      "added": "2026-11-15",
+      "also_on": "olx-291584240",
+      "example": "olx-291582369/01.jpg",
+      "seller": "Ionica"
+    },
+    "9638aca2a9975d7d1266122915d51e03": {
+      "added": "2026-11-15",
+      "also_on": "olx-291584240",
+      "example": "olx-291580102/08.jpg",
+      "seller": "ionelioneladrian"
     },
     "9b28ae4feab096de632046e9b38060c7": {
       "added": "2026-11-08",
