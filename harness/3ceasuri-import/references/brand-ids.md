@@ -424,6 +424,7 @@ Bomberg:455
 Holzkern:456
 Tellus:457
 Ferrari:458
+Cover:459
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
