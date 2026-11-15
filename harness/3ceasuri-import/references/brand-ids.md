@@ -423,6 +423,7 @@ Coca-Cola:454
 Bomberg:455
 Holzkern:456
 Tellus:457
+Ferrari:458
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
