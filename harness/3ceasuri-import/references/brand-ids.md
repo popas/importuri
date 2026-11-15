@@ -426,6 +426,7 @@ Tellus:457
 Ferrari:458
 Cover:459
 Serene Marceau:460
+Mobvoi:461
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
