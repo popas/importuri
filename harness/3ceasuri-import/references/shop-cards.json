@@ -1,6 +1,12 @@
 {
   "_comment": "Shop cards: photos that advertise a seller's business (logo card, storefront, 'why buy from us' panel), dropped from every import by photo_dedup.shop_cards. Keyed by the md5 of the file OLX serves. Learned automatically when one file sits beside two different watches; commit the file so the other machine drops them too. Delete an entry that is really a photo of a watch.",
   "cards": {
+    "0359e058bbb959621abd892fd72b5c19": {
+      "added": "2026-11-15",
+      "also_on": "olx-308054425",
+      "example": "olx-303031427/05.jpg",
+      "seller": "Used Products Bucuresti"
+    },
     "0cdd98e5e1823c7f783324d2734ca1dc": {
       "added": "2026-11-15",
       "also_on": "olx-291582369",
@@ -234,6 +240,12 @@
       "also_on": "olx-307182509",
       "example": "olx-304467823/08.jpg",
       "seller": "ROW-Collection"
+    },
+    "fba9041d09373f903ef88a19d1e9bd3d": {
+      "added": "2026-11-15",
+      "also_on": "olx-308054425",
+      "example": "olx-303031427/06.jpg",
+      "seller": "Used Products Bucuresti"
     }
   }
 }
