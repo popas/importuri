@@ -437,6 +437,7 @@ iQuality:468
 Evolve-X:469
 Boss:471
 Marc Lauder:472
+Vincero:473
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
