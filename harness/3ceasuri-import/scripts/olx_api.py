@@ -56,12 +56,14 @@ def bind(g):
 def _is_api_origin(u):
     """Only www.olx.ro answers the API.
 
-    `login.olx.ro` also contains "olx.ro" but is a different origin, so a relative
+    `login.olx.ro` and `auth.olx.ro` (the login moved there, 2026-11) also contain
+    "olx.ro" but are different origins, so a relative
     /api/v1/ fetch from there 404s. A logged-out click on the phone button lands
     exactly there, which used to leave the tab poisoned for every later run.
     """
-    u = (u or "").lower()
-    return "olx.ro" in u and "login.olx.ro" not in u and "//login." not in u
+    from urllib.parse import urlparse
+    host = (urlparse((u or "").lower()).hostname or "")
+    return host in ("www.olx.ro", "olx.ro")
 
 
 def ensure_tab(bu, url=None, tabs=None):

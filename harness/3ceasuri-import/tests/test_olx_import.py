@@ -423,6 +423,10 @@ check(olx_api._is_api_origin("https://www.olx.ro/d/oferta/x.html") is True,
       "15c: www.olx.ro must count as the API origin")
 check(olx_api._is_api_origin("https://login.olx.ro/?cc=abc") is False,
       "15c: login.olx.ro must NOT count as the API origin")
+check(olx_api._is_api_origin("https://auth.olx.ro/u/login/identifier?state=x") is False,
+      "15c: auth.olx.ro (the login since 2026-11) must NOT count as the API origin")
+check(olx_api._is_api_origin("https://www.olx.ro/d/oferta/x.html") is True,
+      "15c: www.olx.ro is the API origin")
 
 class _Bu:
     """A tab parked on login.olx.ro, as a poisoned session leaves it."""
