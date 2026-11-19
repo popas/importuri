@@ -446,6 +446,7 @@ Aqua:478
 Just Cavalli:479
 Zeblaze:480
 Xfact:481
+Alfex:482
 ```
 
 Last updated: 2026-09-22. REMOVED `Alt brand`(239) from the map: it is never a stored
